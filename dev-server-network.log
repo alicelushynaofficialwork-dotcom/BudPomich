@@ -1,0 +1,69 @@
+
+> budpomich@0.1.0 dev
+> next dev --hostname 0.0.0.0 --port 3000
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.3s
+ ○ Compiling /profile/andrii-koval ...
+ ✓ Compiled /profile/andrii-koval in 1184ms (667 modules)
+ GET /profile/andrii-koval 200 in 1875ms
+ GET /profile/andrii-koval 200 in 238ms
+ GET /profile/andrii-koval 200 in 95ms
+ ✓ Compiled / in 278ms (681 modules)
+ GET / 200 in 446ms
+ GET / 200 in 58ms
+ GET / 200 in 305ms
+ GET / 200 in 77ms
+ GET /profile/andrii-koval 200 in 51ms
+ GET /profile/andrii-koval 200 in 38ms
+ GET /profile/andrii-koval 200 in 37ms
+ ✓ Compiled /_not-found in 382ms (686 modules)
+ GET /profile/profi-bud 404 in 498ms
+ GET /profile/profi-bud 404 in 147ms
+ GET / 200 in 161ms
+ GET /profile/serhii-ivanenko 404 in 21ms
+ GET /profile/serhii-ivanenko 404 in 53ms
+ GET / 200 in 128ms
+ ✓ Compiled /feed in 256ms (692 modules)
+ GET /feed 200 in 361ms
+ GET /feed 200 in 34ms
+ GET / 200 in 68ms
+ ✓ Compiled /auth/register in 211ms (701 modules)
+ GET /auth/register 200 in 333ms
+ ✓ Compiled /dashboard in 364ms (703 modules)
+ GET /dashboard 200 in 452ms
+ GET /auth/register 200 in 38ms
+ GET /dashboard 200 in 36ms
+ GET /dashboard 200 in 38ms
+ GET /dashboard 200 in 38ms
+ GET /dashboard 200 in 38ms
+ GET /profile/andrii-koval 200 in 48ms
+ GET / 200 in 83ms
+ GET / 200 in 62ms
+ GET /dashboard 200 in 42ms
+ GET /dashboard 200 in 42ms
+ GET /dashboard 200 in 42ms
+   Reload env: .env.local
+ ✓ Compiled in 315ms (697 modules)
+ GET /dashboard 200 in 138ms
+   Reload env: .env.local
+ ✓ Compiled in 4s (720 modules)
+ GET /dashboard 200 in 771ms
+ GET /dashboard 200 in 56ms
+   Reload env: .env.local
+ ✓ Compiled in 272ms (697 modules)
+   Reload env: .env.local
+ ✓ Compiled in 176ms (697 modules)
+   Reload env: .env.local
+ ✓ Compiled in 167ms (697 modules)
+ GET /dashboard 200 in 132ms
+ ✓ Compiled in 152ms (264 modules)
+ ✓ Compiled in 107ms (264 modules)
+ GET /dashboard 200 in 83ms
+ GET /dashboard 200 in 40ms
+ ✓ Compiled in 382ms (711 modules)
+ GET /dashboard 200 in 86ms
