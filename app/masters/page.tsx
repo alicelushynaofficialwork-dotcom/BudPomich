@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { masterProfiles } from "@/lib/masters";
@@ -7,20 +8,45 @@ export const metadata: Metadata = {
   description: "Перевірені майстри для ремонту та будівництва у вашому місті.",
 };
 
-export default function MastersPage() {
+type MastersPageProps = {
+  searchParams: Promise<{ from?: string }>;
+};
+
+export default async function MastersPage({ searchParams }: MastersPageProps) {
+  const fromDashboard = (await searchParams).from === "dashboard";
+  const dashboardSuffix = fromDashboard ? "?from=dashboard" : "";
+
   return (
     <main className="masters-page">
       <header className="masters-header">
         <Link className="masters-brand" href="/masters">
-          <span>Б</span>
-          БудПоміч
+          <Image
+            className="brand-logo-image"
+            src="/logo/budpomich-logo-v4.svg"
+            alt="БудПоміч — будівельний помічник"
+            width={790}
+            height={420}
+            priority
+          />
         </Link>
         <nav aria-label="Основна навігація">
-          <Link className="active" href="/masters">Майстри</Link>
+          <Link
+            className="active"
+            href={fromDashboard ? "/masters?from=dashboard" : "/masters"}
+          >
+            Майстри
+          </Link>
           <Link href="/feed">Роботи</Link>
-          <Link href="/auth/login">Увійти</Link>
+          <Link href={fromDashboard ? "/dashboard" : "/auth/login"}>
+            {fromDashboard ? "Кабінет" : "Увійти"}
+          </Link>
         </nav>
-        <Link className="header-cta" href="/auth/register">Стати майстром</Link>
+        <Link
+          className="header-cta"
+          href={fromDashboard ? "/dashboard" : "/auth/register"}
+        >
+          {fromDashboard ? "До кабінету" : "Стати майстром"}
+        </Link>
       </header>
 
       <section className="masters-hero">
@@ -74,7 +100,7 @@ export default function MastersPage() {
                   Ціна від
                   <strong>{master.priceFrom.toLocaleString("uk-UA")} грн</strong>
                 </p>
-                <Link href={`/masters/${master.id}`}>
+                <Link href={`/profile/${master.id}${dashboardSuffix}`}>
                   Переглянути профіль <span aria-hidden="true">→</span>
                 </Link>
               </div>
