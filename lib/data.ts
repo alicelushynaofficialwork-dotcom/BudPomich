@@ -1,5 +1,6 @@
 export type Availability = "available" | "soon" | "busy";
 
+
 export type Master = {
   id: string;
   name: string;
