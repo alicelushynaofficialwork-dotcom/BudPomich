@@ -2193,12 +2193,24 @@ a {
   font-size: 13px;
   font-weight: 900;
   cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
 }
 
 .booking-month-day.is-free {
   border-color: #87d4a1;
   background: #dff5e8;
   color: #1d7443;
+}
+
+.booking-month-day.is-free:hover {
+  border-color: #123927;
+  background: #cfeedd;
+  color: #123927;
 }
 
 .booking-month-day.is-busy {
@@ -2209,16 +2221,65 @@ a {
 }
 
 .booking-month-day.is-selected {
-  border-color: #123927;
-  background: #123927;
+  border-color: #1f6b46;
+  background: #1f6b46;
   color: white;
-  box-shadow: 0 10px 24px rgba(18, 57, 39, 0.18);
+  box-shadow: 0 10px 24px rgba(31, 107, 70, 0.2);
+}
+
+.booking-month-day.is-in-range {
+  border-color: #248052;
+  background: #2b8559;
+  color: white;
+}
+
+.booking-month-day.is-range-start,
+.booking-month-day.is-range-end {
+  border-color: #1b5f3d;
+  background: #1f6b46;
+  color: white;
+  box-shadow: 0 12px 28px rgba(31, 107, 70, 0.24);
+  transform: translateY(-1px);
 }
 
 .booking-side-form {
   display: grid;
   align-content: start;
   gap: 14px;
+}
+
+.selected-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selected-periods button {
+  min-height: 34px;
+  padding: 7px 10px 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #1f6b46;
+  border-radius: 999px;
+  background: #edf8f1;
+  color: #1f6b46;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.selected-periods small {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1f6b46;
+  color: white;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .booking-side-form label,

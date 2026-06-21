@@ -1,16 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, MessageSquare, Send } from "lucide-react";
 
 type BookingRequest = {
   masterId: string;
   masterName: string;
   date: string;
+  dateFrom: string;
+  dateTo: string;
+  period: string;
+  periods: BookingPeriod[];
   workType: string;
   description: string;
   status: "new";
   createdAt: string;
+};
+
+type BookingPeriod = {
+  dateFrom: string;
+  dateTo: string;
+  period: string;
 };
 
 type DirectMessage = {
@@ -72,6 +82,30 @@ function toIsoDate(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function getDateRange(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const dates: string[] = [];
+
+  for (const current = new Date(start); current <= end; current.setDate(current.getDate() + 1)) {
+    dates.push(
+      `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(
+        current.getDate(),
+      ).padStart(2, "0")}`,
+    );
+  }
+
+  return dates;
+}
+
+function formatPeriod(dateFrom: string, dateTo: string) {
+  return dateFrom === dateTo ? dateFrom : `${dateFrom} — ${dateTo}`;
+}
+
+function isDateInsidePeriod(date: string, period: BookingPeriod) {
+  return date >= period.dateFrom && date <= period.dateTo;
+}
+
 function buildCalendarDays(year: number, monthIndex: number) {
   const firstDay = new Date(year, monthIndex, 1);
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -89,7 +123,10 @@ export function BookingForm({
   busyDates = defaultBusyDates,
 }: BookingFormProps) {
   const [visibleMonth, setVisibleMonth] = useState({ year: 2026, monthIndex: 5 });
-  const [selectedDate, setSelectedDate] = useState("");
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const [hoverDate, setHoverDate] = useState("");
+  const [selectedPeriods, setSelectedPeriods] = useState<BookingPeriod[]>([]);
   const [workType, setWorkType] = useState("");
   const [description, setDescription] = useState("");
   const [bookingError, setBookingError] = useState("");
@@ -110,7 +147,9 @@ export function BookingForm({
       const next = new Date(current.year, current.monthIndex + direction, 1);
       return { year: next.getFullYear(), monthIndex: next.getMonth() };
     });
-    setSelectedDate("");
+    setRangeStart("");
+    setRangeEnd("");
+    setHoverDate("");
     setBookingError("");
     setBookingSuccess("");
   }
@@ -122,24 +161,89 @@ export function BookingForm({
       return;
     }
 
-    setSelectedDate(isoDate);
+    if (!rangeStart || rangeEnd || isoDate < rangeStart) {
+      setRangeStart(isoDate);
+      setRangeEnd("");
+      setHoverDate("");
+      setBookingError("");
+      setBookingSuccess("");
+      return;
+    }
+
+    const rangeDates = getDateRange(rangeStart, isoDate);
+    const hasBusyDate = rangeDates.some((date) => busyDateSet.has(date));
+    const hasSelectedDate = rangeDates.some((date) =>
+      selectedPeriods.some((period) => isDateInsidePeriod(date, period)),
+    );
+
+    if (hasBusyDate || hasSelectedDate) {
+      setRangeStart(isoDate);
+      setRangeEnd("");
+      setHoverDate(isoDate);
+      setBookingSuccess("");
+      setBookingError(
+        hasBusyDate
+          ? "У цьому періоді є зайняті дні. Оберіть інший вільний період."
+          : "Цей період перетинається з уже вибраним. Оберіть інші дати.",
+      );
+      return;
+    }
+
+    const nextPeriod = {
+      dateFrom: rangeStart,
+      dateTo: isoDate,
+      period: formatPeriod(rangeStart, isoDate),
+    };
+
+    setSelectedPeriods((current) =>
+      [...current, nextPeriod].sort((first, second) => first.dateFrom.localeCompare(second.dateFrom)),
+    );
+    setRangeStart("");
+    setRangeEnd("");
+    setHoverDate("");
     setBookingError("");
     setBookingSuccess("");
   }
 
-  function submitBooking(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!selectedDate || !workType || !description.trim()) {
-      setBookingSuccess("");
-      setBookingError("Оберіть вільну дату, тип роботи та коротко опишіть задачу.");
+  function previewRangeSelection(day: number) {
+    if (!rangeStart || rangeEnd) {
       return;
     }
 
+    const isoDate = toIsoDate(visibleMonth.year, visibleMonth.monthIndex, day);
+
+    if (!busyDateSet.has(isoDate)) {
+      setHoverDate(isoDate);
+    }
+  }
+
+  function cancelRangePreview() {
+    if (!rangeStart || rangeEnd) {
+      return;
+    }
+
+    setHoverDate("");
+  }
+
+  function submitBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedPeriods.length || !workType || !description.trim()) {
+      setBookingSuccess("");
+      setBookingError("Оберіть хоча б один вільний період, тип роботи та коротко опишіть задачу.");
+      return;
+    }
+
+    const periods = selectedPeriods.map((period) => ({ ...period }));
+    const period = periods.map((item) => item.period).join("; ");
     const request: BookingRequest = {
       masterId,
       masterName,
-      date: selectedDate,
+      date: period,
+      dateFrom: periods[0].dateFrom,
+      dateTo: periods[periods.length - 1].dateTo,
+      period,
+      periods,
       workType,
       description: description.trim(),
       status: "new",
@@ -149,6 +253,17 @@ export function BookingForm({
     console.log("Booking request", request);
     setBookingError("");
     setBookingSuccess("Заявка надіслана майстру");
+  }
+
+  function removeSelectedPeriod(periodToRemove: BookingPeriod) {
+    setSelectedPeriods((current) =>
+      current.filter(
+        (period) =>
+          period.dateFrom !== periodToRemove.dateFrom || period.dateTo !== periodToRemove.dateTo,
+      ),
+    );
+    setBookingError("");
+    setBookingSuccess("");
   }
 
   function submitMessage(event: React.FormEvent<HTMLFormElement>) {
@@ -177,9 +292,10 @@ export function BookingForm({
     <section className="online-booking" id="booking">
       <div className="booking-intro">
         <p className="eyebrow">Онлайн-запис</p>
-        <h2>Оберіть вільне вікно</h2>
+        <h2>Оберіть вільний період</h2>
         <p>
-          Зелені дні доступні для заявки. Червоні вже зайняті й не обираються.
+          Зелені дні доступні для заявки. Натисніть перший і останній день
+          періоду. Червоні вже зайняті й не обираються.
         </p>
         <div className="booking-legend" aria-label="Позначення календаря">
           <span>
@@ -208,7 +324,11 @@ export function BookingForm({
             <span key={day}>{day}</span>
           ))}
         </div>
-        <div className="booking-month-grid" aria-label="Календар доступності">
+        <div
+          className="booking-month-grid"
+          aria-label="Календар доступності"
+          onPointerLeave={cancelRangePreview}
+        >
           {calendarDays.map((day, index) => {
             if (!day) {
               return <span className="booking-date-empty" key={`empty-${index}`} />;
@@ -216,7 +336,41 @@ export function BookingForm({
 
             const isoDate = toIsoDate(visibleMonth.year, visibleMonth.monthIndex, day);
             const isBusy = busyDateSet.has(isoDate);
-            const isSelected = selectedDate === isoDate;
+            const previewStart =
+              rangeStart && !rangeEnd && hoverDate
+                ? hoverDate < rangeStart
+                  ? hoverDate
+                  : rangeStart
+                : rangeStart;
+            const previewEnd =
+              rangeStart && !rangeEnd && hoverDate
+                ? hoverDate < rangeStart
+                  ? rangeStart
+                  : hoverDate
+                : rangeEnd;
+            const previewDates = previewStart && previewEnd ? getDateRange(previewStart, previewEnd) : [];
+            const hasBusyPreview = previewDates.some((date) => busyDateSet.has(date));
+            const hasSelectedPreview = previewDates.some((date) =>
+              selectedPeriods.some((period) => isDateInsidePeriod(date, period)),
+            );
+            const isPreviewing = Boolean(
+              rangeStart && !rangeEnd && previewStart && previewEnd && !hasBusyPreview && !hasSelectedPreview,
+            );
+            const fixedPeriod = selectedPeriods.find((period) => isDateInsidePeriod(isoDate, period));
+            const isFixedRangeStart = selectedPeriods.some((period) => period.dateFrom === isoDate);
+            const isFixedRangeEnd = selectedPeriods.some((period) => period.dateTo === isoDate);
+            const isFixedInRange = Boolean(
+              fixedPeriod && isoDate > fixedPeriod.dateFrom && isoDate < fixedPeriod.dateTo,
+            );
+            const isRangeStart =
+              isFixedRangeStart || rangeStart === isoDate || (isPreviewing && previewStart === isoDate);
+            const isRangeEnd =
+              isFixedRangeEnd || rangeEnd === isoDate || (isPreviewing && previewEnd === isoDate);
+            const isInRange =
+              isFixedInRange ||
+              Boolean(rangeStart && rangeEnd && isoDate > rangeStart && isoDate < rangeEnd) ||
+              Boolean(isPreviewing && isoDate > previewStart && isoDate < previewEnd);
+            const isSelected = isRangeStart || isRangeEnd || isInRange;
 
             return (
               <button
@@ -225,12 +379,16 @@ export function BookingForm({
                   "booking-month-day",
                   isBusy ? "is-busy" : "is-free",
                   isSelected ? "is-selected" : "",
+                  isRangeStart ? "is-range-start" : "",
+                  isRangeEnd ? "is-range-end" : "",
+                  isInRange ? "is-in-range" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
                 disabled={isBusy}
                 key={isoDate}
                 onClick={() => chooseDate(day)}
+                onPointerEnter={() => previewRangeSelection(day)}
                 type="button"
               >
                 {day}
@@ -242,8 +400,26 @@ export function BookingForm({
 
       <form className="booking-side-form" onSubmit={submitBooking} noValidate>
         <h3>
-          {selectedDate ? `Обрана дата: ${selectedDate}` : "Спочатку оберіть зелений день"}
+          {rangeStart
+              ? `Початок періоду: ${rangeStart}. Оберіть останній день`
+              : selectedPeriods.length
+                ? `Обрано періодів: ${selectedPeriods.length}`
+                : "Спочатку оберіть зелений день"}
         </h3>
+        {selectedPeriods.length > 0 && (
+          <div className="selected-periods" aria-label="Обрані періоди">
+            {selectedPeriods.map((period) => (
+              <button
+                key={`${period.dateFrom}-${period.dateTo}`}
+                onClick={() => removeSelectedPeriod(period)}
+                type="button"
+              >
+                <span>{period.period}</span>
+                <small>×</small>
+              </button>
+            ))}
+          </div>
+        )}
         <label>
           Тип роботи
           <select
