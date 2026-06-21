@@ -12,7 +12,16 @@ export type MasterProfile = {
   initials: string;
   accent: string;
   services: { name: string; price: string }[];
-  works: { title: string; location: string; crop: "left" | "center" | "right" }[];
+  works: {
+    title: string;
+    location: string;
+    crop: "left" | "center" | "right";
+    category?: string;
+    description?: string;
+    total?: string;
+    details?: { name: string; quantity: string; unitPrice: string; total: string }[];
+  }[];
+  busyDates?: string[];
 };
 
 export const masterProfiles: MasterProfile[] = [
@@ -175,5 +184,11 @@ export const masterProfiles: MasterProfile[] = [
 ];
 
 export function getMasterById(id: string) {
+  const numericIndex = Number(id);
+
+  if (Number.isInteger(numericIndex) && numericIndex > 0) {
+    return masterProfiles[numericIndex - 1];
+  }
+
   return masterProfiles.find((master) => master.id === id);
 }

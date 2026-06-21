@@ -1,35 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SiteHeader } from "@/components/SiteHeader";
+import { masterProfiles } from "@/lib/masters";
 
 export const metadata: Metadata = {
   title: "Майстри | БудПоміч",
-  description: "Перевірені майстри для ремонту та будівництва у вашому місті.",
+  description:
+    "Перевірені майстри для ремонту та будівництва у вашому місті.",
 };
 
 export default function MastersPage() {
+  const masters = masterProfiles;
+
   return (
     <main className="masters-page">
-      <header className="masters-header">
-        <Link className="masters-brand" href="/masters">
-          <Image
-            className="brand-logo-image"
-            src="/logo/budpomich-logo-v4.svg"
-            alt="БудПоміч — будівельний помічник"
-            width={790}
-            height={420}
-            priority
-          />
-        </Link>
-
-        <nav aria-label="Основна навігація">
-          <Link className="active" href="/masters">Майстри</Link>
-          <Link href="/feed">Роботи</Link>
-          <Link href={fromDashboard ? "/dashboard" : "/auth/login"}>
-            {fromDashboard ? "Кабінет" : "Увійти"}
-          </Link>
-        </nav>
-        <Link className="header-cta" href="/auth/register">Стати майстром</Link>
-      </header>
+      <SiteHeader active="masters" showBecomeMaster />
 
       <section className="masters-hero">
         <div>
@@ -42,7 +27,7 @@ export default function MastersPage() {
         </div>
 
         <div className="hero-stat">
-          <strong>{masters?.length || 0}</strong>
+          <strong>{masters.length}</strong>
           <span>перевірених профілів у каталозі</span>
         </div>
       </section>
@@ -54,50 +39,37 @@ export default function MastersPage() {
             <h2>Оберіть свого фахівця</h2>
           </div>
 
-          <p>Знайдено {masters?.length || 0} майстрів</p>
+          <p>Знайдено {masters.length} майстрів</p>
         </div>
 
         <div className="masters-grid">
-          {masters?.map((master: any) => (
+          {masters.map((master) => (
             <article className="directory-card" key={master.id}>
               <div className="directory-card-top">
-                <div className="directory-avatar">
-                  {master.avatar_url ? (
-                    <img
-                      src={master.avatar_url}
-                      alt={master.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        borderRadius: "50%",
-                      }}
-                    />
-                  ) : (
-                    <span>{master.name?.[0]}</span>
-                  )}
+                <div className={`directory-avatar avatar-${master.accent}`}>
+                  <span>{master.initials}</span>
                 </div>
 
                 <div>
                   <p className="master-profession">{master.profession}</p>
                   <h3>{master.name}</h3>
-                  <p className="master-rating">⭐ {master.rating || 5}</p>
-                  <p className="master-city">⌖ {master.city}</p>
+                  <p className="master-rating">
+                    ★ {master.rating.toFixed(1)} · {master.reviews} відгуків
+                  </p>
+                  <p className="master-city">
+                    ⌖ {master.city} · {master.experience}
+                  </p>
                 </div>
               </div>
 
-              {master.description && (
-                <p className="directory-description">{master.description}</p>
-              )}
+              <p className="directory-description">{master.description}</p>
 
               <div className="directory-card-bottom">
                 <p>
                   Ціна від
                   <strong>{master.priceFrom.toLocaleString("uk-UA")} грн</strong>
                 </p>
-                <Link href={`/masters/${master.id}`}>
-                  Переглянути профіль <span aria-hidden="true">→</span>
-                </Link>
+                <Link href={`/profile/${master.id}`}>Переглянути профіль →</Link>
               </div>
             </article>
           ))}

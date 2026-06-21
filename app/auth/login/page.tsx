@@ -1,89 +1,67 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { Metadata } from "next";
-import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { LoginForm } from "@/components/LoginForm";
 
-export const metadata: Metadata = {
-  title: "Увійти | БудПоміч",
-  description: "Вхід до особистого кабінету БудПоміч.",
+export const metadata = {
+  title: "Вхід | БудПоміч",
 };
+
+const benefits = [
+  "Зберігайте улюблених майстрів",
+  "Стежте за своїми заявками",
+  "Оновлюйте професійний профіль",
+];
 
 export default function LoginPage() {
   return (
-    <main className="auth-page">
-      <header className="auth-header">
-        <Link className="auth-brand" href="/masters">
+    <main className="auth-page login-page">
+      <header className="login-topbar">
+        <Link className="app-logo" href="/masters" aria-label="BudPomich">
           <Image
-            className="brand-logo-image"
-            src="/logo/budpomich-logo-v4.svg"
-            alt="БудПоміч — будівельний помічник"
-            width={790}
-            height={420}
+            src="/logo/budpomich-logo.svg"
+            alt="BudPomich"
+            width={158}
+            height={84}
             priority
           />
         </Link>
-        <Link className="auth-back-link" href="/masters">
+        <Link className="login-back-link" href="/masters">
+          <ArrowLeft size={17} />
           Повернутися до майстрів
         </Link>
       </header>
 
-      <section className="auth-shell">
-        <div className="auth-promo">
+      <section className="login-shell" aria-label="Вхід у БудПоміч">
+        <aside className="login-promo-card">
           <div>
-            <p className="auth-eyebrow">Особистий кабінет</p>
+            <p className="overline">ОСОБИСТИЙ КАБІНЕТ</p>
             <h1>Усі ваші проєкти в одному місці</h1>
             <p>
               Керуйте профілем, роботами та заявками у простому кабінеті
               БудПоміч.
             </p>
           </div>
-          <ul>
-            <li><span>01</span> Зберігайте улюблених майстрів</li>
-            <li><span>02</span> Стежте за своїми заявками</li>
-            <li><span>03</span> Оновлюйте професійний профіль</li>
-          </ul>
-        </div>
 
-        <div className="auth-card">
-          <p className="auth-eyebrow">Раді бачити знову</p>
+          <ol className="login-benefits">
+            {benefits.map((benefit, index) => (
+              <li key={benefit}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                {benefit}
+              </li>
+            ))}
+          </ol>
+        </aside>
+
+        <section className="auth-card login-card">
+          <p className="overline">РАДІ БАЧИТИ ЗНОВУ</p>
           <h2>Увійти в БудПоміч</h2>
-          <p className="auth-description">
-            Введіть дані, які використовували під час реєстрації.
+          <p>
+            Увійдіть, щоб керувати профілем, роботами, заявками та
+            повідомленнями в одному місці.
           </p>
-
-          <form className="auth-form">
-            <label>
-              Email
-              <span className="auth-input-wrap">
-                <Mail size={18} aria-hidden="true" />
-                <input
-                  type="email"
-                  placeholder="name@example.com"
-                  autoComplete="email"
-                />
-              </span>
-            </label>
-            <label>
-              Пароль
-              <span className="auth-input-wrap">
-                <LockKeyhole size={18} aria-hidden="true" />
-                <input
-                  type="password"
-                  placeholder="Ваш пароль"
-                  autoComplete="current-password"
-                />
-              </span>
-            </label>
-            <Link className="auth-submit" href="/dashboard">
-              Увійти <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-          </form>
-
-          <p className="auth-switch">
-            Ще немає профілю?{" "}
-            <Link href="/auth/register">Зареєструватися</Link>
-          </p>
-        </div>
+          <LoginForm />
+        </section>
       </section>
     </main>
   );

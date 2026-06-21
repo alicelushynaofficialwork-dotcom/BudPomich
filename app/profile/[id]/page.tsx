@@ -1,38 +1,38 @@
 import type { Metadata } from "next";
-import { getMasterById } from "@/lib/masters";
-import { PublicMasterProfile } from "@/components/PublicMasterProfile";
+import { notFound } from "next/navigation";
+import { ProfileMasterView } from "@/components/ProfileMasterView";
+import { getMasterById, masterProfiles } from "@/lib/masters";
 
-type PublicProfilePageProps = {
+type ProfilePageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
 };
+
+export function generateStaticParams() {
+  return [
+    ...masterProfiles.map(({ id }) => ({ id })),
+    ...masterProfiles.map((_, index) => ({ id: String(index + 1) })),
+  ];
+}
 
 export async function generateMetadata({
   params,
-}: PublicProfilePageProps): Promise<Metadata> {
+}: ProfilePageProps): Promise<Metadata> {
   const master = getMasterById((await params).id);
 
   return {
-    title: master ? `${master.name} | Портфоліо БудПоміч` : "Майстра не знайдено",
+    title: master
+      ? `${master.name}, ${master.profession} | БудПоміч`
+      : "Мастера не найдено",
     description: master?.description,
   };
 }
 
-export default async function PublicProfilePage({
-  params,
-  searchParams,
-}: PublicProfilePageProps) {
-  const source = (await searchParams).from;
-  const ownerSource = ["dashboard", "profile", "portfolio"].includes(
-    source ?? "",
-  )
-    ? (source as "dashboard" | "profile" | "portfolio")
-    : undefined;
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  const master = getMasterById((await params).id);
 
-  return (
-    <PublicMasterProfile
-      masterId={(await params).id}
-      ownerSource={ownerSource}
-    />
-  );
+  if (!master) {
+    notFound();
+  }
+
+  return <ProfileMasterView master={master} />;
 }

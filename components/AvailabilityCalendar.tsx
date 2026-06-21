@@ -1,154 +1,120 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import {
-  AvailabilitySlots,
-  AvailabilityStatus,
-  formatDateKey,
-  getAvailabilityStorageKey,
-  getDefaultAvailabilitySlots,
-  getMonthGrid,
-  legacyAvailabilityStorageKey,
-  monthLabels,
-} from "@/lib/availability";
+import { useMemo, useState } from "react";
+import { CalendarDays } from "lucide-react";
 
-const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
+type DayStatus = "available" | "busy" | "planned";
 
-export function AvailabilityCalendar({
-  masterId = "andrii-koval",
-}: {
-  masterId?: string;
-}) {
-  const [slots, setSlots] = useState<AvailabilitySlots>(() =>
-    getDefaultAvailabilitySlots(masterId),
-  );
-  const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState(5);
-  const [paintStatus, setPaintStatus] =
-    useState<AvailabilityStatus>("free");
+const statusLabels: Record<DayStatus, string> = {
+  available: "Вільний",
+  busy: "Зайнятий",
+  planned: "Заплановано",
+};
 
-  useEffect(() => {
-    const loadSlots = window.setTimeout(() => {
-      const storageKey = getAvailabilityStorageKey(masterId);
-      const stored =
-        localStorage.getItem(storageKey) ??
-        (masterId === "andrii-koval"
-          ? localStorage.getItem(legacyAvailabilityStorageKey)
-          : null);
+const statusOrder: DayStatus[] = ["available", "busy", "planned"];
 
-      if (stored) {
-        setSlots(JSON.parse(stored) as AvailabilitySlots);
-        localStorage.setItem(storageKey, stored);
-      }
-    }, 0);
+const initialStatuses: Record<number, DayStatus> = {
+  1: "busy",
+  2: "busy",
+  4: "planned",
+  8: "busy",
+  9: "busy",
+  12: "planned",
+  15: "available",
+  16: "available",
+  17: "available",
+  21: "busy",
+  22: "busy",
+  26: "planned",
+  29: "available",
+  30: "available",
+  31: "available",
+};
 
-    return () => window.clearTimeout(loadSlots);
-  }, [masterId]);
+function getCalendarDays(year: number, monthIndex: number) {
+  const firstDay = new Date(year, monthIndex, 1);
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const mondayBasedOffset = (firstDay.getDay() + 6) % 7;
 
-  const days = useMemo(() => getMonthGrid(year, month), [year, month]);
+  return [
+    ...Array.from({ length: mondayBasedOffset }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+}
 
-  function changeMonth(direction: -1 | 1) {
-    const next = new Date(Date.UTC(year, month + direction, 1));
-    setYear(next.getUTCFullYear());
-    setMonth(next.getUTCMonth());
-  }
+export function AvailabilityCalendar() {
+  const [statuses, setStatuses] = useState(initialStatuses);
+  const days = useMemo(() => getCalendarDays(2026, 6), []);
+  const availableCount = Object.values(statuses).filter(
+    (status) => status === "available",
+  ).length;
+  const busyCount = Object.values(statuses).filter((status) => status === "busy").length;
 
-  function updateDay(day: number) {
-    const key = formatDateKey(year, month, day);
-    const next = { ...slots };
+  function toggleDay(day: number) {
+    setStatuses((current) => {
+      const currentStatus = current[day] ?? "available";
+      const nextStatus =
+        statusOrder[(statusOrder.indexOf(currentStatus) + 1) % statusOrder.length];
 
-    if (next[key] === paintStatus) {
-      delete next[key];
-    } else {
-      next[key] = paintStatus;
-    }
-
-    setSlots(next);
-    localStorage.setItem(
-      getAvailabilityStorageKey(masterId),
-      JSON.stringify(next),
-    );
+      return {
+        ...current,
+        [day]: nextStatus,
+      };
+    });
   }
 
   return (
-    <article className="dashboard-panel availability-panel">
-      <div className="availability-calendar-head">
+    <div className="availability-calendar">
+      <div className="calendar-toolbar">
         <div>
-          <p className="dashboard-eyebrow">Статус зайнятості</p>
-          <h2>Календар доступності</h2>
+          <span>
+            <CalendarDays size={17} />
+            Липень 2026
+          </span>
+          <strong>Календар зайнятості</strong>
         </div>
-        <div className="availability-legend">
-          <span><i className="free" /> Вільно</span>
-          <span><i className="busy" /> Зайнято</span>
+        <div className="calendar-summary">
+          <span>{availableCount} вільних днів</span>
+          <span>{busyCount} зайнятих</span>
         </div>
       </div>
 
-      <div className="availability-toolbar">
-        <button
-          type="button"
-          onClick={() => changeMonth(-1)}
-          aria-label="Попередній місяць"
-        >
-          <ChevronLeft size={17} />
-        </button>
-        <strong>{monthLabels[month]} {year}</strong>
-        <button
-          type="button"
-          onClick={() => changeMonth(1)}
-          aria-label="Наступний місяць"
-        >
-          <ChevronRight size={17} />
-        </button>
+      <div className="calendar-weekdays" aria-hidden="true">
+        {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
       </div>
 
-      <div className="availability-paint">
-        <span>Режим позначення:</span>
-        <button
-          className={paintStatus === "free" ? "active free" : ""}
-          type="button"
-          onClick={() => setPaintStatus("free")}
-        >
-          Вільно
-        </button>
-        <button
-          className={paintStatus === "busy" ? "active busy" : ""}
-          type="button"
-          onClick={() => setPaintStatus("busy")}
-        >
-          Зайнято
-        </button>
-      </div>
-
-      <div className="availability-weekdays">
-        {weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}
-      </div>
-      <div className="availability-grid">
+      <div className="calendar-grid" aria-label="Календар зайнятості на липень 2026">
         {days.map((day, index) =>
           day ? (
             <button
-              className={slots[formatDateKey(year, month, day)] ?? "unset"}
+              className={`calendar-day calendar-day-${statuses[day] ?? "available"}`}
               type="button"
               key={day}
-              onClick={() => updateDay(day)}
-              aria-label={`${day} ${monthLabels[month]}: ${
-                slots[formatDateKey(year, month, day)] === "free"
-                  ? "вільно"
-                  : slots[formatDateKey(year, month, day)] === "busy"
-                    ? "зайнято"
-                    : "не позначено"
-              }`}
+              onClick={() => toggleDay(day)}
+              aria-label={`${day} липня: ${statusLabels[statuses[day] ?? "available"]}`}
             >
-              {day}
+              <span>{day}</span>
+              <small>{statusLabels[statuses[day] ?? "available"]}</small>
             </button>
           ) : (
-            <span key={`empty-${index}`} />
+            <span className="calendar-empty" key={`empty-${index}`} />
           ),
         )}
       </div>
-      <p className="availability-hint">
-        Оберіть режим і натискайте на дні, щоб змінити доступність.
-      </p>
-    </article>
+
+      <div className="calendar-legend" aria-label="Позначення статусів">
+        <span>
+          <i className="legend-available" /> Вільний
+        </span>
+        <span>
+          <i className="legend-busy" /> Зайнятий
+        </span>
+        <span>
+          <i className="legend-planned" /> Заплановано
+        </span>
+      </div>
+    </div>
   );
 }
