@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
+import { DashboardRequests } from "@/components/DashboardRequests";
 import { SiteHeader } from "@/components/SiteHeader";
 import { masters } from "@/lib/data";
 
@@ -84,6 +85,7 @@ export default function DashboardPage() {
                 <span>Робіт у портфоліо</span>
               </div>
             </div>
+            <DashboardRequests />
             <div className="dashboard-panels">
               <article className="dashboard-panel" id="profile-status">
                 <div>

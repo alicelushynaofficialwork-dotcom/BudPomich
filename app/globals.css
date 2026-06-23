@@ -2282,6 +2282,82 @@ a {
   line-height: 1;
 }
 
+.service-context {
+  padding: 13px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid #dbe8df;
+  border-radius: 14px;
+  background: #f2faf5;
+}
+
+.service-context strong {
+  color: #1f6b46;
+}
+
+.service-context p,
+.service-context small {
+  margin: 0;
+  color: #59665f;
+  line-height: 1.5;
+}
+
+.service-dynamic-fields,
+.additional-works-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed #cbd8cf;
+  border-radius: 16px;
+  background: #fbfcfb;
+}
+
+.checkbox-line {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.checkbox-line input {
+  width: 18px !important;
+  min-height: 18px !important;
+  padding: 0 !important;
+  accent-color: #1f6b46;
+}
+
+.additional-work-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.add-work-button {
+  min-height: 38px;
+  border: 1px solid #1f6b46;
+  border-radius: 12px;
+  background: #edf8f1;
+  color: #1f6b46;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.file-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.file-preview-list span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f2f4f1;
+  color: #33443a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .booking-side-form label,
 .direct-message-form label {
   display: grid;
@@ -2292,6 +2368,7 @@ a {
 }
 
 .booking-side-form select,
+.booking-side-form input,
 .booking-side-form textarea,
 .direct-message-form input,
 .direct-message-form textarea {
@@ -2305,6 +2382,7 @@ a {
 }
 
 .booking-side-form select,
+.booking-side-form input,
 .direct-message-form input {
   min-height: 48px;
   padding: 0 13px;
@@ -2529,6 +2607,224 @@ a {
   line-height: 1.55;
 }
 
+.dashboard-access-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dashboard-access-grid a {
+  min-height: 86px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e0e4df;
+  border-radius: 18px;
+  background: white;
+  color: #173724;
+  box-shadow: 0 18px 42px rgba(27, 41, 33, 0.06);
+}
+
+.dashboard-access-grid span {
+  font-weight: 900;
+}
+
+.dashboard-access-grid strong,
+.counter-badge {
+  min-width: 34px;
+  min-height: 28px;
+  padding: 6px 10px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff0e8;
+  color: #ff6b2c;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.master-requests-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+  gap: 18px;
+}
+
+.master-request-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.master-request-list button {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e2e7e0;
+  border-radius: 14px;
+  background: #fbfcfb;
+  color: #1d2d23;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.master-request-list button.active {
+  border-color: #ff8a4a;
+  background: #fff5ef;
+}
+
+.master-request-list strong,
+.master-request-list small {
+  display: block;
+}
+
+.master-request-list small {
+  margin-top: 4px;
+  color: #6d786f;
+  font-size: 12px;
+}
+
+.master-request-list em {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #e7f5ed;
+  color: #1f6b46;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.master-request-detail {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #e2e7e0;
+  border-radius: 18px;
+  background: #fbfcfb;
+}
+
+.request-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.request-detail-head p,
+.request-detail-head h3 {
+  margin: 0;
+}
+
+.request-detail-head h3 {
+  margin-top: 5px;
+  font-size: 24px;
+}
+
+.request-detail-head span {
+  display: block;
+  margin-top: 5px;
+  color: #66736a;
+}
+
+.request-detail-head select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dfe4df;
+  border-radius: 12px;
+  background: white;
+  color: #173724;
+  font-weight: 900;
+}
+
+.request-detail-grid {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.request-detail-grid div {
+  padding: 12px;
+  border-radius: 12px;
+  background: white;
+}
+
+.request-detail-grid dt {
+  color: #7b867e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.request-detail-grid dd {
+  margin: 5px 0 0;
+  color: #213228;
+  line-height: 1.55;
+}
+
+.request-thread {
+  display: grid;
+  gap: 8px;
+}
+
+.request-thread article {
+  width: min(86%, 520px);
+  padding: 12px;
+  border-radius: 14px;
+  background: white;
+}
+
+.request-thread article.sent {
+  justify-self: end;
+  background: #e7f5ed;
+}
+
+.request-thread span {
+  color: #1f6b46;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.request-thread p {
+  margin: 5px 0 0;
+}
+
+.request-reply-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.request-reply-form textarea {
+  min-height: 78px;
+  padding: 12px;
+  border: 1px solid #dfe4df;
+  border-radius: 13px;
+  background: white;
+  color: #17201c;
+  font: inherit;
+  resize: vertical;
+}
+
+.request-reply-form button {
+  min-height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 13px;
+  background: #173724;
+  color: white;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 @media (max-width: 850px) {
   .login-shell {
     grid-template-columns: 1fr;
@@ -2704,6 +3000,7 @@ a {
   .feed-layout,
   .dashboard-layout,
   .profile-layout,
+  .master-requests-layout,
   .online-booking,
   .direct-message-form {
     grid-template-columns: 1fr;
@@ -2803,10 +3100,17 @@ a {
   }
 
   .dashboard-metrics,
+  .dashboard-access-grid,
   .dashboard-panels,
   .profile-metrics,
   .auth-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .request-detail-head,
+  .request-reply-form {
+    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .dashboard-nav {

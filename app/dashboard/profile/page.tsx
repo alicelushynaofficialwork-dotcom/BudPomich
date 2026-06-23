@@ -10,8 +10,13 @@ export const metadata: Metadata = {
   description: "Редагування публічного профілю майстра.",
 };
 
-export default function DashboardProfilePage() {
-  const master = getMasterById("andrii-koval");
+type DashboardProfilePageProps = {
+  searchParams?: Promise<{ masterId?: string }>;
+};
+
+export default async function DashboardProfilePage({ searchParams }: DashboardProfilePageProps) {
+  const params = await searchParams;
+  const master = getMasterById(params?.masterId ?? "andrii-koval") ?? getMasterById("andrii-koval");
 
   if (!master) return null;
 

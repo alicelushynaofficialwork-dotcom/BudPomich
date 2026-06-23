@@ -1,14 +1,48 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { MapPin, Star } from "lucide-react";
 import { BookingForm } from "@/components/BookingForm";
 import { SiteHeader } from "@/components/SiteHeader";
+import { getMasterServices } from "@/lib/master-services";
 import type { MasterProfile } from "@/lib/masters";
+import {
+  type EditableMasterProfile,
+  masterProfileStorageKey,
+  mergeMasterProfile,
+} from "@/lib/master-profile-edit";
 
 type ProfileMasterViewProps = {
   master: MasterProfile;
 };
 
 export function ProfileMasterView({ master }: ProfileMasterViewProps) {
+  const [profileEdit, setProfileEdit] = useState<EditableMasterProfile | null>(null);
+  const visibleMaster = useMemo(
+    () => mergeMasterProfile(master, profileEdit),
+    [master, profileEdit],
+  );
+  master = visibleMaster;
+  const bookingServices = getMasterServices(master.id);
+
+  useEffect(() => {
+    const localProfiles = JSON.parse(
+      localStorage.getItem(masterProfileStorageKey) ?? "{}",
+    ) as Record<string, EditableMasterProfile>;
+
+    if (localProfiles[master.id]) {
+      setProfileEdit(localProfiles[master.id]);
+    }
+
+    fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
+      .then((response) => response.json())
+      .then((result: { profile?: EditableMasterProfile | null }) => {
+        if (result.profile) setProfileEdit(result.profile);
+      })
+      .catch(() => undefined);
+  }, [master.id]);
+
   return (
     <main className="masters-page profile-public-page">
       <SiteHeader active="masters" showMasterCard />
@@ -51,6 +85,7 @@ export function ProfileMasterView({ master }: ProfileMasterViewProps) {
           masterId={master.id}
           masterName={master.name}
           busyDates={master.busyDates}
+          masterServices={bookingServices}
         />
       </section>
 
@@ -138,7 +173,7 @@ export function ProfileMasterView({ master }: ProfileMasterViewProps) {
           <h2>Що виконує майстер</h2>
           <div className="services-list">
             {master.services.map((service) => (
-              <div key={service.name}>
+              <div key={`${service.name}-${service.price}`}>
                 <span>{service.name}</span>
                 <strong>{service.price}</strong>
               </div>
