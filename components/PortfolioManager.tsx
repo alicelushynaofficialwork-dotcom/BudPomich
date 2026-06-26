@@ -17,7 +17,7 @@ import {
   portfolioStorageKey,
 } from "@/lib/portfolio";
 
-const masterId = "andrii-koval";
+const masterId = "andrey-ponomarenko";
 
 export function PortfolioManager() {
   const [savedItems, setSavedItems] = useState<PortfolioItem[]>([]);
@@ -68,7 +68,7 @@ export function PortfolioManager() {
             проєктів у портфоліо
           </span>
         </div>
-        <Link href="/profile/andrii-koval?from=portfolio">
+        <Link href={`/profile/${masterId}?from=profile#portfolio`}>
           Переглянути публічний профіль <ArrowRight size={16} />
         </Link>
       </section>
@@ -78,12 +78,14 @@ export function PortfolioManager() {
           <article className="portfolio-project-card" key={item.id}>
             <div className="portfolio-project-image">
               <Image
-                src={item.photoUrl || "/images/portfolio-triptych.png"}
+                src={item.photoUrls?.[0] || item.photoUrl || "/images/portfolio-triptych.png"}
                 alt={item.title}
                 fill
-                unoptimized={item.photoUrl.startsWith("data:")}
+                unoptimized={(item.photoUrls?.[0] || item.photoUrl || "").startsWith("data:")}
               />
               <span>{item.objectType}</span>
+            </div>
+            <div className="portfolio-project-toolbar">
               <Link
                 className="portfolio-project-edit"
                 href={`/dashboard/portfolio/${item.id}/edit`}

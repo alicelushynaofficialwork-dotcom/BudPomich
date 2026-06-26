@@ -9,6 +9,8 @@ import {
   portfolioStorageKey,
 } from "@/lib/portfolio";
 
+const currentMasterId = "andrey-ponomarenko";
+
 export function PortfolioEditLoader({ itemId }: { itemId: string }) {
   const [item, setItem] = useState<PortfolioItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,14 +20,16 @@ export function PortfolioEditLoader({ itemId }: { itemId: string }) {
       const localItems = JSON.parse(
         localStorage.getItem(portfolioStorageKey) ?? "[]",
       ) as PortfolioItem[];
-      const localItem = localItems.find((candidate) => candidate.id === itemId);
+      const localItem = localItems.find(
+        (candidate) => candidate.id === itemId && candidate.masterId === currentMasterId,
+      );
       const defaultItem = defaultPortfolioItems.find(
-        (candidate) => candidate.id === itemId,
+        (candidate) => candidate.id === itemId && candidate.masterId === currentMasterId,
       );
 
       if (localItem || defaultItem) setItem(localItem ?? defaultItem ?? null);
 
-      fetch("/api/portfolio?masterId=andrii-koval")
+      fetch(`/api/portfolio?masterId=${currentMasterId}`)
         .then((response) => response.json())
         .then((result: { items?: PortfolioItem[] }) => {
           const remoteItem = result.items?.find(

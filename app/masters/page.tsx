@@ -3,9 +3,9 @@ import { MastersCatalogView } from "@/components/MastersCatalogView";
 import { masterProfiles } from "@/lib/masters";
 
 export const metadata: Metadata = {
-  title: "РњР°Р№СЃС‚СЂРё | Р‘СѓРґРџРѕРјС–С‡",
+  title: "Майстри | БудПоміч",
   description:
-    "РџРµСЂРµРІС–СЂРµРЅС– РјР°Р№СЃС‚СЂРё РґР»СЏ СЂРµРјРѕРЅС‚Сѓ С‚Р° Р±СѓРґС–РІРЅРёС†С‚РІР° Сѓ РІР°С€РѕРјСѓ РјС–СЃС‚С–.",
+    "Перевірені майстри для ремонту та будівництва у вашому місті.",
 };
 
 export default function MastersPage() {

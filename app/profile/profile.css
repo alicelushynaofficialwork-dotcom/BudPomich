@@ -125,6 +125,116 @@
   box-shadow: 0 12px 38px rgba(24, 42, 32, 0.055);
 }
 
+.public-profile-hero.has-cover-image {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+}
+
+.public-profile-hero.has-cover-image::before,
+.public-profile-hero.has-cover-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.public-profile-hero.has-cover-image::before {
+  background-image: var(--profile-cover-image);
+  background-position: var(--profile-cover-x, 50%) var(--profile-cover-y, 50%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(var(--profile-cover-scale, 1));
+  transform-origin: var(--profile-cover-x, 50%) var(--profile-cover-y, 50%);
+}
+
+.public-profile-hero.has-cover-image::after {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.8));
+}
+
+.public-profile-hero.has-cover-image > * {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-owner-return {
+  margin-top: 18px;
+}
+
+.portfolio-work-photo {
+  position: relative;
+  overflow: hidden;
+}
+
+.portfolio-work-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.profile-portfolio-edit {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  min-height: 34px;
+  padding: 8px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1c3428;
+  font-size: 12px;
+  font-weight: 850;
+  box-shadow: 0 10px 24px rgba(24, 42, 32, 0.16);
+}
+
+.profile-portfolio-slider {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.profile-portfolio-edit + .profile-portfolio-slider,
+.profile-portfolio-slider:has(+ .profile-portfolio-edit) {
+  justify-content: flex-start;
+}
+
+.profile-portfolio-slider button,
+.profile-portfolio-slider span {
+  min-width: 34px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(18, 40, 29, 0.72);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  backdrop-filter: blur(8px);
+}
+
+.profile-portfolio-slider button {
+  cursor: pointer;
+}
+
+.profile-portfolio-add {
+  min-height: 240px;
+}
+
+.additional-details-form {
+  margin-top: 6px;
+}
+
 .public-profile-avatar {
   width: 112px;
   height: 112px;

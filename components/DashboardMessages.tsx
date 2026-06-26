@@ -10,7 +10,7 @@ import {
 } from "@/lib/availability";
 import { getMasterById } from "@/lib/masters";
 
-const currentMasterId = "andrii-koval";
+const currentMasterId = "andrey-ponomarenko";
 
 function formatMessageTime(value: string) {
   return new Intl.DateTimeFormat("uk-UA", {

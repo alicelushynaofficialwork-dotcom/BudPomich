@@ -13,14 +13,15 @@ import {
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
 import { DashboardRequests } from "@/components/DashboardRequests";
 import { SiteHeader } from "@/components/SiteHeader";
-import { masters } from "@/lib/data";
+import { getMasterById } from "@/lib/masters";
 
 export const metadata = {
   title: "Кабінет майстра | БудПоміч",
 };
 
 export default function DashboardPage() {
-  const master = masters[1];
+  const master = getMasterById("andrey-ponomarenko");
+  if (!master) return null;
 
   return (
     <section className="page-section dashboard-page">
@@ -29,7 +30,7 @@ export default function DashboardPage() {
         <div className="dashboard-heading">
           <div>
             <p className="overline">КАБІНЕТ МАЙСТРА</p>
-            <h1>Вітаємо, Андрію</h1>
+            <h1>Вітаємо, Андрею</h1>
             <p>
               Ваш профіль заповнений на 72%. Додайте ще дві роботи, щоб
               підвищити довіру клієнтів.
@@ -38,7 +39,7 @@ export default function DashboardPage() {
               <span />
             </div>
           </div>
-          <Link className="btn btn-primary" href="/profile/andrii-koval">
+          <Link className="btn btn-primary" href="/profile/andrey-ponomarenko">
             Переглянути профіль <ArrowRight size={17} />
           </Link>
         </div>
@@ -49,7 +50,7 @@ export default function DashboardPage() {
               <Link className="active" href="/dashboard#overview">
                 <BriefcaseBusiness size={18} /> Огляд
               </Link>
-              <Link href="/dashboard#profile-status">
+              <Link href="/dashboard/profile">
                 <Pencil size={18} /> Редагувати профіль
               </Link>
               <Link href="/dashboard#portfolio">
@@ -71,17 +72,17 @@ export default function DashboardPage() {
             <div className="dashboard-metrics" id="overview">
               <div>
                 <Users size={21} />
-                <strong>{master.followers}</strong>
+                <strong>12</strong>
                 <span>Підписників</span>
               </div>
               <div>
                 <BriefcaseBusiness size={21} />
-                <strong>{master.works}</strong>
+                <strong>{master.works.length}</strong>
                 <span>Публікації</span>
               </div>
               <div>
                 <Images size={21} />
-                <strong>8</strong>
+                <strong>{master.works.length}</strong>
                 <span>Робіт у портфоліо</span>
               </div>
             </div>
@@ -151,7 +152,7 @@ export default function DashboardPage() {
               <div className="messages-layout">
                 <div className="conversation-list">
                   <button className="conversation-item active" type="button">
-                    <span className="avatar avatar-small">СІ</span>
+                    <span className="avatar avatar-small">Ѳ</span>
                     <span>
                       <strong>Сергій Іваненко</strong>
                       <small>миття</small>

@@ -77,6 +77,7 @@ type PortfolioPayload = {
   city?: unknown;
   objectType?: unknown;
   photoUrl?: unknown;
+  photoUrls?: unknown;
   workLines?: unknown;
 };
 
@@ -138,6 +139,9 @@ function validatePayload(payload: PortfolioPayload) {
     city: requiredText(payload.city, "Місто"),
     objectType: requiredText(payload.objectType, "Тип об'єкта"),
     photoUrl: typeof payload.photoUrl === "string" ? payload.photoUrl : "",
+    photoUrls: Array.isArray(payload.photoUrls)
+      ? payload.photoUrls.filter((url): url is string => typeof url === "string" && Boolean(url))
+      : [],
     workLines,
     totalAmount: calculatePortfolioTotal(
       workLines.map((line, index) => ({ ...line, id: String(index) })),
@@ -161,6 +165,7 @@ export async function POST(request: Request) {
         item: {
           ...payload,
           id: crypto.randomUUID(),
+          photoUrls: payload.photoUrls,
           workLines: payload.workLines.map((line) => ({
             id: crypto.randomUUID(),
             ...line,
@@ -217,6 +222,7 @@ export async function POST(request: Request) {
         city: item.city,
         objectType: item.object_type,
         photoUrl: item.photo_url,
+        photoUrls: payload.photoUrls,
         totalAmount: Number(item.total_amount),
         createdAt: item.created_at,
         workLines: (lines ?? []).map((line) => ({
@@ -254,6 +260,7 @@ export async function PUT(request: Request) {
       city: payload.city,
       objectType: payload.objectType,
       photoUrl: payload.photoUrl,
+      photoUrls: payload.photoUrls,
       totalAmount: payload.totalAmount,
       createdAt: payload.createdAt ?? new Date().toISOString(),
       workLines: payload.workLines.map((line) => ({
@@ -321,6 +328,7 @@ export async function PUT(request: Request) {
         city: item.city,
         objectType: item.object_type,
         photoUrl: item.photo_url,
+        photoUrls: payload.photoUrls,
         totalAmount: Number(item.total_amount),
         createdAt: item.created_at,
         workLines: (lines ?? []).map((line) => ({

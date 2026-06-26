@@ -15,6 +15,7 @@ export type PortfolioItem = {
   city: string;
   objectType: string;
   photoUrl: string;
+  photoUrls?: string[];
   totalAmount: number;
   createdAt: string;
   workLines: PortfolioWorkLine[];
@@ -23,6 +24,66 @@ export type PortfolioItem = {
 export const portfolioStorageKey = "budpomich.portfolio-items";
 
 export const defaultPortfolioItems: PortfolioItem[] = [
+  {
+    id: "ponomarenko-drywall-partition",
+    masterId: "andrey-ponomarenko",
+    title: "Перегородка з гіпсокартону",
+    description:
+      "Змонтовано каркас, шумоізоляцію та обшивку гіпсокартоном у комерційному приміщенні.",
+    city: "Київ",
+    objectType: "Комерційне приміщення",
+    photoUrl: "/images/portfolio-triptych.png",
+    totalAmount: 18500,
+    createdAt: "2026-06-15T10:00:00.000Z",
+    workLines: [
+      {
+        id: "drywall-line-1",
+        workType: "Монтаж перегородки",
+        unit: "м²",
+        unitPrice: 500,
+        volume: 25,
+        total: 12500,
+      },
+      {
+        id: "drywall-line-2",
+        workType: "Шумоізоляція",
+        unit: "м²",
+        unitPrice: 240,
+        volume: 25,
+        total: 6000,
+      },
+    ],
+  },
+  {
+    id: "ponomarenko-tile-bathroom",
+    masterId: "andrey-ponomarenko",
+    title: "Плитка у ванній",
+    description:
+      "Підготовка основи, гідроізоляція та укладання плитки з акуратним підрізанням.",
+    city: "Київ",
+    objectType: "Квартира",
+    photoUrl: "/images/portfolio-triptych.png",
+    totalAmount: 22000,
+    createdAt: "2026-06-18T10:00:00.000Z",
+    workLines: [
+      {
+        id: "tile-line-1",
+        workType: "Укладання плитки",
+        unit: "м²",
+        unitPrice: 500,
+        volume: 32,
+        total: 16000,
+      },
+      {
+        id: "tile-line-2",
+        workType: "Підготовка поверхні",
+        unit: "м²",
+        unitPrice: 187.5,
+        volume: 32,
+        total: 6000,
+      },
+    ],
+  },
   {
     id: "electric-panel",
     masterId: "andrii-koval",

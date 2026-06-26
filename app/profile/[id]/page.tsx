@@ -5,6 +5,7 @@ import { getMasterById, masterProfiles } from "@/lib/masters";
 
 type ProfilePageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ from?: string }>;
 };
 
 export function generateStaticParams() {
@@ -27,12 +28,18 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProfilePage({ params }: ProfilePageProps) {
+export default async function ProfilePage({ params, searchParams }: ProfilePageProps) {
   const master = getMasterById((await params).id);
+  const query = await searchParams;
 
   if (!master) {
     notFound();
   }
 
-  return <ProfileMasterView master={master} />;
+  return (
+    <ProfileMasterView
+      master={master}
+      ownerSource={query?.from === "profile" ? "profile" : undefined}
+    />
+  );
 }

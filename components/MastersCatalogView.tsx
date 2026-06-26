@@ -33,7 +33,18 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
         .then((response) => response.json())
         .then((result: { profile?: EditableMasterProfile | null }) => {
           if (!result.profile) return;
-          setProfileEdits((current) => ({ ...current, [master.id]: result.profile as EditableMasterProfile }));
+          setProfileEdits((current) => {
+            const existing = current[master.id];
+            return {
+              ...current,
+              [master.id]: {
+                ...existing,
+                ...result.profile!,
+                avatarUrl: result.profile!.avatarUrl || existing?.avatarUrl || "",
+                coverImageUrl: result.profile!.coverImageUrl || existing?.coverImageUrl || "",
+              },
+            };
+          });
         })
         .catch(() => undefined);
     });
@@ -45,28 +56,28 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
 
       <section className="masters-hero">
         <div>
-          <p className="eyebrow">РќР°РґС–Р№РЅС– С„Р°С…С–РІС†С– РїРѕСЂСѓС‡</p>
-          <h1>Р—РЅР°Р№РґС–С‚СЊ РјР°Р№СЃС‚СЂР° РґР»СЏ РІР°С€РѕРіРѕ Р·Р°РІРґР°РЅРЅСЏ</h1>
+          <p className="eyebrow">Надійні фахівці поруч</p>
+          <h1>Знайдіть майстра для вашого завдання</h1>
           <p>
-            РџРѕСЂС–РІРЅСЋР№С‚Рµ РґРѕСЃРІС–Рґ, С†С–РЅРё С‚Р° РІС–РґРіСѓРєРё. РћР±РёСЂР°Р№С‚Рµ СЃРїРµС†С–Р°Р»С–СЃС‚Р°, СЏРєРѕРјСѓ
-            РіРѕС‚РѕРІС– РґРѕРІС–СЂРёС‚Рё СЃРІРѕСЋ РѕСЃРµР»СЋ.
+            Порівнюйте досвід, ціни та відгуки. Обирайте спеціаліста, якому
+            готові довірити свою оселю.
           </p>
         </div>
 
         <div className="hero-stat">
           <strong>{visibleMasters.length}</strong>
-          <span>РїРµСЂРµРІС–СЂРµРЅРёС… РїСЂРѕС„С–Р»С–РІ Сѓ РєР°С‚Р°Р»РѕР·С–</span>
+          <span>перевірених профілів у каталозі</span>
         </div>
       </section>
 
       <section className="masters-catalog">
         <div className="catalog-heading">
           <div>
-            <p className="eyebrow">РљР°С‚Р°Р»РѕРі РјР°Р№СЃС‚СЂС–РІ</p>
-            <h2>РћР±РµСЂС–С‚СЊ СЃРІРѕРіРѕ С„Р°С…С–РІС†СЏ</h2>
+            <p className="eyebrow">Каталог майстрів</p>
+            <h2>Оберіть свого фахівця</h2>
           </div>
 
-          <p>Р—РЅР°Р№РґРµРЅРѕ {visibleMasters.length} РјР°Р№СЃС‚СЂС–РІ</p>
+          <p>Знайдено {visibleMasters.length} майстрів</p>
         </div>
 
         <div className="masters-grid">
@@ -74,17 +85,29 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
             <article className="directory-card" key={master.id}>
               <div className="directory-card-top">
                 <div className={`directory-avatar avatar-${master.accent}`}>
-                  <span>{master.initials}</span>
+                  {master.avatarUrl ? (
+                    <img
+                      src={master.avatarUrl}
+                      alt={`Фото ${master.name}`}
+                      style={{
+                        objectPosition: `${master.avatarPositionX ?? 50}% ${master.avatarPositionY ?? 35}%`,
+                        transformOrigin: `${master.avatarPositionX ?? 50}% ${master.avatarPositionY ?? 35}%`,
+                        transform: `scale(${master.avatarZoom ?? 1})`,
+                      }}
+                    />
+                  ) : (
+                    <span>{master.initials}</span>
+                  )}
                 </div>
 
                 <div>
                   <p className="master-profession">{master.profession}</p>
                   <h3>{master.name}</h3>
                   <p className="master-rating">
-                    в… {master.rating.toFixed(1)} В· {master.reviews} РІС–РґРіСѓРєС–РІ
+                    ★ {master.rating.toFixed(1)} · {master.reviews} відгуків
                   </p>
                   <p className="master-city">
-                    вЊ– {master.city} В· {master.experience}
+                    ⌖ {master.city} · {master.experience}
                   </p>
                 </div>
               </div>
@@ -93,10 +116,10 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
 
               <div className="directory-card-bottom">
                 <p>
-                  Р¦С–РЅР° РІС–Рґ
-                  <strong>{master.priceFrom.toLocaleString("uk-UA")} РіСЂРЅ</strong>
+                  Ціна від
+                  <strong>{master.priceFrom.toLocaleString("uk-UA")} грн</strong>
                 </p>
-                <Link href={`/profile/${master.id}`}>РџРµСЂРµРіР»СЏРЅСѓС‚Рё РїСЂРѕС„С–Р»СЊ в†’</Link>
+                <Link href={`/profile/${master.id}`}>Переглянути профіль →</Link>
               </div>
             </article>
           ))}
@@ -104,8 +127,8 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
       </section>
 
       <footer className="masters-footer">
-        <strong>Р‘СѓРґРџРѕРјС–С‡</strong>
-        <span>РњР°Р№СЃС‚СЂРё, СЏРєРёРј РјРѕР¶РЅР° РґРѕРІС–СЂСЏС‚Рё.</span>
+        <strong>БудПоміч</strong>
+        <span>Майстри, яким можна довіряти.</span>
       </footer>
     </main>
   );

@@ -44,11 +44,11 @@ export function SiteHeader({
         )}
 
         {showMasterCard && (
-          <Link className="header-master-card" href="/profile/andrii-koval">
-            <span className="avatar avatar-small">АК</span>
+          <Link className="header-master-card" href="/profile/andrey-ponomarenko">
+            <span className="avatar avatar-small">АП</span>
             <span>
-              <strong>Андрій Коваль</strong>
-              <small>Електрик · Київ</small>
+              <strong>Андрей Пономаренко</strong>
+              <small>Гіпсокартонщик / плиточник · Київ</small>
             </span>
           </Link>
         )}

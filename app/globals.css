@@ -3,13 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-app-sans: "Segoe UI", Inter, Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-app-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-geist-sans: var(--font-app-sans);
+  --font-geist-mono: var(--font-app-mono);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-app-sans);
+  --font-mono: var(--font-app-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,7 +26,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-app-sans);
 }
 
 * {
@@ -295,11 +299,24 @@ a {
 .directory-avatar,
 .profile-directory-avatar {
   flex: 0 0 auto;
+  overflow: hidden;
   display: grid;
   place-items: center;
   border-radius: 18px;
   color: white;
   font-weight: 900;
+}
+
+.directory-avatar img,
+.profile-directory-avatar img,
+.avatar img,
+.avatar-small img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 35%;
+  transform-origin: center;
 }
 
 .directory-avatar {
@@ -336,11 +353,36 @@ a {
   font-size: 13px;
 }
 
+.profile-activity-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-activity-row span {
+  padding: 6px 10px;
+  border: 1px solid #dfe8e2;
+  border-radius: 999px;
+  background: #f5faf6;
+  color: #315b43;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.profile-short-description {
+  max-width: 620px;
+  margin: 12px 0 0;
+  color: #4f5d55;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
 .rating-row {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 22px;
+  margin-top: 14px;
   font-size: 14px;
 }
 
@@ -2095,6 +2137,20 @@ a {
   box-shadow: 0 18px 55px rgba(27, 41, 33, 0.06);
 }
 
+.public-profile-hero.has-cover-image {
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.82)),
+    var(--profile-cover-image) var(--profile-cover-x, 50%) var(--profile-cover-y, 50%) /
+      var(--profile-cover-zoom, cover) auto no-repeat;
+}
+
+.public-profile-hero.has-cover-image > * {
+  position: relative;
+  z-index: 1;
+}
+
 .profile-action-card .profile-secondary-action {
   margin-top: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -2110,11 +2166,254 @@ a {
   box-shadow: 0 18px 55px rgba(27, 41, 33, 0.06);
 }
 
+.profile-sections-layout {
+  width: min(1180px, calc(100% - 40px));
+  margin: 18px auto 90px;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.profile-section-nav {
+  min-width: 0;
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+  position: sticky;
+  top: 18px;
+  z-index: 2;
+  border: 1px solid #dde5df;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(27, 41, 33, 0.05);
+}
+
+.profile-section-nav p {
+  margin: 0 0 8px;
+  color: #ff6b2c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.profile-section-nav a {
+  min-height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 12px;
+  color: #526159;
+  font-size: 13px;
+  font-weight: 900;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.profile-section-nav a:hover {
+  background: #eef6f1;
+  color: #1f6b46;
+  transform: translateY(-1px);
+}
+
+.profile-sections-stack {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.profile-collapse {
+  overflow: hidden;
+  border: 1px solid #e0e4df;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 14px 42px rgba(27, 41, 33, 0.055);
+}
+
+.profile-collapse summary {
+  min-height: 86px;
+  padding: 22px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  position: relative;
+  cursor: pointer;
+  list-style: none;
+}
+
+.profile-collapse summary::-webkit-details-marker {
+  display: none;
+}
+
+.profile-collapse summary::after {
+  content: "";
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border-right: 2px solid #1f6b46;
+  border-bottom: 2px solid #1f6b46;
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.profile-collapse[open] summary::after {
+  transform: rotate(225deg);
+}
+
+.profile-collapse summary span,
+.profile-collapse summary strong,
+.profile-collapse summary small {
+  display: block;
+}
+
+.profile-collapse summary span {
+  margin-bottom: 7px;
+  color: #ff6b2c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.profile-collapse summary strong {
+  color: #17231d;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.profile-collapse summary small {
+  margin-left: auto;
+  color: #7b8680;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.profile-collapse-body {
+  padding: 0 28px 28px;
+  border-top: 1px solid #edf1ee;
+}
+
+.profile-collapse-body .online-booking {
+  padding: 28px 0 0;
+}
+
+.profile-text-section {
+  padding-top: 22px;
+}
+
+.profile-text-section .profile-about {
+  margin-top: 0;
+}
+
+.profile-message-section .direct-message-form {
+  padding-top: 22px;
+  border-top: 0;
+}
+
+.services-list-inline {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+
+.profile-collapse-action {
+  width: fit-content;
+  margin-top: 18px;
+}
+
 .online-booking {
   padding: 28px;
   display: grid;
-  grid-template-columns: 0.85fr 1fr 0.95fr;
-  gap: 26px;
+  grid-template-columns: 1fr;
+  gap: 22px;
+}
+
+.booking-client-card,
+.booking-form-section,
+.booking-address-fields,
+.height-work-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #e6eae6;
+  border-radius: 18px;
+  background: #fbfcfb;
+}
+
+.booking-address-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.height-work-form,
+.height-work-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.height-work-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.height-work-note,
+.height-coefficient-help {
+  grid-column: 1 / -1;
+}
+
+.height-work-note,
+.height-coefficient-help p,
+.height-coefficient-help small {
+  margin: 0;
+  color: #66736a;
+  line-height: 1.55;
+}
+
+.height-coefficient-help {
+  display: grid;
+  gap: 7px;
+  padding: 13px;
+  border: 1px solid #dbe8df;
+  border-radius: 14px;
+  background: #f2faf5;
+}
+
+.height-coefficient-help strong {
+  color: #1f6b46;
+}
+
+.booking-address-fields legend,
+.height-work-form legend {
+  padding: 0;
+  color: #173724;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.booking-client-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.booking-client-card .booking-form-head,
+.booking-client-card label:last-child,
+.booking-address-wide {
+  grid-column: 1 / -1;
+}
+
+.booking-client-card label,
+.booking-address-fields label {
+  display: grid;
+  gap: 7px;
+  color: #33443a;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .booking-intro h2,
@@ -2242,6 +2541,17 @@ a {
   transform: translateY(-1px);
 }
 
+.booking-period-status {
+  margin: 16px 0 0;
+  color: #173724;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.booking-calendar-card .selected-periods {
+  margin-top: 10px;
+}
+
 .booking-side-form {
   display: grid;
   align-content: start;
@@ -2302,6 +2612,67 @@ a {
   line-height: 1.5;
 }
 
+.booking-service-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.service-checkbox {
+  min-height: 64px;
+  padding: 12px;
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px !important;
+  border: 1px solid #dfe8e2;
+  border-radius: 14px;
+  background: white;
+}
+
+.service-checkbox input {
+  width: 18px !important;
+  min-height: 18px !important;
+  padding: 0 !important;
+  accent-color: #1f6b46;
+}
+
+.service-checkbox strong,
+.service-checkbox small {
+  display: block;
+}
+
+.service-checkbox small {
+  margin-top: 4px;
+  color: #748078;
+  font-size: 12px;
+}
+
+.service-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.service-tabs button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #dfe8e2;
+  border-radius: 999px;
+  background: white;
+  color: #33443a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.service-tabs button.active {
+  border-color: #1f6b46;
+  background: #1f6b46;
+  color: white;
+}
+
 .service-dynamic-fields,
 .additional-works-form {
   display: grid;
@@ -2310,6 +2681,10 @@ a {
   border: 1px dashed #cbd8cf;
   border-radius: 16px;
   background: #fbfcfb;
+}
+
+.additional-details-form {
+  margin-top: 6px;
 }
 
 .checkbox-line {
@@ -2370,6 +2745,10 @@ a {
 .booking-side-form select,
 .booking-side-form input,
 .booking-side-form textarea,
+.booking-client-card input,
+.booking-client-card textarea,
+.booking-address-fields input,
+.booking-address-fields textarea,
 .direct-message-form input,
 .direct-message-form textarea {
   width: 100%;
@@ -2383,12 +2762,16 @@ a {
 
 .booking-side-form select,
 .booking-side-form input,
+.booking-client-card input,
+.booking-address-fields input,
 .direct-message-form input {
   min-height: 48px;
   padding: 0 13px;
 }
 
 .booking-side-form textarea,
+.booking-client-card textarea,
+.booking-address-fields textarea,
 .direct-message-form textarea {
   padding: 13px;
   resize: vertical;
@@ -2645,6 +3028,58 @@ a {
   font-weight: 900;
 }
 
+.dashboard-request-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-request-filters label {
+  display: grid;
+  gap: 7px;
+  color: #33443a;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.dashboard-request-filters select,
+.dashboard-request-filters input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dfe4df;
+  border-radius: 12px;
+  background: white;
+  color: #173724;
+  font: inherit;
+  font-weight: 800;
+}
+
+.dashboard-request-filters .request-filter-check {
+  min-height: 42px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #dfe4df;
+  border-radius: 12px;
+  background: white;
+}
+
+.request-filter-check input {
+  width: 17px;
+  min-height: 17px;
+  padding: 0;
+  accent-color: #1f6b46;
+}
+
+.request-empty-state {
+  padding: 16px;
+  border: 1px dashed #dfe4df;
+  border-radius: 14px;
+  color: #66736a;
+  font-weight: 800;
+}
+
 .master-requests-layout {
   display: grid;
   grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
@@ -2874,6 +3309,28 @@ a {
   .services-panel {
     position: static;
   }
+
+  .booking-client-card,
+  .booking-address-fields,
+  .height-work-form,
+  .height-work-grid,
+  .additional-work-row {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-client-card .booking-form-head,
+  .booking-client-card label:last-child,
+  .booking-address-wide {
+    grid-column: auto;
+  }
+
+  .booking-service-options {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-request-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 620px) {
@@ -2915,6 +3372,7 @@ a {
   .master-profile-hero,
   .public-profile-hero,
   .profile-booking-shell,
+  .profile-sections-layout,
   .master-profile-layout {
     width: min(100% - 24px, 1180px);
   }
@@ -2993,6 +3451,39 @@ a {
 
   .work-image {
     height: 220px;
+  }
+
+  .profile-sections-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-section-nav {
+    position: static;
+  }
+
+  .profile-collapse summary {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .profile-collapse summary small {
+    margin-left: 0;
+    white-space: normal;
+  }
+
+  .profile-collapse summary::after {
+    position: absolute;
+    right: 22px;
+    top: 28px;
+  }
+
+  .profile-collapse-body {
+    padding: 0 20px 22px;
+  }
+
+  .services-list-inline {
+    grid-template-columns: 1fr;
   }
 }
 

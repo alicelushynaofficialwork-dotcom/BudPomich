@@ -3,6 +3,17 @@ export type MasterProfile = {
   name: string;
   profession: string;
   city: string;
+  district?: string;
+  lastSeenText?: string;
+  registeredText?: string;
+  avatarUrl?: string;
+  coverImageUrl?: string;
+  avatarZoom?: number;
+  avatarPositionX?: number;
+  avatarPositionY?: number;
+  coverZoom?: number;
+  coverPositionX?: number;
+  coverPositionY?: number;
   rating: number;
   reviews: number;
   description: string;
@@ -63,7 +74,7 @@ export const masterProfiles: MasterProfile[] = [
       "Спеціалізуюся на точному укладанні великоформатної плитки, підготовці основи та гідроізоляції. Після роботи залишаю чисте приміщення.",
     priceFrom: 650,
     experience: "9 років досвіду",
-    initials: "СІ",
+    initials: "Ѳ",
     accent: "orange",
     services: [
       { name: "Укладання плитки", price: "від 650 грн/м²" },
@@ -186,6 +197,9 @@ export const masterProfiles: MasterProfile[] = [
     name: "Андрей Пономаренко",
     profession: "Гіпсокартонщик / плиточник",
     city: "Київ",
+    district: "Печерський район",
+    lastSeenText: "Був на сайті 2 години тому",
+    registeredText: "Зареєстрований з червня 2026",
     rating: 5,
     reviews: 12,
     description:

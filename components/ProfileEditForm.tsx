@@ -22,6 +22,14 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
     city: master.city,
     description: master.description,
     fullDescription: master.fullDescription,
+    avatarUrl: master.avatarUrl ?? "",
+    coverImageUrl: master.coverImageUrl ?? "",
+    avatarZoom: master.avatarZoom ?? 1,
+    avatarPositionX: master.avatarPositionX ?? 50,
+    avatarPositionY: master.avatarPositionY ?? 35,
+    coverZoom: master.coverZoom ?? 1,
+    coverPositionX: master.coverPositionX ?? 50,
+    coverPositionY: master.coverPositionY ?? 50,
     priceFrom: master.priceFrom,
     experience: master.experience,
     services: master.services,
@@ -39,7 +47,19 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
     fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
       .then((response) => response.json())
       .then((result: { profile?: EditableMasterProfile | null }) => {
-        if (result.profile) setProfile(result.profile);
+        if (!result.profile) return;
+        setProfile((current) => ({
+          ...current,
+          ...result.profile!,
+          avatarUrl: result.profile!.avatarUrl || current.avatarUrl || "",
+          coverImageUrl: result.profile!.coverImageUrl || current.coverImageUrl || "",
+          avatarZoom: result.profile!.avatarZoom ?? current.avatarZoom ?? 1,
+          avatarPositionX: result.profile!.avatarPositionX ?? current.avatarPositionX ?? 50,
+          avatarPositionY: result.profile!.avatarPositionY ?? current.avatarPositionY ?? 35,
+          coverZoom: result.profile!.coverZoom ?? current.coverZoom ?? 1,
+          coverPositionX: result.profile!.coverPositionX ?? current.coverPositionX ?? 50,
+          coverPositionY: result.profile!.coverPositionY ?? current.coverPositionY ?? 50,
+        }));
       })
       .catch(() => undefined);
 
@@ -50,9 +70,19 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
     field: keyof Omit<EditableMasterProfile, "id" | "services">,
     value: string,
   ) {
+    const numericFields: Array<keyof EditableMasterProfile> = [
+      "priceFrom",
+      "avatarZoom",
+      "avatarPositionX",
+      "avatarPositionY",
+      "coverZoom",
+      "coverPositionX",
+      "coverPositionY",
+    ];
+
     setProfile((current) => ({
       ...current,
-      [field]: field === "priceFrom" ? Math.max(0, Number(value)) : value,
+      [field]: numericFields.includes(field) ? Math.max(0, Number(value)) : value,
     }));
   }
 
@@ -65,6 +95,42 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
     }));
   }
 
+  function handleImageUpload(field: "avatarUrl" | "coverImageUrl", file?: File) {
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setStatus({
+        type: "error",
+        message: "Підтримуються тільки jpg, png або webp.",
+      });
+      return;
+    }
+
+    if (file.size > 2.5 * 1024 * 1024) {
+      setStatus({
+        type: "error",
+        message: "Фото завелике. Оберіть файл до 2.5 МБ.",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfile((current) => ({
+        ...current,
+        [field]: String(reader.result ?? ""),
+        ...(field === "avatarUrl"
+          ? { avatarZoom: current.avatarZoom ?? 1, avatarPositionX: current.avatarPositionX ?? 50, avatarPositionY: current.avatarPositionY ?? 35 }
+          : { coverZoom: current.coverZoom ?? 1, coverPositionX: current.coverPositionX ?? 50, coverPositionY: current.coverPositionY ?? 50 }),
+      }));
+      setStatus({ type: "idle", message: "" });
+    };
+    reader.onerror = () => {
+      setStatus({ type: "error", message: "Не вдалося прочитати файл." });
+    };
+    reader.readAsDataURL(file);
+  }
+
   function removeService(index: number) {
     setProfile((current) => ({
       ...current,
@@ -73,6 +139,29 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
           ? current.services
           : current.services.filter((_, serviceIndex) => serviceIndex !== index),
     }));
+  }
+
+  function persistLocalProfile(nextProfile: EditableMasterProfile) {
+    const localProfiles = JSON.parse(
+      localStorage.getItem(masterProfileStorageKey) ?? "{}",
+    ) as Record<string, EditableMasterProfile>;
+
+    localStorage.setItem(
+      masterProfileStorageKey,
+      JSON.stringify({ ...localProfiles, [master.id]: nextProfile }),
+    );
+  }
+
+  function imageStyle(kind: "avatar" | "cover") {
+    const zoom = kind === "avatar" ? profile.avatarZoom ?? 1 : profile.coverZoom ?? 1;
+    const x = kind === "avatar" ? profile.avatarPositionX ?? 50 : profile.coverPositionX ?? 50;
+    const y = kind === "avatar" ? profile.avatarPositionY ?? 35 : profile.coverPositionY ?? 50;
+
+    return {
+      objectPosition: `${x}% ${y}%`,
+      transformOrigin: `${x}% ${y}%`,
+      transform: `scale(${zoom})`,
+    };
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -95,13 +184,7 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
         throw new Error(result.error ?? "Не вдалося зберегти профіль.");
       }
 
-      const localProfiles = JSON.parse(
-        localStorage.getItem(masterProfileStorageKey) ?? "{}",
-      ) as Record<string, EditableMasterProfile>;
-      localStorage.setItem(
-        masterProfileStorageKey,
-        JSON.stringify({ ...localProfiles, [master.id]: result.profile }),
-      );
+      persistLocalProfile(result.profile);
       setProfile(result.profile);
       setStatus({
         type: "success",
@@ -111,12 +194,14 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
             : "Профіль збережено локально. Підключіть Supabase для постійного зберігання.",
       });
     } catch (error) {
+      persistLocalProfile(profile);
+      setProfile(profile);
       setStatus({
-        type: "error",
+        type: "success",
         message:
           error instanceof Error
-            ? error.message
-            : "Не вдалося зберегти профіль.",
+            ? `Профіль збережено локально. Supabase тимчасово не прийняв зміни: ${error.message}`
+            : "Профіль збережено локально.",
       });
     }
   }
@@ -129,10 +214,118 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
             <p>Основна інформація</p>
             <h2>Дані, які бачать клієнти</h2>
           </div>
-          <span>{master.initials}</span>
+          <span>
+            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" style={imageStyle("avatar")} /> : master.initials}
+          </span>
         </div>
 
         <div className="profile-edit-grid">
+          <div className="profile-photo-upload">
+            Фото майстра
+            <span className="profile-photo-preview avatar-preview">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Фото майстра" style={imageStyle("avatar")} />
+              ) : (
+                <b>{master.initials}</b>
+              )}
+            </span>
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              type="file"
+              onChange={(event) => handleImageUpload("avatarUrl", event.target.files?.[0])}
+            />
+            {profile.avatarUrl && (
+              <div className="profile-crop-controls">
+                <label>
+                  Збільшення
+                  <input
+                    max="2.4"
+                    min="1"
+                    step="0.05"
+                    type="range"
+                    value={profile.avatarZoom ?? 1}
+                    onChange={(event) => updateField("avatarZoom", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Зсув по горизонталі
+                  <input
+                    max="100"
+                    min="0"
+                    step="1"
+                    type="range"
+                    value={profile.avatarPositionX ?? 50}
+                    onChange={(event) => updateField("avatarPositionX", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Зсув по вертикалі
+                  <input
+                    max="100"
+                    min="0"
+                    step="1"
+                    type="range"
+                    value={profile.avatarPositionY ?? 35}
+                    onChange={(event) => updateField("avatarPositionY", event.target.value)}
+                  />
+                </label>
+              </div>
+            )}
+            <small>Обличчя буде по центру, зайве обрізається під рамку.</small>
+          </div>
+          <div className="profile-photo-upload">
+            Обкладинка профілю
+            <span className="profile-photo-preview cover-preview">
+              {profile.coverImageUrl ? (
+                <img src={profile.coverImageUrl} alt="Обкладинка профілю" style={imageStyle("cover")} />
+              ) : (
+                <b>Обкладинка</b>
+              )}
+            </span>
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              type="file"
+              onChange={(event) => handleImageUpload("coverImageUrl", event.target.files?.[0])}
+            />
+            {profile.coverImageUrl && (
+              <div className="profile-crop-controls">
+                <label>
+                  Збільшення
+                  <input
+                    max="2.4"
+                    min="1"
+                    step="0.05"
+                    type="range"
+                    value={profile.coverZoom ?? 1}
+                    onChange={(event) => updateField("coverZoom", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Зсув по горизонталі
+                  <input
+                    max="100"
+                    min="0"
+                    step="1"
+                    type="range"
+                    value={profile.coverPositionX ?? 50}
+                    onChange={(event) => updateField("coverPositionX", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Зсув по вертикалі
+                  <input
+                    max="100"
+                    min="0"
+                    step="1"
+                    type="range"
+                    value={profile.coverPositionY ?? 50}
+                    onChange={(event) => updateField("coverPositionY", event.target.value)}
+                  />
+                </label>
+              </div>
+            )}
+            <small>Фото обрізається по ширині блоку профілю.</small>
+          </div>
           <label>
             Ім&apos;я та прізвище
             <input

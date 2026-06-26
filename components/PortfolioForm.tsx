@@ -20,6 +20,8 @@ import {
   portfolioStorageKey,
 } from "@/lib/portfolio";
 
+const currentMasterId = "andrey-ponomarenko";
+
 function createLine(id = crypto.randomUUID()): PortfolioWorkLine {
   return {
     id,
@@ -51,6 +53,13 @@ export function PortfolioForm({
       : [createLine("initial-line")],
   );
   const [photoUrl, setPhotoUrl] = useState(initialItem?.photoUrl ?? "");
+  const [photoUrls, setPhotoUrls] = useState<string[]>(
+    initialItem?.photoUrls?.length
+      ? initialItem.photoUrls
+      : initialItem?.photoUrl
+        ? [initialItem.photoUrl]
+        : [],
+  );
   const [photoName, setPhotoName] = useState("");
   const [status, setStatus] = useState<{
     type: "idle" | "saving" | "success" | "error";
@@ -95,11 +104,11 @@ export function PortfolioForm({
   }
 
   function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
 
-    if (!file) return;
+    if (!files.length) return;
 
-    if (file.size > 2 * 1024 * 1024) {
+    if (files.some((file) => file.size > 2 * 1024 * 1024)) {
       setStatus({
         type: "error",
         message: "Для локального MVP оберіть фото розміром до 2 МБ.",
@@ -108,13 +117,25 @@ export function PortfolioForm({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoUrl(typeof reader.result === "string" ? reader.result : "");
-      setPhotoName(file.name);
-      setStatus({ type: "idle", message: "" });
-    };
-    reader.readAsDataURL(file);
+    Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          }),
+      ),
+    )
+      .then((urls) => {
+        const nextUrls = urls.filter(Boolean);
+        setPhotoUrls(nextUrls);
+        setPhotoUrl(nextUrls[0] ?? "");
+        setPhotoName(files.length === 1 ? files[0].name : `${files.length} фото`);
+        setStatus({ type: "idle", message: "" });
+      })
+      .catch(() => setStatus({ type: "error", message: "Не вдалося прочитати фото." }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -125,12 +146,13 @@ export function PortfolioForm({
     const payload = {
       id: initialItem?.id,
       createdAt: initialItem?.createdAt,
-      masterId: "andrii-koval",
+      masterId: initialItem?.masterId ?? currentMasterId,
       title: formData.get("title"),
       description: formData.get("description"),
       city: formData.get("city"),
       objectType: formData.get("objectType"),
       photoUrl,
+      photoUrls,
       workLines: lines.map((line) => ({
         workType: line.workType,
         unit: line.unit,
@@ -158,11 +180,17 @@ export function PortfolioForm({
       const stored = JSON.parse(
         localStorage.getItem(portfolioStorageKey) ?? "[]",
       ) as PortfolioItem[];
+      const savedItem = {
+        ...result.item,
+        photoUrl,
+        photoUrls: photoUrls.length ? photoUrls : result.item.photoUrl ? [result.item.photoUrl] : [],
+      };
+
       localStorage.setItem(
         portfolioStorageKey,
         JSON.stringify([
-          result.item,
-          ...stored.filter((item) => item.id !== result.item?.id),
+          savedItem,
+          ...stored.filter((item) => item.id !== savedItem.id),
         ]),
       );
 
@@ -172,7 +200,7 @@ export function PortfolioForm({
           result.persistence === "supabase"
             ? "Роботу збережено в Supabase."
             : "Роботу збережено локально. Підключіть Supabase для постійного зберігання.",
-        itemId: result.item.id,
+        itemId: savedItem.id,
       });
     } catch (error) {
       setStatus({
@@ -244,7 +272,7 @@ export function PortfolioForm({
         </div>
 
         <label className="photo-upload">
-          <input type="file" accept="image/*" onChange={handlePhoto} />
+          <input type="file" accept="image/*" multiple onChange={handlePhoto} />
           {photoUrl ? (
             <span className="photo-preview">
               <Image src={photoUrl} alt="Превью роботи" fill unoptimized />

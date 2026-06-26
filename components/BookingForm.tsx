@@ -72,6 +72,11 @@ type BookingFormProps = {
   masterServices?: MasterService[];
 };
 
+type DirectMessageFormProps = {
+  masterId: string;
+  masterName: string;
+};
+
 const monthNames = [
   "Січень",
   "Лютий",
@@ -208,6 +213,91 @@ function buildCalendarDays(year: number, monthIndex: number) {
   ];
 }
 
+export function DirectMessageForm({ masterId, masterName }: DirectMessageFormProps) {
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageError, setMessageError] = useState("");
+  const [messageSuccess, setMessageSuccess] = useState("");
+
+  function submitMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!subject.trim() || !message.trim()) {
+      setMessageSuccess("");
+      setMessageError("Заповніть тему та повідомлення.");
+      return;
+    }
+
+    const directMessage: DirectMessage = {
+      masterId,
+      masterName,
+      subject: subject.trim(),
+      message: message.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log("Direct message", directMessage);
+    setMessageError("");
+    setMessageSuccess("Повідомлення надіслано");
+  }
+
+  return (
+    <form className="direct-message-form" id="message" onSubmit={submitMessage} noValidate>
+      <div className="direct-message-title">
+        <span>
+          <MessageSquare size={18} />
+        </span>
+        <div>
+          <p className="eyebrow">Прямий звʼязок</p>
+          <h3>Написати майстру</h3>
+          <small>Повідомлення не привʼязане до дати в календарі.</small>
+        </div>
+      </div>
+      <label>
+        Тема
+        <input
+          name="subject"
+          onChange={(event) => {
+            setSubject(event.target.value);
+            setMessageError("");
+          }}
+          placeholder="Наприклад, спільний проект"
+          required
+          value={subject}
+        />
+      </label>
+      <label>
+        Повідомлення
+        <textarea
+          name="message"
+          onChange={(event) => {
+            setMessage(event.target.value);
+            setMessageError("");
+          }}
+          placeholder={`Напишіть повідомлення для ${masterName}`}
+          required
+          rows={3}
+          value={message}
+        />
+      </label>
+      <button className="request-button direct-message-submit" type="submit">
+        <Send size={16} />
+        Надіслати повідомлення
+      </button>
+      {messageError && (
+        <p className="booking-error" role="alert">
+          {messageError}
+        </p>
+      )}
+      {messageSuccess && (
+        <p className="booking-success" role="status">
+          {messageSuccess}
+        </p>
+      )}
+    </form>
+  );
+}
+
 export function BookingForm({
   masterId,
   masterName,
@@ -220,9 +310,18 @@ export function BookingForm({
   const [hoverDate, setHoverDate] = useState("");
   const [selectedPeriods, setSelectedPeriods] = useState<BookingPeriod[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState(masterServices[0]?.id ?? "");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    masterServices[0]?.id ? [masterServices[0].id] : [],
+  );
+  const [activeServiceId, setActiveServiceId] = useState(masterServices[0]?.id ?? "");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [cityArea, setCityArea] = useState("");
+  const [addressDistrict, setAddressDistrict] = useState("");
+  const [addressStreet, setAddressStreet] = useState("");
+  const [addressBuilding, setAddressBuilding] = useState("");
+  const [addressApartment, setAddressApartment] = useState("");
+  const [addressComment, setAddressComment] = useState("");
   const [budget, setBudget] = useState("");
   const [mainVolume, setMainVolume] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
@@ -239,17 +338,18 @@ export function BookingForm({
   const [description, setDescription] = useState("");
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState("");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageError, setMessageError] = useState("");
-  const [messageSuccess, setMessageSuccess] = useState("");
 
   const busyDateSet = useMemo(() => new Set(busyDates), [busyDates]);
   const calendarDays = useMemo(
     () => buildCalendarDays(visibleMonth.year, visibleMonth.monthIndex),
     [visibleMonth],
   );
-  const selectedService = masterServices.find((service) => service.id === selectedServiceId) ?? masterServices[0];
+  const selectedServices = masterServices.filter((service) => selectedServiceIds.includes(service.id));
+  const selectedService =
+    masterServices.find((service) => service.id === activeServiceId) ??
+    masterServices.find((service) => service.id === selectedServiceId) ??
+    selectedServices[0] ??
+    masterServices[0];
 
   function updateServiceDetail(key: string, value: string) {
     setServiceDetails((current) => ({ ...current, [key]: value }));
@@ -258,6 +358,20 @@ export function BookingForm({
 
   function updateHeightWork(value: Partial<RequestHeightWork>) {
     setHeightWork((current) => ({ ...current, ...value }));
+    setBookingError("");
+  }
+
+  function toggleService(serviceId: string) {
+    setSelectedServiceIds((current) => {
+      const exists = current.includes(serviceId);
+      const next = exists ? current.filter((id) => id !== serviceId) : [...current, serviceId];
+      const normalized = next.length ? next : [serviceId];
+      const activeId = normalized.includes(activeServiceId) ? activeServiceId : normalized[0];
+
+      setActiveServiceId(activeId);
+      setSelectedServiceId(activeId);
+      return normalized;
+    });
     setBookingError("");
   }
 
@@ -364,6 +478,21 @@ export function BookingForm({
 
     const periods = selectedPeriods.map((period) => ({ ...period }));
     const period = periods.map((item) => item.period).join("; ");
+    const selectedServiceTitles = selectedServices.length
+      ? selectedServices.map((service) => service.serviceTitle)
+      : selectedService
+        ? [selectedService.serviceTitle]
+        : [];
+    const normalizedServiceDetails = {
+      ...serviceDetails,
+      selectedServices: selectedServiceTitles.join(", "),
+      addressCity: cityArea.trim(),
+      addressDistrict: addressDistrict.trim(),
+      addressStreet: addressStreet.trim(),
+      addressBuilding: addressBuilding.trim(),
+      addressApartment: addressApartment.trim(),
+      addressComment: addressComment.trim(),
+    };
     const normalizedHeightWork: RequestHeightWork =
       heightWork.hasHeightWork === "yes"
         ? {
@@ -400,7 +529,7 @@ export function BookingForm({
       mainVolume: mainVolume.trim(),
       additionalInfo: additionalInfo.trim(),
       message: requestMessage.trim(),
-      serviceDetails,
+      serviceDetails: normalizedServiceDetails,
       additionalWorks: needsAdditionalWorks ? additionalWorks.filter((work) => work.title.trim()) : [],
       files: requestFiles,
       heightWork: normalizedHeightWork,
@@ -456,29 +585,7 @@ export function BookingForm({
     setBookingSuccess("");
   }
 
-  function submitMessage(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!subject.trim() || !message.trim()) {
-      setMessageSuccess("");
-      setMessageError("Заповніть тему та повідомлення.");
-      return;
-    }
-
-    const directMessage: DirectMessage = {
-      masterId,
-      masterName,
-      subject: subject.trim(),
-      message: message.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log("Direct message", directMessage);
-    setMessageError("");
-    setMessageSuccess("Повідомлення надіслано");
-  }
-
-  return (
+    return (
     <section className="online-booking" id="booking">
       <div className="booking-intro">
         <p className="eyebrow">Онлайн-запис</p>
@@ -586,10 +693,7 @@ export function BookingForm({
             );
           })}
         </div>
-      </div>
-
-      <form className="booking-side-form" onSubmit={submitBooking} noValidate>
-        <h3>
+        <h3 className="booking-period-status">
           {rangeStart
               ? `Початок періоду: ${rangeStart}. Оберіть останній день`
               : selectedPeriods.length
@@ -610,32 +714,13 @@ export function BookingForm({
             ))}
           </div>
         )}
-        <label>
-          Послуга майстра
-          <select
-            name="selectedService"
-            onChange={(event) => {
-              setSelectedServiceId(event.target.value);
-              setServiceDetails({});
-              setBookingError("");
-            }}
-            required
-            value={selectedServiceId}
-          >
-            {masterServices.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.serviceTitle}
-              </option>
-            ))}
-          </select>
-        </label>
-        {selectedService && (
-          <div className="service-context">
-            <strong>{selectedService.isTurnkey ? "Заявка под ключ" : "Обычная услуга"}</strong>
-            <p>{selectedService.serviceDescription}</p>
-            <small>{getServiceHint(selectedService.serviceType)}</small>
-          </div>
-        )}
+      </div>
+
+      <div className="booking-client-card">
+        <div className="booking-form-head">
+          <span>Крок 1</span>
+          <strong>Дані клієнта</strong>
+        </div>
         <label>
           Імʼя клієнта
           <input
@@ -662,6 +747,131 @@ export function BookingForm({
             value={clientPhone}
           />
         </label>
+        <label>
+          Загальний коментар
+          <textarea
+            name="requestMessage"
+            onChange={(event) => {
+              setRequestMessage(event.target.value);
+              setBookingError("");
+            }}
+            placeholder={`Напишіть короткий коментар для ${masterName}`}
+            required
+            rows={3}
+            value={requestMessage}
+          />
+        </label>
+      </div>
+
+      <fieldset className="booking-address-fields">
+        <legend>Дані обʼєкта</legend>
+        <label>
+          Місто
+          <input
+            name="cityArea"
+            onChange={(event) => {
+              setCityArea(event.target.value);
+              setBookingError("");
+            }}
+            placeholder="Наприклад, Київ"
+            required
+            value={cityArea}
+          />
+        </label>
+        <label>
+          Район
+          <input
+            value={addressDistrict}
+            onChange={(event) => setAddressDistrict(event.target.value)}
+            placeholder="Наприклад, Оболонь"
+          />
+        </label>
+        <label>
+          Вулиця
+          <input
+            value={addressStreet}
+            onChange={(event) => setAddressStreet(event.target.value)}
+            placeholder="Назва вулиці"
+          />
+        </label>
+        <label>
+          Дім
+          <input
+            value={addressBuilding}
+            onChange={(event) => setAddressBuilding(event.target.value)}
+            placeholder="№ будинку"
+          />
+        </label>
+        <label>
+          Квартира / приміщення
+          <input
+            value={addressApartment}
+            onChange={(event) => setAddressApartment(event.target.value)}
+            placeholder="Квартира, офіс, секція"
+          />
+        </label>
+        <label className="booking-address-wide">
+          Коментар по адресу
+          <textarea
+            value={addressComment}
+            onChange={(event) => setAddressComment(event.target.value)}
+            placeholder="Підʼїзд, код домофона, куди підʼїхати"
+            rows={3}
+          />
+        </label>
+      </fieldset>
+
+      <form className="booking-side-form" onSubmit={submitBooking} noValidate>
+        <div className="booking-form-section">
+          <div className="booking-form-head">
+            <span>Крок 2</span>
+            <strong>Послуги майстра</strong>
+          </div>
+          <div className="booking-service-options" aria-label="Послуги майстра">
+            {masterServices.map((service) => (
+              <label className="service-checkbox" key={service.id}>
+                <input
+                  checked={selectedServiceIds.includes(service.id)}
+                  onChange={() => toggleService(service.id)}
+                  type="checkbox"
+                />
+                <span>
+                  <strong>{service.serviceTitle}</strong>
+                  <small>{service.isTurnkey ? "Під ключ" : "Окрема послуга"}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          {selectedServices.length > 0 && (
+            <div className="service-tabs" aria-label="Вибрані послуги">
+              {selectedServices.map((service) => (
+                <button
+                  className={service.id === selectedService?.id ? "active" : ""}
+                  key={service.id}
+                  onClick={() => {
+                    setActiveServiceId(service.id);
+                    setSelectedServiceId(service.id);
+                    setBookingError("");
+                  }}
+                  type="button"
+                >
+                  {service.serviceTitle}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {selectedService && (
+          <div className="service-context">
+            <strong>{selectedService.isTurnkey ? "Заявка под ключ" : "Обычная услуга"}</strong>
+            <p>{selectedService.serviceDescription}</p>
+            <small>{getServiceHint(selectedService.serviceType)}</small>
+          </div>
+        )}
+        <div className="booking-form-head">
+          <span>Крок 3</span>
+          <strong>Параметри заявки</strong>
+        </div>
         <label>
           Тип роботи
           <select
@@ -789,19 +999,6 @@ export function BookingForm({
           </div>
         )}
         <label>
-          Місто або район
-          <input
-            name="cityArea"
-            onChange={(event) => {
-              setCityArea(event.target.value);
-              setBookingError("");
-            }}
-            placeholder="Наприклад, Київ, Оболонь"
-            required
-            value={cityArea}
-          />
-        </label>
-        <label>
           Бюджет / ціна
           <input
             name="budget"
@@ -831,16 +1028,6 @@ export function BookingForm({
             required
             rows={5}
             value={description}
-          />
-        </label>
-        <label>
-          Додаткова інформація
-          <textarea
-            name="additionalInfo"
-            onChange={(event) => setAdditionalInfo(event.target.value)}
-            placeholder="Материалы куплены, нужен демонтаж, особые условия..."
-            rows={3}
-            value={additionalInfo}
           />
         </label>
         <fieldset className="height-work-form">
@@ -977,36 +1164,49 @@ export function BookingForm({
             </>
           )}
         </fieldset>
-        <label className="checkbox-line">
-          <input
-            checked={needsAdditionalWorks}
-            onChange={(event) => {
-              setNeedsAdditionalWorks(event.target.checked);
-              if (event.target.checked && additionalWorks.length === 0) {
-                setAdditionalWorks([createAdditionalWork()]);
-              }
-            }}
-            type="checkbox"
-          />
-          Потрібні додаткові роботи
-        </label>
-        {needsAdditionalWorks && (
-          <div className="additional-works-form">
-            {additionalWorks.map((work) => (
-              <div className="additional-work-row" key={work.id}>
-                <input placeholder="Назва роботи" value={work.title} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, title: event.target.value } : item))} />
-                <input placeholder="Обʼєм" value={work.volume} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, volume: event.target.value } : item))} />
-                <input placeholder="Од." value={work.unit} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, unit: event.target.value } : item))} />
-                <input placeholder="Ціна/од." value={work.pricePerUnit} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, pricePerUnit: event.target.value } : item))} />
-                <input placeholder="Разом" value={work.totalPrice} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, totalPrice: event.target.value } : item))} />
-                <input placeholder="Коментар" value={work.comment} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, comment: event.target.value } : item))} />
-              </div>
-            ))}
-            <button className="add-work-button" onClick={() => setAdditionalWorks((current) => [...current, createAdditionalWork()])} type="button">
-              Додати роботу
-            </button>
-          </div>
-        )}
+        <fieldset className="height-work-form additional-details-form">
+          <legend>Додаткові роботи та інформація</legend>
+          <label className="checkbox-line">
+            <input
+              checked={needsAdditionalWorks}
+              onChange={(event) => {
+                setNeedsAdditionalWorks(event.target.checked);
+                if (event.target.checked && additionalWorks.length === 0) {
+                  setAdditionalWorks([createAdditionalWork()]);
+                }
+              }}
+              type="checkbox"
+            />
+            Потрібні додаткові роботи
+          </label>
+          {needsAdditionalWorks && (
+            <div className="additional-works-form">
+              {additionalWorks.map((work) => (
+                <div className="additional-work-row" key={work.id}>
+                  <input placeholder="Назва роботи" value={work.title} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, title: event.target.value } : item))} />
+                  <input placeholder="Обʼєм" value={work.volume} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, volume: event.target.value } : item))} />
+                  <input placeholder="Од." value={work.unit} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, unit: event.target.value } : item))} />
+                  <input placeholder="Ціна/од." value={work.pricePerUnit} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, pricePerUnit: event.target.value } : item))} />
+                  <input placeholder="Разом" value={work.totalPrice} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, totalPrice: event.target.value } : item))} />
+                  <input placeholder="Коментар" value={work.comment} onChange={(event) => setAdditionalWorks((current) => current.map((item) => item.id === work.id ? { ...item, comment: event.target.value } : item))} />
+                </div>
+              ))}
+              <button className="add-work-button" onClick={() => setAdditionalWorks((current) => [...current, createAdditionalWork()])} type="button">
+                Додати роботу
+              </button>
+            </div>
+          )}
+          <label>
+            Додаткова інформація
+            <textarea
+              name="additionalInfo"
+              onChange={(event) => setAdditionalInfo(event.target.value)}
+              placeholder="Материалы куплены, нужен демонтаж, особые условия..."
+              rows={3}
+              value={additionalInfo}
+            />
+          </label>
+        </fieldset>
         <label>
           Фото або файли
           <input
@@ -1029,20 +1229,7 @@ export function BookingForm({
             ))}
           </div>
         )}
-        <label>
-          Повідомлення майстру
-          <textarea
-            name="requestMessage"
-            onChange={(event) => {
-              setRequestMessage(event.target.value);
-              setBookingError("");
-            }}
-            placeholder={`Напишіть повідомлення для ${masterName}`}
-            required
-            rows={4}
-            value={requestMessage}
-          />
-        </label>
+
         {bookingError && (
           <p className="booking-error" role="alert">
             {bookingError}
@@ -1059,59 +1246,6 @@ export function BookingForm({
         )}
       </form>
 
-      <form className="direct-message-form" id="message" onSubmit={submitMessage} noValidate>
-        <div className="direct-message-title">
-          <span>
-            <MessageSquare size={18} />
-          </span>
-          <div>
-            <p className="eyebrow">Прямий звʼязок</p>
-            <h3>Написати майстру</h3>
-            <small>Повідомлення не привʼязане до дати в календарі.</small>
-          </div>
-        </div>
-        <label>
-          Тема
-          <input
-            name="subject"
-            onChange={(event) => {
-              setSubject(event.target.value);
-              setMessageError("");
-            }}
-            placeholder="Наприклад, спільний проект"
-            required
-            value={subject}
-          />
-        </label>
-        <label>
-          Повідомлення
-          <textarea
-            name="message"
-            onChange={(event) => {
-              setMessage(event.target.value);
-              setMessageError("");
-            }}
-            placeholder={`Напишіть повідомлення для ${masterName}`}
-            required
-            rows={3}
-            value={message}
-          />
-        </label>
-        <button className="request-button direct-message-submit" type="submit">
-          <Send size={16} />
-          Надіслати повідомлення
-        </button>
-        {messageError && (
-          <p className="booking-error" role="alert">
-            {messageError}
-          </p>
-        )}
-        {messageSuccess && (
-          <p className="booking-success" role="status">
-            {messageSuccess}
-          </p>
-        )}
-      </form>
     </section>
   );
 }

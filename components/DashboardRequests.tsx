@@ -15,7 +15,7 @@ import {
   type RequestStatus,
 } from "@/lib/requests";
 
-const currentMasterId = "andrii-koval";
+const currentMasterId = "andrey-ponomarenko";
 
 function mergeById<T extends { id: string }>(items: T[]) {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
@@ -39,6 +39,13 @@ export function DashboardRequests() {
   const [activeRequestId, setActiveRequestId] = useState("");
   const [replyText, setReplyText] = useState("");
   const [statusText, setStatusText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
+  const [hasPhotoFilter, setHasPhotoFilter] = useState(false);
+  const [hasAdditionalWorkFilter, setHasAdditionalWorkFilter] = useState(false);
+  const [incompleteFilter, setIncompleteFilter] = useState(false);
 
   useEffect(() => {
     const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
@@ -72,15 +79,59 @@ export function DashboardRequests() {
       ),
     [requests],
   );
-  const activeRequest = sortedRequests.find((request) => request.id === activeRequestId) ?? sortedRequests[0];
+  const serviceOptions = useMemo(
+    () => Array.from(new Set(requests.map((request) => request.selectedServiceTitle || request.workType).filter(Boolean))),
+    [requests],
+  );
+  const filteredRequests = useMemo(
+    () =>
+      sortedRequests.filter((request) => {
+        const isIncomplete =
+          !request.clientName ||
+          !request.clientPhone ||
+          !request.description ||
+          !request.cityArea ||
+          !request.periods.length;
+
+        if (statusFilter && request.status !== statusFilter) return false;
+        if (serviceFilter && (request.selectedServiceTitle || request.workType) !== serviceFilter) return false;
+        if (dateFilter && !request.desiredDate.includes(dateFilter)) return false;
+        if (cityFilter && !request.cityArea.toLowerCase().includes(cityFilter.toLowerCase())) return false;
+        if (hasPhotoFilter && request.files.length === 0) return false;
+        if (hasAdditionalWorkFilter && request.additionalWorks.length === 0) return false;
+        if (incompleteFilter && !isIncomplete) return false;
+
+        return true;
+      }),
+    [
+      cityFilter,
+      dateFilter,
+      hasAdditionalWorkFilter,
+      hasPhotoFilter,
+      incompleteFilter,
+      serviceFilter,
+      sortedRequests,
+      statusFilter,
+    ],
+  );
+  const activeRequest = filteredRequests.find((request) => request.id === activeRequestId) ?? filteredRequests[0];
   const activeHeightWork = activeRequest?.heightWork ?? emptyHeightWork;
   const requestMessages = messages.filter((message) => message.requestId === activeRequest?.id);
   const newRequests = requests.filter((request) => request.status === "new").length;
   const unreadMessages = messages.filter((message) => !message.isRead && message.senderRole === "client").length;
-  const plannedWorks = requests.filter((request) => ["accepted", "in_progress"].includes(request.status)).length;
   const requestsWithFiles = requests.filter((request) => request.files.length > 0).length;
-  const turnkeyRequests = requests.filter((request) => request.isTurnkey).length;
   const inProgressRequests = requests.filter((request) => request.status === "in_progress").length;
+  const multiServiceRequests = requests.filter((request) =>
+    (request.serviceDetails.selectedServices ?? "").split(",").filter((item) => item.trim()).length > 1,
+  ).length;
+  const incompleteRequests = requests.filter(
+    (request) =>
+      !request.clientName ||
+      !request.clientPhone ||
+      !request.description ||
+      !request.cityArea ||
+      !request.periods.length,
+  ).length;
 
   function updateStatus(status: RequestStatus) {
     if (!activeRequest) return;
@@ -139,11 +190,6 @@ export function DashboardRequests() {
           <span>Нові повідомлення</span>
           <strong>{unreadMessages}</strong>
         </a>
-        <a href="#profile-status">
-          <CalendarCheck size={19} />
-          <span>Заплановані роботи</span>
-          <strong>{plannedWorks}</strong>
-        </a>
         <a href="#requests">
           <Inbox size={19} />
           <span>Заявки з фото</span>
@@ -151,14 +197,68 @@ export function DashboardRequests() {
         </a>
         <a href="#requests">
           <CalendarCheck size={19} />
-          <span>Заявки под ключ</span>
-          <strong>{turnkeyRequests}</strong>
+          <span>Заявки з кількома послугами</span>
+          <strong>{multiServiceRequests}</strong>
+        </a>
+        <a href="#requests">
+          <Inbox size={19} />
+          <span>Неповні заявки</span>
+          <strong>{incompleteRequests}</strong>
         </a>
         <a href="#requests">
           <ArrowRight size={19} />
           <span>Заявки в роботі</span>
           <strong>{inProgressRequests}</strong>
         </a>
+      </div>
+
+      <div className="dashboard-request-filters" aria-label="Фільтри заявок">
+        <label>
+          Статус
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Усі статуси</option>
+            {requestStatusOptions.map((status) => (
+              <option key={status} value={status}>
+                {requestStatusLabels[status]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Послуга
+          <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value)}>
+            <option value="">Усі послуги</option>
+            {serviceOptions.map((service) => (
+              <option key={service} value={service}>
+                {service}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Дата
+          <input value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} placeholder="2026-06" />
+        </label>
+        <label>
+          Місто / район
+          <input value={cityFilter} onChange={(event) => setCityFilter(event.target.value)} placeholder="Київ" />
+        </label>
+        <label className="request-filter-check">
+          <input checked={hasPhotoFilter} onChange={(event) => setHasPhotoFilter(event.target.checked)} type="checkbox" />
+          Є фото
+        </label>
+        <label className="request-filter-check">
+          <input
+            checked={hasAdditionalWorkFilter}
+            onChange={(event) => setHasAdditionalWorkFilter(event.target.checked)}
+            type="checkbox"
+          />
+          Є додаткові роботи
+        </label>
+        <label className="request-filter-check">
+          <input checked={incompleteFilter} onChange={(event) => setIncompleteFilter(event.target.checked)} type="checkbox" />
+          Неповна заявка
+        </label>
       </div>
 
       <article className="dashboard-panel master-requests-panel" id="requests">
@@ -172,7 +272,7 @@ export function DashboardRequests() {
 
         <div className="master-requests-layout">
           <div className="master-request-list">
-            {sortedRequests.map((request) => (
+            {filteredRequests.map((request) => (
               <button
                 className={request.id === activeRequest?.id ? "active" : ""}
                 key={request.id}
@@ -190,6 +290,9 @@ export function DashboardRequests() {
                 <ArrowRight size={16} />
               </button>
             ))}
+            {!filteredRequests.length && (
+              <div className="request-empty-state">За вибраними фільтрами заявок немає.</div>
+            )}
           </div>
 
           {activeRequest && (

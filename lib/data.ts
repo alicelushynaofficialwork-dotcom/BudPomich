@@ -19,7 +19,7 @@ export const masters: Master[] = [
   {
     id: "serhii-ivanenko",
     name: "Сергій Іваненко",
-    initials: "СІ",
+    initials: "Ѳ",
     specialty: "Плиточник",
     city: "Київ",
     experience: "9 років досвіду",

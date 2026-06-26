@@ -16,7 +16,9 @@ type DashboardProfilePageProps = {
 
 export default async function DashboardProfilePage({ searchParams }: DashboardProfilePageProps) {
   const params = await searchParams;
-  const master = getMasterById(params?.masterId ?? "andrii-koval") ?? getMasterById("andrii-koval");
+  const master =
+    getMasterById(params?.masterId ?? "andrey-ponomarenko") ??
+    getMasterById("andrey-ponomarenko");
 
   if (!master) return null;
 
