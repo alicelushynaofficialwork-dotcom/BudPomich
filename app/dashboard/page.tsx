@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -11,7 +11,8 @@ import {
   Users,
 } from "lucide-react";
 import { AvailabilityCalendar } from "@/components/AvailabilityCalendar";
-import { DashboardRequests } from "@/components/DashboardRequests";
+import { DashboardRequestNotification } from "@/components/DashboardRequestNotification";
+import { DashboardRequestShortcuts, DashboardRequests } from "@/components/DashboardRequests";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getMasterById } from "@/lib/masters";
 
@@ -53,12 +54,13 @@ export default function DashboardPage() {
               <Link href="/dashboard/profile">
                 <Pencil size={18} /> Редагувати профіль
               </Link>
-              <Link href="/dashboard#portfolio">
-                <Images size={18} /> Портфоліо
-              </Link>
               <Link href="/dashboard#promotion">
                 <Megaphone size={18} /> Просування
               </Link>
+            </div>
+            <div className="dashboard-nav-card dashboard-nav-requests">
+              <p className="overline">Звернення</p>
+              <DashboardRequestShortcuts />
             </div>
             <div className="dashboard-rating-card">
               <span>
@@ -87,6 +89,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <DashboardRequests />
+            <DashboardRequestNotification />
             <div className="dashboard-panels">
               <article className="dashboard-panel" id="profile-status">
                 <div>
@@ -112,29 +115,6 @@ export default function DashboardPage() {
                 </Link>
               </article>
             </div>
-            <article className="dashboard-panel requests-panel">
-              <div className="panel-title-row">
-                <div>
-                  <p className="overline">Останні заявки</p>
-                  <h2>Нові звернення</h2>
-                </div>
-                <Link href="/dashboard#requests">Переглянути всі</Link>
-              </div>
-              <div className="request-row">
-                <div className="avatar avatar-small">ОМ</div>
-                <div>
-                  <strong>Олексій Мельник</strong>
-                  <p>Потрібна заміна проводки у двокімнатній квартирі.</p>
-                </div>
-                <div className="request-status">
-                  <strong>Нова заявка</strong>
-                  <span>Сьогодні, 10:24</span>
-                </div>
-                <Link className="request-open" href="/dashboard#messages" aria-label="Відкрити заявку">
-                  <ArrowRight size={18} />
-                </Link>
-              </div>
-            </article>
 
             <article className="dashboard-panel messages-panel" id="messages">
               <div className="panel-title-row">
@@ -152,7 +132,7 @@ export default function DashboardPage() {
               <div className="messages-layout">
                 <div className="conversation-list">
                   <button className="conversation-item active" type="button">
-                    <span className="avatar avatar-small">Ѳ</span>
+                    <span className="avatar avatar-small">СІ</span>
                     <span>
                       <strong>Сергій Іваненко</strong>
                       <small>миття</small>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarCheck, Inbox, MessageCircle, Send } from "lucide-react";
@@ -16,6 +16,17 @@ import {
 } from "@/lib/requests";
 
 const currentMasterId = "andrey-ponomarenko";
+type DashboardRequestView = "new" | "messages" | "files" | "multi" | "incomplete" | "in_progress";
+
+const dashboardRequestViewLabels: Record<DashboardRequestView | "all", string> = {
+  all: "Звернення клієнтів",
+  new: "Нові заявки",
+  messages: "Нові повідомлення",
+  files: "Заявки з фото",
+  multi: "Заявки з кількома послугами",
+  incomplete: "Неповні заявки",
+  in_progress: "Заявки в роботі",
+};
 
 function mergeById<T extends { id: string }>(items: T[]) {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
@@ -33,19 +44,9 @@ function formatCoefficientType(value: string) {
   return "Не знає / потрібно уточнити";
 }
 
-export function DashboardRequests() {
+export function DashboardRequestShortcuts() {
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests);
   const [messages, setMessages] = useState<RequestMessage[]>(mockRequestMessages);
-  const [activeRequestId, setActiveRequestId] = useState("");
-  const [replyText, setReplyText] = useState("");
-  const [statusText, setStatusText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [serviceFilter, setServiceFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
-  const [cityFilter, setCityFilter] = useState("");
-  const [hasPhotoFilter, setHasPhotoFilter] = useState(false);
-  const [hasAdditionalWorkFilter, setHasAdditionalWorkFilter] = useState(false);
-  const [incompleteFilter, setIncompleteFilter] = useState(false);
 
   useEffect(() => {
     const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
@@ -70,6 +71,124 @@ export function DashboardRequests() {
         setMessages(mergeById([...(result.messages ?? mockRequestMessages), ...localMessages]));
       })
       .catch(() => setMessages(mergeById([...mockRequestMessages, ...localMessages])));
+  }, []);
+
+  const newRequests = requests.filter((request) => request.status === "new").length;
+  const unreadMessages = messages.filter((message) => !message.isRead && message.senderRole === "client").length;
+  const requestsWithFiles = requests.filter((request) => request.files.length > 0).length;
+  const inProgressRequests = requests.filter((request) => request.status === "in_progress").length;
+  const multiServiceRequests = requests.filter((request) =>
+    (request.serviceDetails.selectedServices ?? "").split(",").filter((item) => item.trim()).length > 1,
+  ).length;
+  const incompleteRequests = requests.filter(
+    (request) =>
+      !request.clientName ||
+      !request.clientPhone ||
+      !request.description ||
+      !request.cityArea ||
+      !request.periods.length,
+  ).length;
+
+  function openRequestView(view: DashboardRequestView) {
+    window.dispatchEvent(new CustomEvent<{ view: DashboardRequestView }>("budpomich:dashboard-request-view", { detail: { view } }));
+    document.getElementById("requests")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  return (
+    <div className="dashboard-access-grid">
+      <button onClick={() => openRequestView("new")} type="button">
+        <Inbox size={19} />
+        <span>Нові заявки</span>
+        <strong>{newRequests}</strong>
+      </button>
+      <button onClick={() => openRequestView("messages")} type="button">
+        <MessageCircle size={19} />
+        <span>Нові повідомлення</span>
+        <strong>{unreadMessages}</strong>
+      </button>
+      <button onClick={() => openRequestView("files")} type="button">
+        <Inbox size={19} />
+        <span>Заявки з фото</span>
+        <strong>{requestsWithFiles}</strong>
+      </button>
+      <button onClick={() => openRequestView("multi")} type="button">
+        <CalendarCheck size={19} />
+        <span>Заявки з кількома послугами</span>
+        <strong>{multiServiceRequests}</strong>
+      </button>
+      <button onClick={() => openRequestView("incomplete")} type="button">
+        <Inbox size={19} />
+        <span>Неповні заявки</span>
+        <strong>{incompleteRequests}</strong>
+      </button>
+      <button onClick={() => openRequestView("in_progress")} type="button">
+        <ArrowRight size={19} />
+        <span>Заявки в роботі</span>
+        <strong>{inProgressRequests}</strong>
+      </button>
+    </div>
+  );
+}
+
+export function DashboardRequests() {
+  const [requests, setRequests] = useState<MasterRequest[]>(mockRequests);
+  const [messages, setMessages] = useState<RequestMessage[]>(mockRequestMessages);
+  const [activeRequestId, setActiveRequestId] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [statusText, setStatusText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
+  const [hasPhotoFilter, setHasPhotoFilter] = useState(false);
+  const [hasAdditionalWorkFilter, setHasAdditionalWorkFilter] = useState(false);
+  const [incompleteFilter, setIncompleteFilter] = useState(false);
+  const [activeRequestView, setActiveRequestView] = useState<DashboardRequestView | "all">("all");
+
+  useEffect(() => {
+    const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
+    const localMessages = JSON.parse(localStorage.getItem(requestMessagesStorageKey) ?? "[]") as RequestMessage[];
+
+    fetch(`/api/requests?masterId=${currentMasterId}`)
+      .then((response) => response.json())
+      .then((result: { requests?: MasterRequest[] }) => {
+        setRequests(
+          mergeById([...(result.requests ?? mockRequests), ...localRequests]).filter(
+            (request) => request.masterId === currentMasterId,
+          ),
+        );
+      })
+      .catch(() => {
+        setRequests(mergeById([...mockRequests, ...localRequests]));
+      });
+
+    fetch("/api/messages")
+      .then((response) => response.json())
+      .then((result: { messages?: RequestMessage[] }) => {
+        setMessages(mergeById([...(result.messages ?? mockRequestMessages), ...localMessages]));
+      })
+      .catch(() => setMessages(mergeById([...mockRequestMessages, ...localMessages])));
+  }, []);
+
+  useEffect(() => {
+    function handleRequestView(event: Event) {
+      const view = (event as CustomEvent<{ view?: DashboardRequestView }>).detail?.view;
+      if (!view) return;
+
+      setActiveRequestView(view);
+      setStatusFilter("");
+      setServiceFilter("");
+      setDateFilter("");
+      setCityFilter("");
+      setHasPhotoFilter(false);
+      setHasAdditionalWorkFilter(false);
+      setIncompleteFilter(false);
+      setActiveRequestId("");
+      setStatusText("");
+    }
+
+    window.addEventListener("budpomich:dashboard-request-view", handleRequestView);
+    return () => window.removeEventListener("budpomich:dashboard-request-view", handleRequestView);
   }, []);
 
   const sortedRequests = useMemo(
@@ -100,15 +219,27 @@ export function DashboardRequests() {
         if (hasPhotoFilter && request.files.length === 0) return false;
         if (hasAdditionalWorkFilter && request.additionalWorks.length === 0) return false;
         if (incompleteFilter && !isIncomplete) return false;
+        if (activeRequestView === "new" && request.status !== "new") return false;
+        if (activeRequestView === "messages" && !messages.some((message) => message.requestId === request.id && !message.isRead && message.senderRole === "client")) return false;
+        if (activeRequestView === "files" && request.files.length === 0) return false;
+        if (
+          activeRequestView === "multi" &&
+          (request.serviceDetails.selectedServices ?? "").split(",").filter((item) => item.trim()).length <= 1
+        )
+          return false;
+        if (activeRequestView === "incomplete" && !isIncomplete) return false;
+        if (activeRequestView === "in_progress" && request.status !== "in_progress") return false;
 
         return true;
       }),
     [
+      activeRequestView,
       cityFilter,
       dateFilter,
       hasAdditionalWorkFilter,
       hasPhotoFilter,
       incompleteFilter,
+      messages,
       serviceFilter,
       sortedRequests,
       statusFilter,
@@ -179,39 +310,6 @@ export function DashboardRequests() {
 
   return (
     <>
-      <div className="dashboard-access-grid">
-        <a href="#requests">
-          <Inbox size={19} />
-          <span>Нові заявки</span>
-          <strong>{newRequests}</strong>
-        </a>
-        <a href="#request-messages">
-          <MessageCircle size={19} />
-          <span>Нові повідомлення</span>
-          <strong>{unreadMessages}</strong>
-        </a>
-        <a href="#requests">
-          <Inbox size={19} />
-          <span>Заявки з фото</span>
-          <strong>{requestsWithFiles}</strong>
-        </a>
-        <a href="#requests">
-          <CalendarCheck size={19} />
-          <span>Заявки з кількома послугами</span>
-          <strong>{multiServiceRequests}</strong>
-        </a>
-        <a href="#requests">
-          <Inbox size={19} />
-          <span>Неповні заявки</span>
-          <strong>{incompleteRequests}</strong>
-        </a>
-        <a href="#requests">
-          <ArrowRight size={19} />
-          <span>Заявки в роботі</span>
-          <strong>{inProgressRequests}</strong>
-        </a>
-      </div>
-
       <div className="dashboard-request-filters" aria-label="Фільтри заявок">
         <label>
           Статус
@@ -265,9 +363,9 @@ export function DashboardRequests() {
         <div className="panel-title-row">
           <div>
             <p className="overline">Заявки</p>
-            <h2>Звернення клієнтів</h2>
+            <h2>{dashboardRequestViewLabels[activeRequestView]}</h2>
           </div>
-          <span className="counter-badge">{newRequests} нових</span>
+          <span className="counter-badge">{filteredRequests.length}</span>
         </div>
 
         <div className="master-requests-layout">
@@ -320,7 +418,7 @@ export function DashboardRequests() {
                   <dt>Послуга</dt>
                   <dd>
                     {activeRequest.selectedServiceTitle || activeRequest.workType}
-                    {activeRequest.isTurnkey ? " · под ключ" : " · обычная заявка"}
+                    {activeRequest.isTurnkey ? " · під ключ" : " · звичайна заявка"}
                   </dd>
                 </div>
                 <div>

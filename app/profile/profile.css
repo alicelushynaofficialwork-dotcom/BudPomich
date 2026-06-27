@@ -161,6 +161,64 @@
   margin-top: 18px;
 }
 
+.profile-owner-edit-link {
+  min-height: 34px;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #f0c4ad;
+  border-radius: 10px;
+  background: #fff7f2;
+  color: #d7551c;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.profile-collapse summary .profile-owner-edit-link {
+  margin-left: auto;
+}
+
+.profile-location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-location-grid > div {
+  padding: 16px;
+  display: grid;
+  gap: 7px;
+  border: 1px solid #e3e9e5;
+  border-radius: 14px;
+  background: #fafbfa;
+}
+
+.profile-location-grid span {
+  color: #748079;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-location-grid strong {
+  color: #17231d;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+@media (min-width: 921px) {
+  .profile-section-nav {
+    position: sticky !important;
+    top: 18px;
+    align-self: start;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+  }
+}
+
 .portfolio-work-photo {
   position: relative;
   overflow: hidden;

@@ -1,7 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Plus, Save, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CalendarDays,
+  Eye,
+  MapPin,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Save,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import type { MasterProfile } from "@/lib/masters";
 import {
@@ -35,6 +47,19 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
     services: master.services,
   });
   const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
+  const completedProfileItems = [
+    Boolean(profile.avatarUrl),
+    Boolean(profile.name.trim()),
+    Boolean(profile.profession.trim()),
+    Boolean(profile.city.trim()),
+    Boolean(profile.description.trim()),
+    profile.services.some((service) => service.name.trim()),
+    true,
+    true,
+  ];
+  const completionPercent = Math.round(
+    (completedProfileItems.filter(Boolean).length / completedProfileItems.length) * 100,
+  );
 
   useEffect(() => {
     const loadProfile = window.setTimeout(() => {
@@ -208,15 +233,80 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
 
   return (
     <form className="profile-edit-form" onSubmit={handleSubmit}>
-      <section className="profile-edit-card">
+      <section
+        className={`profile-editor-public-hero ${profile.coverImageUrl ? "has-cover-image" : ""}`}
+        style={
+          profile.coverImageUrl
+            ? ({
+                "--editor-cover-image": `url(${profile.coverImageUrl})`,
+                "--editor-cover-x": `${profile.coverPositionX ?? 50}%`,
+                "--editor-cover-y": `${profile.coverPositionY ?? 50}%`,
+                "--editor-cover-scale": `${profile.coverZoom ?? 1}`,
+              } as Record<string, string>)
+            : undefined
+        }
+      >
+        <div className="profile-editor-hero-person">
+          <div className={`profile-editor-hero-avatar avatar-${master.accent}`}>
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" style={imageStyle("avatar")} />
+            ) : (
+              master.initials
+            )}
+          </div>
+          <div>
+            <p className="profile-editor-eyebrow">{profile.profession}</p>
+            <h2>{profile.name}</h2>
+            <p className="profile-editor-location">
+              <MapPin size={15} /> {profile.city}
+              {master.district ? `, ${master.district}` : ""} · {profile.experience}
+            </p>
+            <p className="profile-editor-description">{profile.description}</p>
+            <div className="profile-editor-rating">
+              <Star size={16} fill="currentColor" />
+              <strong>{master.rating.toFixed(1)}</strong>
+              <span>{master.reviews} відгуків</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="profile-editor-action-card">
+          <span>Вартість робіт</span>
+          <strong>від {profile.priceFrom.toLocaleString("uk-UA")} грн</strong>
+          <Link href={`/profile/${master.id}?from=profile`}>
+            <Eye size={16} /> Переглянути публічний профіль
+          </Link>
+          <small>Так клієнти бачать ваш профіль.</small>
+        </div>
+      </section>
+
+      <section className="profile-editor-progress-card">
+        <div>
+          <span>Профіль заповнено на {completionPercent}%</span>
+          <strong>Заповніть фото, опис, послуги та портфоліо, щоб профіль виглядав сильніше.</strong>
+        </div>
+        <div className="profile-editor-progress-track">
+          <span style={{ width: `${completionPercent}%` }} />
+        </div>
+      </section>
+
+      <nav className="profile-editor-section-tabs" aria-label="Розділи редагування профілю">
+        <a href="#profile-main">Мій профіль</a>
+        <a href="#profile-about">Про майстра</a>
+        <a href="#profile-location">Локація</a>
+        <a href="#profile-services">Послуги</a>
+        <a href="#profile-portfolio">Портфоліо</a>
+        <a href="#profile-contacts">Контакти</a>
+      </nav>
+      <section className="profile-edit-card" id="profile-main">
         <div className="profile-edit-card-heading">
           <div>
             <p>Основна інформація</p>
             <h2>Дані, які бачать клієнти</h2>
           </div>
-          <span>
-            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" style={imageStyle("avatar")} /> : master.initials}
-          </span>
+          <a className="profile-section-edit-link" href="#profile-main">
+            <Pencil size={15} /> Редагувати
+          </a>
         </div>
 
         <div className="profile-edit-grid">
@@ -370,6 +460,21 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
               required
             />
           </label>
+        </div>
+      </section>
+
+      <section className="profile-edit-card" id="profile-about">
+        <div className="profile-edit-card-heading">
+          <div>
+            <p>Про майстра</p>
+            <h2>Досвід і підхід до роботи</h2>
+          </div>
+          <a className="profile-section-edit-link" href="#profile-about">
+            <Pencil size={15} /> Редагувати опис
+          </a>
+        </div>
+
+        <div className="profile-edit-grid">
           <label className="profile-edit-wide">
             Короткий опис
             <textarea
@@ -378,10 +483,10 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
               onChange={(event) => updateField("description", event.target.value)}
               required
             />
-            <small>Використовується у каталозі майстрів.</small>
+            <small>Використовується у каталозі майстрів і верхньому блоці профілю.</small>
           </label>
           <label className="profile-edit-wide">
-            Про майстра
+            Повний опис
             <textarea
               rows={6}
               value={profile.fullDescription}
@@ -391,15 +496,69 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
               required
             />
           </label>
+          <label>
+            З якими обʼєктами працюєте
+            <input placeholder="Квартири, офіси, комерційні приміщення" />
+          </label>
+          <label>
+            Мови спілкування
+            <input placeholder="Українська, російська" />
+          </label>
         </div>
       </section>
 
-      <section className="profile-edit-card">
+      <section className="profile-edit-card" id="profile-location">
+        <div className="profile-edit-card-heading">
+          <div>
+            <p>Місцезнаходження</p>
+            <h2>Локація та зона роботи</h2>
+          </div>
+          <a className="profile-section-edit-link" href="#profile-location">
+            <MapPin size={15} /> Редагувати
+          </a>
+        </div>
+
+        <div className="profile-edit-grid">
+          <label>
+            Країна
+            <input defaultValue="Україна" />
+          </label>
+          <label>
+            Область
+            <input placeholder="Київська область" />
+          </label>
+          <label>
+            Місто
+            <input
+              value={profile.city}
+              onChange={(event) => updateField("city", event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Район
+            <input defaultValue={master.district ?? ""} placeholder="Наприклад, Оболонь" />
+          </label>
+          <label>
+            Радіус виїзду, км
+            <input defaultValue="30" inputMode="numeric" />
+          </label>
+          <label className="profile-edit-wide">
+            Коментар по виїзду
+            <textarea rows={3} placeholder="Працюю по Києву та передмістю до 30 км." />
+          </label>
+        </div>
+      </section>
+
+      <section className="profile-edit-card" id="profile-services">
         <div className="profile-edit-card-heading">
           <div>
             <p>Послуги</p>
             <h2>Що ви виконуєте</h2>
           </div>
+          <a className="profile-section-edit-link" href="#profile-services">
+            <BriefcaseBusiness size={15} /> Редагувати послуги
+          </a>
         </div>
 
         <div className="profile-service-list">
@@ -450,6 +609,87 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
         >
           <Plus size={17} /> Додати послугу
         </button>
+      </section>
+
+      <section className="profile-edit-card" id="profile-portfolio">
+        <div className="profile-edit-card-heading">
+          <div>
+            <p>Портфоліо</p>
+            <h2>Виконані роботи</h2>
+          </div>
+          <Link className="profile-section-edit-link" href="/dashboard/portfolio">
+            <Pencil size={15} /> Керувати портфоліо
+          </Link>
+        </div>
+        <div className="profile-editor-mini-grid">
+          {master.works.slice(0, 2).map((work) => (
+            <article className="profile-editor-mini-work" key={work.title}>
+              <div className={`work-image work-crop-${work.crop}`} />
+              <div>
+                <span>{work.category ?? "Робота"}</span>
+                <strong>{work.title}</strong>
+                <small>{work.location}</small>
+              </div>
+            </article>
+          ))}
+          <Link className="profile-editor-add-tile" href="/dashboard/portfolio/new">
+            <Plus size={20} /> Додати роботу
+          </Link>
+        </div>
+      </section>
+
+      <section className="profile-edit-card" id="profile-calendar">
+        <div className="profile-edit-card-heading">
+          <div>
+            <p>Календар</p>
+            <h2>Доступність для заявок</h2>
+          </div>
+          <a className="profile-section-edit-link" href="/dashboard#overview">
+            <CalendarDays size={15} /> Налаштувати календар
+          </a>
+        </div>
+        <div className="profile-editor-info-strip">
+          <span>Зайняті дати зараз: {master.busyDates?.length ?? 0}</span>
+          <small>Публічний профіль використовує ці дати для блокування періодів у заявці.</small>
+        </div>
+      </section>
+
+      <section className="profile-edit-card" id="profile-contacts">
+        <div className="profile-edit-card-heading">
+          <div>
+            <p>Контакти</p>
+            <h2>Способи звʼязку</h2>
+          </div>
+          <a className="profile-section-edit-link" href="#profile-contacts">
+            <MessageSquare size={15} /> Редагувати контакти
+          </a>
+        </div>
+        <div className="profile-edit-grid">
+          <label>
+            Телефон
+            <input placeholder="+380..." />
+          </label>
+          <label>
+            Email
+            <input placeholder="name@example.com" type="email" />
+          </label>
+          <label>
+            Telegram
+            <input placeholder="@username" />
+          </label>
+          <label>
+            WhatsApp / Viber
+            <input placeholder="+380..." />
+          </label>
+          <label>
+            Бажаний спосіб звʼязку
+            <input placeholder="BudPomich, телефон, Telegram" />
+          </label>
+          <label className="profile-edit-wide profile-editor-checkbox">
+            <input type="checkbox" defaultChecked />
+            Приймати заявки через BudPomich
+          </label>
+        </div>
       </section>
 
       <div className="profile-edit-actions">

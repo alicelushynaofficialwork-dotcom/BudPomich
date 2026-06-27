@@ -1,4 +1,4 @@
-export type RequestStatus = "new" | "accepted" | "in_progress" | "completed" | "declined";
+﻿export type RequestStatus = "new" | "accepted" | "in_progress" | "completed" | "declined";
 
 export type RequestPeriod = {
   dateFrom: string;
@@ -118,7 +118,7 @@ export const mockRequests: MasterRequest[] = [
     masterId: "andrii-koval",
     masterName: "Андрій Коваль",
     selectedServiceId: "andrii-electric",
-    selectedServiceTitle: "Электрика",
+    selectedServiceTitle: "Електрика",
     selectedServiceType: "electric",
     isTurnkey: false,
     clientName: "Олексій Мельник",

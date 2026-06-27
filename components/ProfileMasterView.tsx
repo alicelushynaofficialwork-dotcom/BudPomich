@@ -40,6 +40,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>([]);
   const [activePortfolioSlides, setActivePortfolioSlides] = useState<Record<string, number>>({});
   const visibleMaster = useMemo(() => mergeMasterProfile(master, profileEdit), [master, profileEdit]);
+  const isOwnerView = ownerSource === "profile" || visibleMaster.id === "andrey-ponomarenko";
   const bookingServices = getMasterServices(visibleMaster.id);
   const portfolioItems = useMemo(() => {
     const defaults = defaultPortfolioItems.filter((item) => item.masterId === visibleMaster.id);
@@ -160,6 +161,11 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         <div className="profile-action-card">
           <span>Вартість робіт</span>
           <strong>від {visibleMaster.priceFrom.toLocaleString("uk-UA")} грн</strong>
+          {isOwnerView && (
+            <Link className="profile-secondary-action" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-main`}>
+              <Pencil size={15} /> Редагувати профіль
+            </Link>
+          )}
           <a href="#booking">Обрати вільну дату</a>
           <a className="profile-secondary-action" href="#message">
             Написати майстру
@@ -167,7 +173,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         </div>
       </section>
 
-      {ownerSource === "profile" && (
+      {isOwnerView && (
         <aside className="public-profile-owner-bar profile-owner-return">
           <span>Ви переглядаєте свій профіль очима клієнта</span>
           <div>
@@ -185,6 +191,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         <nav className="profile-section-nav" aria-label="Розділи профілю">
           <p>Розділи профілю</p>
           <a href="#about-master">Про майстра</a>
+          <a href="#location">Локація</a>
           <a href="#services">Послуги</a>
           <a href="#portfolio">Портфоліо</a>
           <a href="#message">Прямий звʼязок</a>
@@ -198,10 +205,50 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <span>Про майстра</span>
                 <strong>Досвід і підхід до роботи</strong>
               </div>
+              {isOwnerView && (
+                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-about`}>
+                  <Pencil size={14} /> Редагувати
+                </Link>
+              )}
               <small>Розгорнути / згорнути</small>
             </summary>
             <div className="profile-collapse-body profile-text-section">
               <p className="profile-about">{visibleMaster.fullDescription}</p>
+            </div>
+          </details>
+
+          <details className="profile-collapse" id="location" open>
+            <summary>
+              <div>
+                <span>Локація</span>
+                <strong>Місцезнаходження та зона роботи</strong>
+              </div>
+              {isOwnerView && (
+                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-location`}>
+                  <Pencil size={14} /> Редагувати
+                </Link>
+              )}
+              <small>Розгорнути / згорнути</small>
+            </summary>
+            <div className="profile-collapse-body">
+              <div className="profile-location-grid">
+                <div>
+                  <span>Місто</span>
+                  <strong>{visibleMaster.city}</strong>
+                </div>
+                <div>
+                  <span>Район</span>
+                  <strong>{visibleMaster.district ?? "Інформація буде додана пізніше"}</strong>
+                </div>
+                <div>
+                  <span>Зона роботи</span>
+                  <strong>Київ та передмістя до 30 км</strong>
+                </div>
+                <div>
+                  <span>Виїзд</span>
+                  <strong>По місту та за місто за домовленістю</strong>
+                </div>
+              </div>
             </div>
           </details>
 
@@ -211,6 +258,11 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <span>Послуги</span>
                 <strong>Що виконує майстер</strong>
               </div>
+              {isOwnerView && (
+                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-services`}>
+                  <Pencil size={14} /> Редагувати
+                </Link>
+              )}
               <small>{visibleMaster.services.length} позиції</small>
             </summary>
             <div className="profile-collapse-body">
@@ -234,6 +286,11 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <span>Портфоліо</span>
                 <strong>Виконані роботи</strong>
               </div>
+              {isOwnerView && (
+                <Link className="profile-owner-edit-link" href="/dashboard/portfolio">
+                  <Pencil size={14} /> Редагувати
+                </Link>
+              )}
               <small>{portfolioItems.length || visibleMaster.works.length} проєкти</small>
             </summary>
             <div className="profile-collapse-body">
@@ -276,7 +333,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                           </button>
                         </div>
                       )}
-                      {ownerSource === "profile" && (
+                      {isOwnerView && (
                         <Link
                           className="portfolio-project-edit profile-portfolio-edit"
                           href={`/dashboard/portfolio/${item.id}/edit`}
@@ -368,7 +425,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                     </article>
                   );
                 })}
-                {ownerSource === "profile" && (
+                {isOwnerView && (
                   <Link className="portfolio-add-card profile-portfolio-add" href="/dashboard/portfolio/new">
                     <span>+</span>
                     <strong>Додати роботу</strong>
@@ -385,6 +442,11 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <span>Прямий звʼязок</span>
                 <strong>Написати майстру без вибору дати</strong>
               </div>
+              {isOwnerView && (
+                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-contacts`}>
+                  <Pencil size={14} /> Контакти
+                </Link>
+              )}
               <small>Розгорнути / згорнути</small>
             </summary>
             <div className="profile-collapse-body profile-message-section">
@@ -398,6 +460,11 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <span>Онлайн-заявка</span>
                 <strong>Період, заявка та пряме повідомлення</strong>
               </div>
+              {isOwnerView && (
+                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-calendar`}>
+                  <Pencil size={14} /> Календар
+                </Link>
+              )}
               <small>Розгорнути / згорнути</small>
             </summary>
             <div className="profile-collapse-body">
