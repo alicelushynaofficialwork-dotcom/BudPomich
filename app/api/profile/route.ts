@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import type { EditableMasterProfile } from "@/lib/master-profile-edit";
+import {
+  type EditableMasterProfile,
+  normalizeMasterServices,
+} from "@/lib/master-profile-edit";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+const heroDescriptionMaxLength = 250;
 
 function requiredText(value: unknown, field: string) {
   if (typeof value !== "string" || !value.trim()) {
@@ -35,7 +40,7 @@ function validateProfile(value: unknown): EditableMasterProfile {
     throw new Error("Додайте щонайменше одну послугу.");
   }
 
-  const services = profile.services.map((service, index) => {
+  const services = normalizeMasterServices(profile.services.map((service, index) => {
     if (!service || typeof service !== "object") {
       throw new Error(`Некоректна послуга №${index + 1}.`);
     }
@@ -45,14 +50,15 @@ function validateProfile(value: unknown): EditableMasterProfile {
       name: requiredText(row.name, `Назва послуги №${index + 1}`),
       price: requiredText(row.price, `Ціна послуги №${index + 1}`),
     };
-  });
+  }));
 
   return {
     id: requiredText(profile.id, "ID майстра"),
     name: requiredText(profile.name, "Ім'я"),
     profession: requiredText(profile.profession, "Професія"),
     city: requiredText(profile.city, "Місто"),
-    description: requiredText(profile.description, "Короткий опис"),
+    district: optionalText(profile.district),
+    description: requiredText(profile.description, "Короткий опис").slice(0, heroDescriptionMaxLength),
     fullDescription: requiredText(profile.fullDescription, "Про майстра"),
     avatarUrl: optionalText(profile.avatarUrl),
     coverImageUrl: optionalText(profile.coverImageUrl),
@@ -74,6 +80,7 @@ function mapProfileRow(data: Record<string, any>): EditableMasterProfile {
     name: data.name,
     profession: data.profession,
     city: data.city,
+    district: data.district ?? "",
     description: data.description,
     fullDescription: data.full_description,
     avatarUrl: data.avatar_url ?? "",
@@ -107,7 +114,7 @@ export async function GET(request: Request) {
   }
 
   const extendedSelect =
-    "master_id, name, profession, city, description, full_description, avatar_url, cover_image_url, avatar_zoom, avatar_position_x, avatar_position_y, cover_zoom, cover_position_x, cover_position_y, price_from, experience, services";
+    "master_id, name, profession, city, district, description, full_description, avatar_url, cover_image_url, avatar_zoom, avatar_position_x, avatar_position_y, cover_zoom, cover_position_x, cover_position_y, price_from, experience, services";
   const baseSelect =
     "master_id, name, profession, city, description, full_description, price_from, experience, services";
 
@@ -153,6 +160,7 @@ export async function POST(request: Request) {
         name: profile.name,
         profession: profile.profession,
         city: profile.city,
+        district: profile.district,
         description: profile.description,
         full_description: profile.fullDescription,
         avatar_url: profile.avatarUrl,

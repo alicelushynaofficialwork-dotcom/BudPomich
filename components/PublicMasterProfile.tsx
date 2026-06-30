@@ -186,7 +186,7 @@ export function PublicMasterProfile({
         <div className="public-profile-action">
           <span>Вартість робіт</span>
           <strong>від {formatUah(master.priceFrom)}</strong>
-          <a href="#booking-calendar">Обрати вільну дату</a>
+          <a href="#booking-calendar">Домовитись на вільну дату майстра</a>
           <a className="public-profile-message-link" href="#message-master">
             Написати майстру
           </a>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -26,7 +26,13 @@ type Status = {
   message: string;
 };
 
-export function ProfileEditForm({ master }: { master: MasterProfile }) {
+type ProfileEditFormProps = {
+  master: MasterProfile;
+  onCancel?: () => void;
+  onSaved?: (profile: EditableMasterProfile) => void;
+};
+
+export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormProps) {
   const [profile, setProfile] = useState<EditableMasterProfile>({
     id: master.id,
     name: master.name,
@@ -211,6 +217,7 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
 
       persistLocalProfile(result.profile);
       setProfile(result.profile);
+      onSaved?.(result.profile);
       setStatus({
         type: "success",
         message:
@@ -221,6 +228,7 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
     } catch (error) {
       persistLocalProfile(profile);
       setProfile(profile);
+      onSaved?.(profile);
       setStatus({
         type: "success",
         message:
@@ -259,7 +267,7 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
             <h2>{profile.name}</h2>
             <p className="profile-editor-location">
               <MapPin size={15} /> {profile.city}
-              {master.district ? `, ${master.district}` : ""} · {profile.experience}
+              {master.district ? `, ${master.district}` : ""} В· {profile.experience}
             </p>
             <p className="profile-editor-description">{profile.description}</p>
             <div className="profile-editor-rating">
@@ -433,7 +441,7 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
             />
           </label>
           <label>
-            Місто
+            РњС–СЃС‚Рѕ
             <input
               value={profile.city}
               onChange={(event) => updateField("city", event.target.value)}
@@ -693,7 +701,13 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
       </section>
 
       <div className="profile-edit-actions">
-        <Link href="/dashboard">Скасувати</Link>
+        {onCancel ? (
+          <button className="profile-edit-cancel-button" type="button" onClick={onCancel}>
+            Скасувати
+          </button>
+        ) : (
+          <Link href="/dashboard">Скасувати</Link>
+        )}
         <button type="submit" disabled={status.type === "saving"}>
           <Save size={18} />
           {status.type === "saving" ? "Зберігаємо..." : "Зберегти зміни"}
@@ -704,9 +718,15 @@ export function ProfileEditForm({ master }: { master: MasterProfile }) {
         <div className={`profile-edit-status status-${status.type}`} role="status">
           <span>{status.message}</span>
           {status.type === "success" && (
-            <Link href={`/profile/${master.id}?from=profile`}>
-              Переглянути профіль <ArrowRight size={16} />
-            </Link>
+            onCancel ? (
+              <button type="button" onClick={onCancel}>
+                Переглянути профіль <ArrowRight size={16} />
+              </button>
+            ) : (
+              <Link href={`/profile/${master.id}?from=profile`}>
+                Переглянути профіль <ArrowRight size={16} />
+              </Link>
+            )
           )}
         </div>
       )}

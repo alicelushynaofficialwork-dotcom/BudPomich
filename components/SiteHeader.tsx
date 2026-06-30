@@ -19,9 +19,10 @@ export function SiteHeader({
           <Image
             src="/logo/budpomich-logo.svg"
             alt="BudPomich"
-            width={158}
-            height={84}
+            width={220}
+            height={117}
             priority
+            style={{ width: 220, height: "auto" }}
           />
         </Link>
 
@@ -47,8 +48,8 @@ export function SiteHeader({
           <Link className="header-master-card" href="/profile/andrey-ponomarenko">
             <span className="avatar avatar-small">АП</span>
             <span>
-              <strong>Андрей Пономаренко</strong>
-              <small>Гіпсокартонщик / плиточник · Київ</small>
+              <strong>Профіль майстра</strong>
+              <small>Андрей Пономаренко · Київ</small>
             </span>
           </Link>
         )}

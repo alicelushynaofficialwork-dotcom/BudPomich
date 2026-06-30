@@ -200,6 +200,7 @@ export const masterProfiles: MasterProfile[] = [
     district: "Печерський район",
     lastSeenText: "Був на сайті 2 години тому",
     registeredText: "Зареєстрований з червня 2026",
+    avatarUrl: "/images/andrey-ponomarenko-avatar.jpg",
     rating: 5,
     reviews: 12,
     description:
