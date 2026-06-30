@@ -23,6 +23,7 @@ export type MasterProfile = {
   initials: string;
   accent: string;
   services: { name: string; price: string }[];
+  contacts?: { label: string; value: string; href: string }[];
   works: {
     title: string;
     location: string;
@@ -216,6 +217,12 @@ export const masterProfiles: MasterProfile[] = [
       { name: "Укладка плитки", price: "від 500 грн/м²" },
       { name: "Короби та перегородки", price: "від 500 грн" },
       { name: "Підготовка основи під плитку", price: "від 350 грн/м²" },
+    ],
+    contacts: [
+      { label: "Телефон", value: "+380 67 123 45 67", href: "tel:+380671234567" },
+      { label: "Telegram", value: "@andrey_master", href: "https://t.me/andrey_master" },
+      { label: "Viber", value: "+380 67 123 45 67", href: "viber://chat?number=%2B380671234567" },
+      { label: "WhatsApp", value: "+380 67 123 45 67", href: "https://wa.me/380671234567" },
     ],
     works: [
       {

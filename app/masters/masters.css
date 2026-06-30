@@ -622,6 +622,29 @@
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.directory-calendar-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dfe8e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #173724;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.directory-calendar-close:hover {
+  border-color: #ffb18d;
+  background: #fff7f2;
+  color: #d7551c;
+}
+
 .directory-calendar-popover.is-open {
   opacity: 1;
   pointer-events: auto;
@@ -727,7 +750,8 @@
   font-size: 11px;
   font-weight: 850;
   background: #f8faf8;
-  cursor: pointer;
+  cursor: default;
+  user-select: none;
 }
 
 .directory-calendar-day.is-free {
@@ -740,31 +764,6 @@
   border-color: #ffd0c0;
   background: #fff1ea;
   color: #b94a22;
-  cursor: not-allowed;
-}
-
-.directory-calendar-day.is-selected {
-  border-color: #ff6b2c;
-  background: #ff6b2c;
-  color: #fff;
-  box-shadow: 0 7px 14px rgba(255, 107, 44, 0.22);
-}
-
-.directory-calendar-day:disabled {
-  opacity: 0.7;
-}
-
-.directory-calendar-selected {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #fff7f2;
-  color: #5f6c65;
-  font-size: 11px;
-}
-
-.directory-calendar-selected strong {
-  color: #17231d;
 }
 
 .directory-calendar-legend {

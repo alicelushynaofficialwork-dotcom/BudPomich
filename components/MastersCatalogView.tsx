@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import type { MasterProfile } from "@/lib/masters";
 import {
@@ -59,11 +59,6 @@ function readAvailabilitySlots(masterId: string) {
   }
 }
 
-function formatCatalogDate(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return `${day} ${catalogMonthNames[month - 1].toLowerCase()} ${year}`;
-}
-
 export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
   const [profileEdits, setProfileEdits] = useState<Record<string, EditableMasterProfile>>({});
   const [expandedServiceCards, setExpandedServiceCards] = useState<Record<string, boolean>>({});
@@ -71,7 +66,6 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
   const [availabilitySlots, setAvailabilitySlots] = useState<Record<string, AvailabilitySlots>>({});
   const [openCalendarCard, setOpenCalendarCard] = useState<string | null>(null);
   const [calendarMonths, setCalendarMonths] = useState<Record<string, typeof defaultCalendarMonth>>({});
-  const [selectedBookingDates, setSelectedBookingDates] = useState<Record<string, string>>({});
   const visibleMasters = useMemo(
     () => masters.map((master) => mergeMasterProfile(master, profileEdits[master.id])),
     [masters, profileEdits],
@@ -131,15 +125,6 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
     });
   }
 
-  function selectBookingDate(masterId: string, dateKey: string, status: "free" | "busy") {
-    if (status === "busy") return;
-
-    setSelectedBookingDates((current) => ({
-      ...current,
-      [masterId]: dateKey,
-    }));
-  }
-
   return (
     <main className="masters-page">
       <SiteHeader active="masters" showBecomeMaster />
@@ -191,7 +176,6 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
               const dateKey = formatDateKey(calendarMonth.year, calendarMonth.month, day);
               return (masterAvailability[dateKey] ?? "free") === "free";
             }).length;
-            const selectedDate = selectedBookingDates[master.id];
             const isCalendarOpen = openCalendarCard === master.id;
 
             return (
@@ -292,11 +276,17 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
                       >
                         <CalendarDays size={17} />
                       </button>
-                      <Link href={`/profile/${master.id}${selectedDate ? `?date=${selectedDate}` : ""}#booking`}>
-                        {selectedDate ? `Домовитись на ${formatCatalogDate(selectedDate)}` : "Домовитись на вільну дату майстра"}
-                      </Link>
+                      <Link href={`/profile/${master.id}#booking`}>Домовитись на вільну дату майстра</Link>
                     </div>
                     <div className={`directory-calendar-popover ${isCalendarOpen ? "is-open" : ""}`}>
+                      <button
+                        className="directory-calendar-close"
+                        type="button"
+                        aria-label="Закрити календар"
+                        onClick={() => setOpenCalendarCard(null)}
+                      >
+                        <X size={14} />
+                      </button>
                       <div className="directory-calendar-head">
                         <span>Календар майстра</span>
                         <div className="directory-calendar-toolbar">
@@ -325,27 +315,18 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
 
                           const dateKey = formatDateKey(calendarMonth.year, calendarMonth.month, day);
                           const status = masterAvailability[dateKey] ?? "free";
-                          const isSelected = selectedDate === dateKey;
 
                           return (
-                            <button
-                              className={`directory-calendar-day is-${status} ${isSelected ? "is-selected" : ""}`}
-                              type="button"
+                            <span
+                              className={`directory-calendar-day is-${status}`}
                               key={dateKey}
-                              disabled={status === "busy"}
-                              aria-pressed={isSelected}
-                              onClick={() => selectBookingDate(master.id, dateKey, status)}
+                              aria-label={`${day}: ${status === "busy" ? "зайнято" : "вільно"}`}
                             >
                               {day}
-                            </button>
+                            </span>
                           );
                         })}
                       </div>
-                      {selectedDate && (
-                        <p className="directory-calendar-selected">
-                          Обрано: <strong>{formatCatalogDate(selectedDate)}</strong>
-                        </p>
-                      )}
                       <div className="directory-calendar-legend">
                         <span>
                           <i className="is-free" /> Вільно

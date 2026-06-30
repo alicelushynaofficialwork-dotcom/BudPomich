@@ -2,9 +2,23 @@
 
 import Link from "next/link";
 import { type ChangeEvent, type CSSProperties, type SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, LayoutDashboard, MapPin, Pause, Pencil, Play, Star, X } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  MapPin,
+  MessageCircle,
+  Pause,
+  Pencil,
+  Phone,
+  PhoneCall,
+  Play,
+  Send,
+  Star,
+  X,
+} from "lucide-react";
 import { BookingForm, DirectMessageForm } from "@/components/BookingForm";
-import { ProfileEditForm } from "@/components/ProfileEditForm";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getMasterServices } from "@/lib/master-services";
 import type { MasterProfile } from "@/lib/masters";
@@ -140,7 +154,6 @@ function buildPortfolioReviews(items: PortfolioItem[], totalReviews: number): Po
 export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProps) {
   const [profileEdit, setProfileEdit] = useState<EditableMasterProfile | null>(null);
   const [activeProfileSection, setActiveProfileSection] = useState<ProfileSectionId>("about");
-  const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [isAboutEditing, setIsAboutEditing] = useState(false);
   const [aboutDraft, setAboutDraft] = useState(master.fullDescription);
   const [aboutStatus, setAboutStatus] = useState<SaveStatus>("idle");
@@ -165,6 +178,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
     comment: "",
   });
   const [locationStatus, setLocationStatus] = useState<SaveStatus>("idle");
+  const [locationError, setLocationError] = useState("");
   const [isServicesEditing, setIsServicesEditing] = useState(false);
   const [servicesDraft, setServicesDraft] = useState(master.services);
   const [servicesStatus, setServicesStatus] = useState<SaveStatus>("idle");
@@ -178,8 +192,10 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
   const visibleMaster = useMemo(() => mergeMasterProfile(master, profileEdit), [master, profileEdit]);
   const avatarInputId = `profile-avatar-upload-${visibleMaster.id}`;
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const heroEditorRef = useRef<HTMLDivElement | null>(null);
   const isOwnerView = ownerSource === "profile" || visibleMaster.id === "andrey-ponomarenko";
   const priceFromServices = formatPriceFromServices(visibleMaster.services, visibleMaster.priceFrom);
+  const contactMethods = visibleMaster.contacts ?? [];
   const bookingServices = getMasterServices(visibleMaster.id);
   const portfolioItems = useMemo(() => {
     const defaults = defaultPortfolioItems.filter((item) => item.masterId === visibleMaster.id);
@@ -195,6 +211,12 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
   const portfolioSlideCount = portfolioItems.length || visibleMaster.works.length;
   const isServiceAreaPlaceholder = !locationDraft.serviceArea.trim();
   const isTravelPlaceholder = !locationDraft.travel.trim();
+  const isLocationRequiredFilled = Boolean(
+    locationDraft.city.trim() &&
+      locationDraft.district.trim() &&
+      locationDraft.serviceArea.trim() &&
+      locationDraft.travel.trim(),
+  );
   const avatarCropStyle = {
     objectPosition: `${visibleMaster.avatarPositionX ?? 50}% ${visibleMaster.avatarPositionY ?? 35}%`,
     transformOrigin: `${visibleMaster.avatarPositionX ?? 50}% ${visibleMaster.avatarPositionY ?? 35}%`,
@@ -447,6 +469,12 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
   }
 
   async function saveLocationSection() {
+    if (!isLocationRequiredFilled) {
+      setLocationError("Заповніть місто, район, зону роботи та виїзд.");
+      setLocationStatus("error");
+      return;
+    }
+
     const nextProfile = getEditableProfile({
       city: locationDraft.city.trim(),
       district: locationDraft.district.trim(),
@@ -590,7 +618,26 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
     );
   }
 
-  function openHeroEditor() {
+  function scrollToHeroEditor() {
+    requestAnimationFrame(() => {
+      const editor = heroEditorRef.current;
+      if (!editor) return;
+
+      const topOffset = Math.min(320, Math.max(180, window.innerHeight * 0.32));
+      window.scrollTo({
+        top: Math.max(0, editor.getBoundingClientRect().top + window.scrollY - topOffset),
+        behavior: "smooth",
+      });
+    });
+  }
+
+  function openAboutEditor() {
+    setAboutDraft(visibleMaster.fullDescription);
+    setAboutStatus("idle");
+    setIsAboutEditing(true);
+  }
+
+  function openHeroEditor(shouldScroll = true) {
     setHeroDraft({
       name: visibleMaster.name,
       profession: visibleMaster.profession,
@@ -601,17 +648,31 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
     });
     setHeroStatus("idle");
     setIsHeroEditing(true);
+    if (shouldScroll) {
+      scrollToHeroEditor();
+    }
+  }
+
+  function openFullProfileEditor() {
+    openHeroEditor(false);
+    openAboutEditor();
+    openLocationEditor();
+    openServicesEditor();
+    openPortfolioEditor();
+    setActiveProfileSection("about");
+    scrollToHeroEditor();
   }
 
   function openLocationEditor() {
     setLocationDraft({
-      city: visibleMaster.city,
+      city: "",
       district: visibleMaster.district ?? "",
       serviceArea: locationDraft.serviceArea,
       travel: locationDraft.travel,
       comment: locationDraft.comment,
     });
     setLocationStatus("idle");
+    setLocationError("");
     setIsLocationEditing(true);
   }
 
@@ -688,6 +749,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
       comment: locationDraft.comment,
     });
     setLocationStatus("idle");
+    setLocationError("");
     setIsLocationEditing(false);
   }
 
@@ -837,9 +899,9 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
               </div>
             )}
           </div>
-          <div>
+          <div className="profile-hero-main">
             {isOwnerView ? (
-              <button className="eyebrow profile-profession-edit-trigger" type="button" onClick={openHeroEditor}>
+              <button className="eyebrow profile-profession-edit-trigger" type="button" onClick={() => openHeroEditor()}>
                 {visibleMaster.profession}
               </button>
             ) : (
@@ -847,22 +909,10 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
             )}
             <div
               className={`profile-hero-edit-panel ${isOwnerView ? "" : "profile-hero-public-panel"}`}
-              style={{
-                maxWidth: 620,
-                marginTop: 12,
-                padding: "12px",
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) auto",
-                gap: "10px 12px",
-                alignItems: "center",
-                border: "1px solid #f0c4ad",
-                borderRadius: 12,
-                background: "rgba(255, 247, 242, 0.72)",
-              }}
             >
-              <h1 style={{ margin: 0 }}>{visibleMaster.name}</h1>
+              <h1>{visibleMaster.name}</h1>
               {isOwnerView && (
-                <button className="profile-hero-edit-button" type="button" onClick={openHeroEditor}>
+                <button className="profile-hero-edit-button" type="button" onClick={openFullProfileEditor}>
                   <Pencil size={13} /> Редагувати
                 </button>
               )}
@@ -870,15 +920,14 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <button
                   className="profile-location profile-hero-edit-trigger"
                   type="button"
-                  onClick={openHeroEditor}
+                  onClick={() => openHeroEditor()}
                   aria-label="Редагувати локацію та досвід"
-                  style={{ gridColumn: "1 / -1", margin: 0 }}
                 >
                   <MapPin size={15} /> {visibleMaster.city}
                   {visibleMaster.district ? `, ${visibleMaster.district}` : ""} · {visibleMaster.experience}
                 </button>
               ) : (
-                <p className="profile-location" style={{ gridColumn: "1 / -1", margin: 0 }}>
+                <p className="profile-location">
                   <MapPin size={15} /> {visibleMaster.city}
                   {visibleMaster.district ? `, ${visibleMaster.district}` : ""} · {visibleMaster.experience}
                 </p>
@@ -887,14 +936,13 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                 <button
                   className="profile-short-description profile-hero-edit-trigger"
                   type="button"
-                  onClick={openHeroEditor}
+                  onClick={() => openHeroEditor()}
                   aria-label="Редагувати короткий опис"
-                  style={{ gridColumn: "1 / -1" }}
                 >
                   {limitHeroDescription(visibleMaster.description)}
                 </button>
               ) : (
-                <p className="profile-short-description" style={{ gridColumn: "1 / -1", margin: 0 }}>
+                <p className="profile-short-description">
                   {limitHeroDescription(visibleMaster.description)}
                 </p>
               )}
@@ -904,7 +952,6 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                   type="button"
                   onClick={openLocationEditor}
                   aria-label="Редагувати повну локацію"
-                  style={{ gridColumn: "1 / -1" }}
                 >
                   <span className={isServiceAreaPlaceholder ? "is-placeholder" : undefined}>
                     <strong>Зона роботи</strong>
@@ -922,7 +969,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                   )}
                 </button>
               ) : (
-                <div className="profile-hero-location-details" style={{ gridColumn: "1 / -1" }}>
+                <div className="profile-hero-location-details">
                   <span className={isServiceAreaPlaceholder ? "is-placeholder" : undefined}>
                     <strong>Зона роботи</strong>
                     {locationDraft.serviceArea || defaultServiceArea}
@@ -945,7 +992,6 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                   type="button"
                   onClick={openServicesEditor}
                   aria-label="Редагувати послуги"
-                  style={{ gridColumn: "1 / -1" }}
                 >
                   <span className="profile-hero-services-head">
                     <strong>Послуги</strong>
@@ -961,7 +1007,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                   </span>
                 </button>
               ) : (
-                <div className="profile-hero-services" style={{ gridColumn: "1 / -1" }}>
+                <div className="profile-hero-services">
                   <span className="profile-hero-services-head">
                     <strong>Послуги</strong>
                     <small>{visibleMaster.services.length} позиції</small>
@@ -992,26 +1038,54 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
             <span>Вартість робіт</span>
             <strong>{priceFromServices}</strong>
             {isOwnerView && (
-              <button className="profile-secondary-action" type="button" onClick={openHeroEditor}>
+              <button className="profile-secondary-action" type="button" onClick={openFullProfileEditor}>
                 <Pencil size={15} /> Редагувати профіль
               </button>
             )}
-            <a href="#booking">Домовитись на вільну дату майстра</a>
+            <a href="#booking">
+              Онлайн-заявка
+              <small>(Домовитись на вільну дату майстра)</small>
+            </a>
             <a className="profile-secondary-action" href="#message">
-              Написати майстру без вибору дати
+              Прямий звʼязок
+              <small>(Написати майстру без вибору дати)</small>
             </a>
           </div>
 
           <div className="profile-contact-card">
             <span>Контакти</span>
             <strong>Звʼязок з майстром</strong>
-            <a href="#message">Написати повідомлення</a>
-            <a href="#booking">Домовитись на дату</a>
+            {contactMethods.length > 0 && (
+              <div className="profile-contact-list" aria-label="Контакти майстра">
+                {contactMethods.map((contact) => {
+                  const contactLabel = contact.label.toLowerCase();
+
+                  return (
+                    <a className="profile-contact-method" href={contact.href} key={`${contact.label}-${contact.value}`}>
+                      <span className={`profile-contact-icon profile-contact-icon-${contactLabel}`}>
+                        {contactLabel === "telegram" ? (
+                          <Send size={16} />
+                        ) : contactLabel === "viber" ? (
+                          <PhoneCall size={16} />
+                        ) : contactLabel === "whatsapp" ? (
+                          <MessageCircle size={16} />
+                        ) : (
+                          <Phone size={16} />
+                        )}
+                      </span>
+                      <span className="profile-contact-label">{contact.label}</span>
+                      <strong>{contact.value}</strong>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+            <a className="profile-contact-action" href="#message">Написати повідомлення</a>
           </div>
         </div>
 
         {isOwnerView && isHeroEditing && (
-          <div className="profile-hero-inline-editor">
+          <div className="profile-hero-inline-editor" ref={heroEditorRef}>
             <label>
               Імʼя
               <input
@@ -1105,7 +1179,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         <aside className="public-profile-owner-bar profile-owner-return">
           <span>Ви переглядаєте свій профіль очима клієнта</span>
           <div>
-            <button type="button" onClick={() => setIsInlineEditing(true)}>
+            <button type="button" onClick={openFullProfileEditor}>
               <Pencil size={15} /> Редагувати профіль
             </button>
             <Link href="/dashboard">
@@ -1113,25 +1187,6 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
             </Link>
           </div>
         </aside>
-      )}
-
-      {isOwnerView && isInlineEditing && (
-        <section className="public-profile-inline-editor" id="inline-profile-editor">
-          <div className="public-profile-inline-editor-head">
-            <div>
-              <p className="overline">Редагування профілю</p>
-              <h2>Зміни відображаються на цій сторінці</h2>
-            </div>
-            <button type="button" onClick={() => setIsInlineEditing(false)}>
-              Закрити
-            </button>
-          </div>
-          <ProfileEditForm
-            master={visibleMaster}
-            onCancel={() => setIsInlineEditing(false)}
-            onSaved={(nextProfile) => setProfileEdit(nextProfile)}
-          />
-        </section>
       )}
 
       <div className="profile-sections-layout">
@@ -1203,9 +1258,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    setAboutDraft(visibleMaster.fullDescription);
-                    setAboutStatus("idle");
-                    setIsAboutEditing(true);
+                    openAboutEditor();
                   }}
                 >
                   <Pencil size={14} /> Редагувати
@@ -1291,8 +1344,13 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                       Місто
                       <input
                         value={locationDraft.city}
+                        placeholder="Київ"
                         onChange={(event) =>
-                          setLocationDraft((current) => ({ ...current, city: event.target.value }))
+                          {
+                            setLocationDraft((current) => ({ ...current, city: event.target.value }));
+                            setLocationError("");
+                            setLocationStatus("idle");
+                          }
                         }
                         required
                       />
@@ -1301,9 +1359,15 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                       Район
                       <input
                         value={locationDraft.district}
+                        placeholder="Печерський район"
                         onChange={(event) =>
-                          setLocationDraft((current) => ({ ...current, district: event.target.value }))
+                          {
+                            setLocationDraft((current) => ({ ...current, district: event.target.value }));
+                            setLocationError("");
+                            setLocationStatus("idle");
+                          }
                         }
+                        required
                       />
                     </label>
                     <label>
@@ -1312,8 +1376,13 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                         value={locationDraft.serviceArea}
                         placeholder={defaultServiceArea}
                         onChange={(event) =>
-                          setLocationDraft((current) => ({ ...current, serviceArea: event.target.value }))
+                          {
+                            setLocationDraft((current) => ({ ...current, serviceArea: event.target.value }));
+                            setLocationError("");
+                            setLocationStatus("idle");
+                          }
                         }
+                        required
                       />
                     </label>
                     <label>
@@ -1322,8 +1391,13 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                         value={locationDraft.travel}
                         placeholder={defaultTravelText}
                         onChange={(event) =>
-                          setLocationDraft((current) => ({ ...current, travel: event.target.value }))
+                          {
+                            setLocationDraft((current) => ({ ...current, travel: event.target.value }));
+                            setLocationError("");
+                            setLocationStatus("idle");
+                          }
                         }
+                        required
                       />
                     </label>
                     <label className="profile-edit-wide">
@@ -1332,19 +1406,28 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
                         rows={3}
                         value={locationDraft.comment}
                         onChange={(event) =>
-                          setLocationDraft((current) => ({ ...current, comment: event.target.value }))
+                          {
+                            setLocationDraft((current) => ({ ...current, comment: event.target.value }));
+                            setLocationError("");
+                            setLocationStatus("idle");
+                          }
                         }
                         placeholder="Наприклад, зручний час для виїзду або додаткові умови роботи"
                       />
                     </label>
                   </div>
+                  {locationError && (
+                    <p className="profile-about-inline-status profile-about-inline-error" role="alert">
+                      {locationError}
+                    </p>
+                  )}
                   <div className="profile-about-inline-actions">
                     <button type="button" onClick={cancelLocationEditor}>
                       <X size={15} /> Скасувати
                     </button>
                     <button
                       type="button"
-                      disabled={locationStatus === "saving" || !locationDraft.city.trim()}
+                      disabled={locationStatus === "saving" || !isLocationRequiredFilled}
                       onClick={saveLocationSection}
                     >
                       <Check size={15} />

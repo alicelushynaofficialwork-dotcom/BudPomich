@@ -232,6 +232,129 @@
   z-index: 1;
 }
 
+.profile-person {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.profile-avatar-stack {
+  align-self: start;
+  padding-top: 116px;
+}
+
+.profile-hero-main {
+  min-width: 0;
+}
+
+.profile-hero-main > .profile-profession-edit-trigger,
+.profile-hero-main > .eyebrow {
+  margin-left: 0;
+}
+
+.profile-hero-edit-panel {
+  max-width: 620px;
+  margin-top: 12px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid #f0c4ad;
+  border-radius: 14px;
+  background: rgba(255, 247, 242, 0.78);
+}
+
+.profile-hero-edit-panel h1 {
+  margin: 0;
+}
+
+.profile-hero-edit-panel > .profile-location,
+.profile-hero-edit-panel > .profile-short-description,
+.profile-hero-edit-panel > .profile-hero-location-details,
+.profile-hero-edit-panel > .profile-hero-services {
+  grid-column: 1 / -1;
+}
+
+.profile-hero-edit-panel > .profile-location,
+.profile-hero-edit-panel > .profile-short-description {
+  margin: 0;
+}
+
+.profile-hero-location-details {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-hero-edit-trigger.profile-hero-location-details,
+.profile-hero-edit-trigger.profile-hero-services {
+  width: 100%;
+  text-align: left;
+}
+
+.profile-hero-location-details > span {
+  min-height: 34px;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 107, 44, 0.32);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.profile-hero-location-details > span strong {
+  color: #7a887f;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-hero-services {
+  padding: 10px;
+  display: block;
+  border: 1px solid rgba(255, 107, 44, 0.32);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.profile-hero-services-list {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-hero-service-item {
+  min-width: 0;
+  padding: 9px 10px;
+  display: grid;
+  gap: 3px;
+  border-radius: 10px;
+  background: rgba(242, 247, 244, 0.9);
+}
+
+.profile-hero-service-item > span {
+  overflow: hidden;
+  color: #405047;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-hero-service-item > strong {
+  color: #123323;
+  font-size: 12px;
+}
+
+.profile-hero-side {
+  align-self: start;
+}
+
 .profile-owner-return {
   margin-top: 18px;
 }
@@ -269,6 +392,7 @@ button.profile-owner-edit-link {
 
 .profile-hero-inline-editor {
   grid-column: 1 / -1;
+  scroll-margin-top: min(32vh, 320px);
   padding: 18px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -377,6 +501,11 @@ button.profile-owner-edit-link {
   font-weight: 850;
 }
 
+.profile-about-inline-error {
+  margin: 0;
+  color: #b94a22;
+}
+
 .profile-edit-wide {
   grid-column: 1 / -1;
 }
@@ -404,6 +533,15 @@ button.profile-owner-edit-link {
   background: #fff;
   color: #b24622;
   cursor: pointer;
+}
+
+.profile-action-card .profile-secondary-action small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .profile-inline-service-row > button:disabled {
@@ -1258,6 +1396,20 @@ button.profile-portfolio-edit {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
+  .profile-person {
+    grid-template-columns: 140px minmax(0, 1fr);
+  }
+
+  .profile-avatar-stack {
+    padding-top: 58px;
+  }
+
+  .profile-hero-side {
+    grid-column: 1 / -1;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .public-profile-action {
     grid-column: 1 / -1;
   }
@@ -1326,6 +1478,35 @@ button.profile-portfolio-edit {
 
   .public-profile-hero {
     padding: 27px 22px;
+    grid-template-columns: 1fr;
+  }
+
+  .profile-person {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar-stack {
+    padding-top: 0;
+  }
+
+  .profile-hero-side {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-hero-edit-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-hero-edit-panel .profile-hero-edit-button {
+    justify-self: start;
+  }
+
+  .profile-hero-location-details > span {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .profile-hero-services-list {
     grid-template-columns: 1fr;
   }
 

@@ -932,7 +932,7 @@ button.profile-hero-services.profile-hero-edit-trigger:hover {
 
 .profile-contact-card > span,
 .profile-contact-card > strong,
-.profile-contact-card > a {
+.profile-contact-card > .profile-contact-action {
   display: block;
 }
 
@@ -951,7 +951,78 @@ button.profile-hero-services.profile-hero-edit-trigger:hover {
   line-height: 1.2;
 }
 
-.profile-contact-card > a {
+.profile-contact-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profile-contact-method {
+  display: grid;
+  grid-template-columns: 34px minmax(74px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 107, 44, 0.28);
+  border-radius: 11px;
+  background: rgba(255, 248, 244, 0.78);
+  color: #123323;
+}
+
+.profile-contact-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff1e9;
+  color: #ff5a1f;
+}
+
+.profile-contact-icon-telegram {
+  background: #e8f4ff;
+  color: #2481cc;
+}
+
+.profile-contact-icon-viber {
+  background: #f0e9ff;
+  color: #6f4bd8;
+}
+
+.profile-contact-icon-whatsapp {
+  background: #e8f8ef;
+  color: #1f9d62;
+}
+
+.profile-contact-label {
+  color: #7b8981;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-contact-method > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #17231d;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-contact-method:hover {
+  border-color: #ff6b2c;
+  background: #fff;
+}
+
+.profile-contact-method:hover > strong {
+  color: #ff5a1f;
+}
+
+.profile-contact-card > .profile-contact-action {
   padding: 10px 12px;
   border: 1px solid #dce5df;
   border-radius: 11px;
@@ -961,11 +1032,11 @@ button.profile-hero-services.profile-hero-edit-trigger:hover {
   text-align: center;
 }
 
-.profile-contact-card > a + a {
+.profile-contact-card > .profile-contact-action + .profile-contact-action {
   margin-top: 8px;
 }
 
-.profile-contact-card > a:hover {
+.profile-contact-card > .profile-contact-action:hover {
   border-color: #ff6b2c;
   color: #ff5a1f;
 }
