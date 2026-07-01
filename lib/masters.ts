@@ -24,6 +24,8 @@ export type MasterProfile = {
   accent: string;
   services: { name: string; price: string }[];
   contacts?: { label: string; value: string; href: string }[];
+  isProfileActive?: boolean;
+  acceptsBudPomichRequests?: boolean;
   works: {
     title: string;
     location: string;

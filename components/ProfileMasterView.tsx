@@ -1,24 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, type CSSProperties, type SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  LayoutDashboard,
+  BadgeCheck,
+  BriefcaseBusiness,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Hammer,
   MapPin,
-  MessageCircle,
-  Pause,
-  Pencil,
+  MessageSquare,
   Phone,
-  PhoneCall,
-  Play,
-  Send,
   Star,
+  UserRoundCheck,
   X,
 } from "lucide-react";
 import { BookingForm, DirectMessageForm } from "@/components/BookingForm";
+import { FollowMasterButton } from "@/components/FollowMasterButton";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getMasterServices } from "@/lib/master-services";
 import type { MasterProfile } from "@/lib/masters";
@@ -26,15 +25,11 @@ import {
   type EditableMasterProfile,
   masterProfileStorageKey,
   mergeMasterProfile,
-  normalizeMasterServices,
 } from "@/lib/master-profile-edit";
 import { formatPriceFromServices } from "@/lib/master-pricing";
 import {
-  calculateLineTotal,
-  calculatePortfolioTotal,
   defaultPortfolioItems,
   formatUah,
-  type PortfolioWorkLine,
   type PortfolioItem,
   portfolioStorageKey,
 } from "@/lib/portfolio";
@@ -44,1996 +39,714 @@ type ProfileMasterViewProps = {
   ownerSource?: "profile";
 };
 
-type SaveStatus = "idle" | "saving" | "success" | "error";
-
-type ProfileSectionId = "about" | "location" | "services" | "portfolio" | "reviews" | "message" | "booking";
-
-type LocationDraft = {
-  city: string;
-  district: string;
-  serviceArea: string;
-  travel: string;
-  comment: string;
-};
-
-type AvatarDraft = {
-  url: string;
-  zoom: number;
-  positionX: number;
-  positionY: number;
-};
-
-type HeroDraft = {
-  name: string;
-  profession: string;
-  city: string;
-  district: string;
-  experience: string;
-  description: string;
-};
-
-type PortfolioReview = {
+type Review = {
   id: string;
-  itemId: string;
-  itemTitle: string;
   author: string;
-  date: string;
+  date?: string;
   rating: number;
   text: string;
 };
 
-const defaultServiceArea = "Київ та передмістя до 30 км";
-const defaultTravelText = "По місту та за місто за домовленістю";
-const locationDetailsStorageKey = "budpomich.profile-location-details";
-const heroDescriptionMaxLength = 250;
-const profileSectionFromHash: Record<string, ProfileSectionId> = {
-  "#about-master": "about",
-  "#location": "location",
-  "#services": "services",
-  "#portfolio": "portfolio",
-  "#reviews": "reviews",
-  "#message": "message",
-  "#booking": "booking",
-};
+const fallbackImage = "/images/portfolio-triptych.png";
 
-const portfolioReviewTemplates = [
+const reviewTemplates: Omit<Review, "id">[] = [
   {
     author: "Олена К.",
     date: "червень 2026",
-    text: "Роботу виконано акуратно, майстер пояснив кошторис і залишив після себе чисте приміщення.",
+    rating: 5,
+    text: "Майстер швидко відповів, пояснив кошторис і виконав роботу акуратно.",
   },
   {
     author: "Сергій М.",
     date: "червень 2026",
-    text: "Сподобалось, що матеріали і терміни були узгоджені до старту, без неприємних сюрпризів.",
+    rating: 5,
+    text: "Сподобалось, що матеріали, строки та обсяг робіт були узгоджені до старту.",
   },
   {
     author: "Ірина В.",
     date: "травень 2026",
-    text: "Плитка та гіпсокартон зроблені рівно, майстер швидко відповідав на питання під час ремонту.",
-  },
-  {
-    author: "Максим П.",
-    date: "травень 2026",
-    text: "Кошторис збігся з фінальною оплатою, робота виглядає охайно і надійно.",
+    rating: 4.8,
+    text: "Робота виглядає охайно, після завершення майстер залишив чисте приміщення.",
   },
 ];
 
-function getPortfolioPhotos(item: PortfolioItem) {
-  const photos = item.photoUrls?.length
-    ? item.photoUrls
-    : item.photoUrl
-      ? [item.photoUrl]
-      : [];
-
-  const fallback = "/images/portfolio-triptych.png";
-  return Array.from(new Set([...photos, fallback])).filter(Boolean);
+function getUnit(price: string) {
+  if (price.includes("/м²") || price.includes("/мВІ")) return "грн/м²";
+  if (price.toLowerCase().includes("день")) return "грн/день";
+  return "грн/робота";
 }
 
-function limitHeroDescription(description: string) {
-  return description.trim().slice(0, heroDescriptionMaxLength);
+function buildReviews(totalReviews: number): Review[] {
+  if (totalReviews <= 0) return [];
+
+  return Array.from({ length: Math.min(totalReviews, 3) }, (_, index) => ({
+    id: `review-${index}`,
+    ...reviewTemplates[index % reviewTemplates.length],
+  }));
 }
 
-function buildPortfolioReviews(items: PortfolioItem[], totalReviews: number): PortfolioReview[] {
-  if (!items.length || totalReviews <= 0) return [];
+function getPortfolioMeta(item: PortfolioItem) {
+  const totalVolume = item.workLines.reduce((sum, line) => sum + line.volume, 0);
+  const unit = item.workLines[0]?.unit ?? "м²";
 
-  return Array.from({ length: totalReviews }, (_, index) => {
-    const item = items[index % items.length];
-    const template = portfolioReviewTemplates[index % portfolioReviewTemplates.length];
+  return {
+    volume: totalVolume ? `${totalVolume} ${unit}` : "обсяг за кошторисом",
+    term: item.workLines.length > 1 ? "5-7 днів" : "1-3 дні",
+  };
+}
 
-    return {
-      id: `${item.id}-review-${index}`,
-      itemId: item.id,
-      itemTitle: item.title,
-      rating: index % 5 === 4 ? 4.8 : 5,
-      ...template,
-    };
-  });
+function hasFilledContacts(contacts: MasterProfile["contacts"] | undefined) {
+  return Boolean(contacts?.some((contact) => contact.value.trim()));
+}
+
+function normalizeVisibleBrand(value: string) {
+  return value.replace(/BudPomich/g, "БудПомiч");
+}
+
+function getContactValue(
+  contacts: MasterProfile["contacts"] | undefined,
+  label: string | string[],
+) {
+  const labels = Array.isArray(label) ? label : [label];
+  const contact = contacts?.find((item) => labels.includes(item.label) && item.value.trim());
+  return contact ? { ...contact, value: normalizeVisibleBrand(contact.value) } : undefined;
+}
+
+function hasPhoneContact(master: MasterProfile) {
+  return Boolean(getContactValue(master.contacts, "Телефон")?.value.trim());
+}
+
+function PublicContactsSection({ master }: { master: MasterProfile }) {
+  const phone = getContactValue(master.contacts, "Телефон");
+  const telegram = getContactValue(master.contacts, "Telegram");
+  const messenger = getContactValue(master.contacts, ["WhatsApp / Viber", "WhatsApp", "Viber"]);
+  const preferred = getContactValue(master.contacts, "Бажаний спосіб звʼязку");
+  const contacts = [
+    phone && { label: "Телефон", value: phone.value, href: phone.href, icon: Phone },
+    telegram && { label: "Telegram", value: telegram.value, href: telegram.href, icon: MessageSquare },
+    messenger && { label: "WhatsApp / Viber", value: messenger.value, href: messenger.href, icon: MessageSquare },
+  ].filter(Boolean) as Array<{ label: string; value: string; href: string; icon: typeof Phone }>;
+
+  if (!contacts.length && !preferred?.value) return null;
+
+  return (
+    <section className="bp-section bp-public-contacts" id="contacts">
+      <div className="bp-section-head bp-section-head-row">
+        <div>
+          <p className="bp-eyebrow">Контакти</p>
+          <h2>Способи звʼязку</h2>
+        </div>
+        {preferred?.value && <span>Зручно: {preferred.value}</span>}
+      </div>
+      <div className="bp-public-contacts-grid">
+        {contacts.map(({ label, value, href, icon: Icon }) => (
+          <a className="bp-public-contact-card" href={href || "#message"} key={label}>
+            <span>
+              <Icon size={18} />
+            </span>
+            <div>
+              <small>{label}</small>
+              <strong>{value}</strong>
+            </div>
+          </a>
+        ))}
+      </div>
+      <p className="bp-public-contacts-note">
+        Можете написати напряму або залишити заявку через БудПомiч, щоб узгодити послугу, дату та деталі задачі.
+      </p>
+    </section>
+  );
+}
+
+function ProfileHero({
+  master,
+  priceFromServices,
+}: {
+  master: MasterProfile;
+  priceFromServices: string;
+}) {
+  const isProfileActive = master.isProfileActive !== false;
+  const acceptsBudPomichRequests = master.acceptsBudPomichRequests !== false;
+  const canBookOnline = isProfileActive && acceptsBudPomichRequests;
+
+  return (
+    <section className="bp-profile-hero" id="profile-top">
+      <div className="bp-profile-photo-column">
+        {hasPhoneContact(master) && (
+          <span className="bp-verified-badge">
+            <BadgeCheck size={16} />
+            Перевірений майстер
+          </span>
+        )}
+        <div className="bp-profile-photo">
+          {master.avatarUrl ? (
+            <img src={master.avatarUrl} alt={`Фото майстра ${master.name}`} />
+          ) : (
+            <span>{master.initials || "М"}</span>
+          )}
+        </div>
+        <div className="bp-photo-status-list">
+          <span className={canBookOnline ? "bp-status-badge" : "bp-status-badge bp-status-badge-inactive"}>
+            <span />
+            {canBookOnline ? "Доступний для заявок" : "Не доступний для заявок"}
+          </span>
+          {canBookOnline && (
+            <span className="bp-budpomich-request-badge">
+              <CheckCircle2 size={15} />
+              Приймаю заявки через БудПомiч
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="bp-profile-hero-content">
+        <p className="bp-eyebrow">{master.profession || "Майстер БудПомiч"}</p>
+        <h1>{master.name || "Майстер БудПомiч"}</h1>
+        <p className="bp-hero-description">
+          {master.description ||
+            "Допоможе оцінити задачу, підібрати матеріали та виконати роботу за узгодженим кошторисом."}
+        </p>
+
+        <div className="bp-hero-facts">
+          <span>
+            <MapPin size={17} />
+            {master.city || "Ваше місто"}
+          </span>
+          <span>
+            <Star size={17} fill="currentColor" />
+            {master.rating?.toFixed(1) ?? "5.0"} · {master.reviews ?? 0} відгуків
+          </span>
+          <span>
+            <BriefcaseBusiness size={17} />
+            {master.experience || "Досвід підтверджено"}
+          </span>
+          <span>
+            <Hammer size={17} />
+            від {priceFromServices}
+          </span>
+        </div>
+
+        <div className="bp-hero-details" aria-label="Додаткова інформація">
+          <div className="bp-hero-detail-card bp-hero-detail-card-main">
+            <MapPin size={18} />
+            <span>Місто</span>
+            <strong>{master.city || "Уточнюється"}</strong>
+          </div>
+          <div className="bp-hero-detail-card">
+            <span>Район</span>
+            <strong>{master.district || "За домовленістю"}</strong>
+          </div>
+          <div className="bp-hero-detail-card">
+            <span>Активність</span>
+            <strong>{master.lastSeenText || "Швидко відповідає"}</strong>
+          </div>
+          <div className="bp-hero-detail-card">
+            <span>На БудПомiч</span>
+            <strong>{master.registeredText || "Профіль перевірено"}</strong>
+          </div>
+        </div>
+
+        <div className="bp-work-area-card" aria-label="Зона роботи та виїзд">
+          <div>
+            <span>Зона роботи</span>
+            <strong>{master.city ? `${master.city} та передмістя до 30 км` : "Місто та передмістя до 30 км"}</strong>
+          </div>
+          <div>
+            <span>Виїзд</span>
+            <strong>По місту та за місто за домовленістю</strong>
+          </div>
+          <div>
+            <span>Коментар</span>
+            <strong>додаткові умови обговорюються перед стартом</strong>
+          </div>
+        </div>
+
+        <div className="bp-hero-actions">
+          {canBookOnline ? (
+            <a className="bp-primary-button" href="#booking">
+              Замовити майстра
+            </a>
+          ) : (
+            <span className="bp-disabled-action">Онлайн заявки вимкнено</span>
+          )}
+          <a className="bp-secondary-button" href="#message">
+            <MessageSquare size={17} />
+            Прямий звʼязок
+          </a>
+          <FollowMasterButton masterId={master.id} masterName={master.name} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProfileTrustStats({
+  master,
+  portfolioCount,
+}: {
+  master: MasterProfile;
+  portfolioCount: number;
+}) {
+  const stats = [
+    { icon: BriefcaseBusiness, label: "Досвід", value: master.experience || "є досвід" },
+    { icon: Hammer, label: "Роботи", value: `${portfolioCount || master.works.length || 1}+` },
+    { icon: MapPin, label: "Місто", value: master.city || "Україна" },
+    { icon: Star, label: "Рейтинг", value: master.rating?.toFixed(1) ?? "5.0" },
+    { icon: Clock3, label: "Відповідь", value: "швидко" },
+    { icon: CheckCircle2, label: "Портфоліо", value: portfolioCount ? "є роботи" : "додається" },
+  ];
+
+  return (
+    <section className="bp-section bp-trust-section">
+      <div className="bp-section-head">
+        <p className="bp-eyebrow">Довіра</p>
+        <h2>Чому клієнти обирають цього майстра</h2>
+      </div>
+      <div className="bp-trust-grid">
+        {stats.map(({ icon: Icon, label, value }) => (
+          <div className="bp-trust-card" key={label}>
+            <Icon size={20} />
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ServicesSection({
+  services,
+  isModal = false,
+}: {
+  services: MasterProfile["services"];
+  isModal?: boolean;
+}) {
+  const safeServices = services.length
+    ? services
+    : [{ name: "Ремонтні роботи", price: "за кошторисом" }];
+  const Tag = isModal ? "div" : "section";
+
+  return (
+    <Tag className={isModal ? "bp-services-modal-content" : "bp-section"} id={isModal ? undefined : "services"}>
+      {!isModal && (
+        <div className="bp-section-head">
+          <p className="bp-eyebrow">Послуги і ціни</p>
+          <h2>Що виконує майстер</h2>
+        </div>
+      )}
+      <div className="bp-services-grid">
+        {safeServices.map((service) => (
+          <article className="bp-service-card" key={`${service.name}-${service.price}`}>
+            <div>
+              <h3>{service.name || "Послуга майстра"}</h3>
+              <p>
+                Акуратне виконання, попередня оцінка обсягу та зрозумілий кошторис перед стартом.
+              </p>
+            </div>
+            <div className="bp-service-price">
+              <strong>{service.price || "за домовленістю"}</strong>
+              <span>{getUnit(service.price || "")}</span>
+            </div>
+            <a href="#booking">Обрати</a>
+          </article>
+        ))}
+      </div>
+    </Tag>
+  );
+}
+
+function PortfolioSection({
+  items,
+  fallbackWorks,
+  isModal = false,
+}: {
+  items: PortfolioItem[];
+  fallbackWorks: MasterProfile["works"];
+  isModal?: boolean;
+}) {
+  const hasPortfolio = items.length > 0;
+  const Tag = isModal ? "div" : "section";
+
+  return (
+    <Tag className={isModal ? "bp-portfolio-modal-content" : "bp-section"} id={isModal ? undefined : "portfolio"}>
+      {!isModal && (
+        <div className="bp-section-head bp-section-head-row">
+          <div>
+            <p className="bp-eyebrow">Портфоліо</p>
+            <h2>Виконані роботи</h2>
+          </div>
+          <span>{hasPortfolio ? `${items.length} робіт` : "приклади робіт"}</span>
+        </div>
+      )}
+
+      <div className="bp-portfolio-grid">
+        {hasPortfolio
+          ? items.map((item) => {
+              const meta = getPortfolioMeta(item);
+              return (
+                <article className="bp-portfolio-card" key={item.id}>
+                  <div className="bp-portfolio-image">
+                    {item.photoUrl ? (
+                      <img src={item.photoUrl || fallbackImage} alt={item.title} />
+                    ) : (
+                      <div className="bp-image-placeholder">Фото роботи</div>
+                    )}
+                  </div>
+                  <div className="bp-portfolio-body">
+                    <span>{item.objectType || "Об'єкт"}</span>
+                    <h3>{item.title || "Робота майстра"}</h3>
+                    <p>{item.description || "Короткий опис роботи буде додано майстром."}</p>
+                    <div className="bp-portfolio-meta">
+                      <small>{item.city || "Місто"}</small>
+                      <small>{formatUah(item.totalAmount || 0)}</small>
+                      <small>{meta.volume}</small>
+                      <small>{meta.term}</small>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          : fallbackWorks.map((work, index) => (
+              <article className="bp-portfolio-card" key={`${work.title}-${index}`}>
+                <div className="bp-portfolio-image">
+                  <div className="bp-image-placeholder">Фото роботи</div>
+                </div>
+                <div className="bp-portfolio-body">
+                  <span>{work.category ?? "Об'єкт"}</span>
+                  <h3>{work.title}</h3>
+                  <p>{work.description ?? "Комплекс робіт виконано за узгодженим кошторисом."}</p>
+                  <div className="bp-portfolio-meta">
+                    <small>{work.location}</small>
+                    <small>{work.total ?? "за кошторисом"}</small>
+                    <small>{work.details?.[0]?.quantity ?? "обсяг уточнюється"}</small>
+                    <small>1-7 днів</small>
+                  </div>
+                </div>
+              </article>
+            ))}
+      </div>
+    </Tag>
+  );
+}
+
+function ReviewsSection({ reviews }: { reviews: Review[] }) {
+  return (
+    <section className="bp-section" id="reviews">
+      <div className="bp-section-head">
+        <p className="bp-eyebrow">Відгуки</p>
+        <h2>Що кажуть клієнти</h2>
+      </div>
+
+      {reviews.length ? (
+        <div className="bp-reviews-grid">
+          {reviews.map((review) => (
+            <article className="bp-review-card" key={review.id}>
+              <div>
+                <strong>{review.author}</strong>
+                {review.date && <span>{review.date}</span>}
+              </div>
+              <p>{review.text}</p>
+              <small>
+                <Star size={15} fill="currentColor" />
+                {review.rating.toFixed(1)}
+              </small>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="bp-empty-state">
+          Відгуків поки немає. Будьте першим клієнтом, який залишить відгук.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BookingCard({ master }: { master: MasterProfile }) {
+  const contactCount = master.contacts?.filter((contact) => contact.value.trim()).length ?? 0;
+  const canBookOnline = master.isProfileActive !== false && master.acceptsBudPomichRequests !== false;
+
+  return (
+    <aside className="bp-booking-card">
+      <div className="bp-booking-card-head">
+        <span>
+          <CalendarDays size={18} />
+        </span>
+        <div>
+          <p className="bp-eyebrow">Заявка</p>
+          <h2>Замовити майстра</h2>
+        </div>
+      </div>
+      {canBookOnline ? (
+        <a className="bp-sticky-primary" href="#booking">
+          Онлайн запис
+        </a>
+      ) : (
+        <div className="bp-sticky-disabled">
+          <strong>Онлайн заявки вимкнено</strong>
+          <span>
+            Звʼяжіться з майстром напряму через <strong>прямий звʼязок</strong>.
+          </span>
+        </div>
+      )}
+      <a className="bp-sticky-secondary" href="#services">
+        <Hammer size={17} />
+        Послуги і ціни
+      </a>
+      <a className="bp-sticky-secondary" href="#portfolio">
+        <BriefcaseBusiness size={17} />
+        Виконані роботи
+      </a>
+      <a className="bp-sticky-secondary" href="#message">
+        <MessageSquare size={17} />
+        Прямий звʼязок
+      </a>
+      {contactCount > 0 && (
+        <a className="bp-sticky-secondary" href="#contacts">
+          <Phone size={17} />
+          Контакти майстра
+        </a>
+      )}
+    </aside>
+  );
+}
+
+function MobileBookingBar({ master }: { master: MasterProfile }) {
+  const canBookOnline = master.isProfileActive !== false && master.acceptsBudPomichRequests !== false;
+
+  return (
+    <div className="bp-mobile-booking-bar">
+      <a href={canBookOnline ? "#booking" : "#message"}>
+        {canBookOnline ? "Онлайн запис" : "Прямий звʼязок"}
+      </a>
+    </div>
+  );
+}
+
+function BookingModal({
+  master,
+  masterServices,
+}: {
+  master: MasterProfile;
+  masterServices: ReturnType<typeof getMasterServices>;
+}) {
+  return (
+    <div className="bp-booking-modal" id="booking" role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+      <a className="bp-booking-modal-backdrop" href="#profile-top" aria-label="Закрити онлайн запис" />
+      <div className="bp-booking-modal-panel">
+        <div className="bp-booking-modal-head">
+          <div>
+            <p className="bp-eyebrow">Онлайн запис</p>
+            <h2 id="booking-modal-title">Замовити майстра</h2>
+          </div>
+          <a className="bp-booking-modal-close" href="#profile-top" aria-label="Закрити">
+            <X size={20} />
+          </a>
+        </div>
+        <div className="bp-booking-modal-body bp-booking-section">
+          <BookingForm
+            masterId={master.id}
+            masterName={master.name}
+            busyDates={master.busyDates}
+            masterServices={masterServices}
+            sectionId="booking-form"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessageModal({
+  master,
+}: {
+  master: MasterProfile;
+}) {
+  return (
+    <div className="bp-booking-modal bp-message-modal" id="message" role="dialog" aria-modal="true" aria-labelledby="message-modal-title">
+      <a className="bp-booking-modal-backdrop" href="#profile-top" aria-label="Закрити повідомлення" />
+      <div className="bp-booking-modal-panel bp-message-modal-panel">
+        <div className="bp-booking-modal-head">
+          <div>
+            <p className="bp-eyebrow">Прямий звʼязок</p>
+            <h2 id="message-modal-title">Написати майстру</h2>
+          </div>
+          <a className="bp-booking-modal-close" href="#profile-top" aria-label="Закрити">
+            <X size={20} />
+          </a>
+        </div>
+        <div className="bp-message-modal-body">
+          <div className="bp-message-modal-note">
+            <MessageSquare size={18} />
+            <p>Повідомлення не привʼязане до дати в календарі. Опишіть задачу, і майстер зможе відповісти напряму.</p>
+          </div>
+          <DirectMessageForm
+            masterId={master.id}
+            masterName={master.name}
+            formId="message-form"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServicesModal({
+  services,
+}: {
+  services: MasterProfile["services"];
+}) {
+  return (
+    <div className="bp-booking-modal bp-services-modal" id="services" role="dialog" aria-modal="true" aria-labelledby="services-modal-title">
+      <a className="bp-booking-modal-backdrop" href="#profile-top" aria-label="Закрити послуги і ціни" />
+      <div className="bp-booking-modal-panel bp-services-modal-panel">
+        <div className="bp-booking-modal-head">
+          <div>
+            <p className="bp-eyebrow">Послуги і ціни</p>
+            <h2 id="services-modal-title">Що виконує майстер</h2>
+          </div>
+          <a className="bp-booking-modal-close" href="#profile-top" aria-label="Закрити">
+            <X size={20} />
+          </a>
+        </div>
+        <div className="bp-services-modal-body">
+          <ServicesSection services={services} isModal />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PortfolioModal({
+  items,
+  fallbackWorks,
+}: {
+  items: PortfolioItem[];
+  fallbackWorks: MasterProfile["works"];
+}) {
+  const hasPortfolio = items.length > 0;
+
+  return (
+    <div className="bp-booking-modal bp-portfolio-modal" id="portfolio" role="dialog" aria-modal="true" aria-labelledby="portfolio-modal-title">
+      <a className="bp-booking-modal-backdrop" href="#profile-top" aria-label="Закрити виконані роботи" />
+      <div className="bp-booking-modal-panel bp-portfolio-modal-panel">
+        <div className="bp-booking-modal-head">
+          <div>
+            <p className="bp-eyebrow">Портфоліо</p>
+            <h2 id="portfolio-modal-title">Виконані роботи</h2>
+          </div>
+          <span className="bp-modal-count">{hasPortfolio ? `${items.length} робіт` : "приклади робіт"}</span>
+          <a className="bp-booking-modal-close" href="#profile-top" aria-label="Закрити">
+            <X size={20} />
+          </a>
+        </div>
+        <div className="bp-portfolio-modal-body">
+          <PortfolioSection items={items} fallbackWorks={fallbackWorks} isModal />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProps) {
   const [profileEdit, setProfileEdit] = useState<EditableMasterProfile | null>(null);
-  const [activeProfileSection, setActiveProfileSection] = useState<ProfileSectionId>("about");
-  const [isAboutEditing, setIsAboutEditing] = useState(false);
-  const [aboutDraft, setAboutDraft] = useState(master.fullDescription);
-  const [aboutStatus, setAboutStatus] = useState<SaveStatus>("idle");
-  const [isHeroEditing, setIsHeroEditing] = useState(false);
-  const [heroDraft, setHeroDraft] = useState<HeroDraft>({
-    name: master.name,
-    profession: master.profession,
-    city: master.city,
-    district: master.district ?? "",
-    experience: master.experience,
-    description: limitHeroDescription(master.description),
-  });
-  const [heroStatus, setHeroStatus] = useState<SaveStatus>("idle");
-  const [avatarStatus, setAvatarStatus] = useState<SaveStatus>("idle");
-  const [avatarDraft, setAvatarDraft] = useState<AvatarDraft | null>(null);
-  const [isLocationEditing, setIsLocationEditing] = useState(false);
-  const [locationDraft, setLocationDraft] = useState<LocationDraft>({
-    city: master.city,
-    district: master.district ?? "",
-    serviceArea: "",
-    travel: "",
-    comment: "",
-  });
-  const [locationStatus, setLocationStatus] = useState<SaveStatus>("idle");
-  const [locationError, setLocationError] = useState("");
-  const [isServicesEditing, setIsServicesEditing] = useState(false);
-  const [servicesDraft, setServicesDraft] = useState(master.services);
-  const [servicesStatus, setServicesStatus] = useState<SaveStatus>("idle");
-  const [isPortfolioEditing, setIsPortfolioEditing] = useState(false);
-  const [portfolioDraft, setPortfolioDraft] = useState<PortfolioItem[]>([]);
-  const [activePortfolioEditId, setActivePortfolioEditId] = useState<string | null>(null);
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>([]);
-  const [activePortfolioSlides, setActivePortfolioSlides] = useState<Record<string, number>>({});
-  const [activePortfolioProjectIndex, setActivePortfolioProjectIndex] = useState(0);
-  const [isPortfolioSlideshowPaused, setIsPortfolioSlideshowPaused] = useState(false);
   const visibleMaster = useMemo(() => mergeMasterProfile(master, profileEdit), [master, profileEdit]);
-  const avatarInputId = `profile-avatar-upload-${visibleMaster.id}`;
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const heroEditorRef = useRef<HTMLDivElement | null>(null);
-  const isOwnerView = ownerSource === "profile" || visibleMaster.id === "andrey-ponomarenko";
   const priceFromServices = formatPriceFromServices(visibleMaster.services, visibleMaster.priceFrom);
-  const contactMethods = visibleMaster.contacts ?? [];
-  const bookingServices = getMasterServices(visibleMaster.id);
+  const masterServices = useMemo(() => getMasterServices(visibleMaster.id), [visibleMaster.id]);
+
   const portfolioItems = useMemo(() => {
     const defaults = defaultPortfolioItems.filter((item) => item.masterId === visibleMaster.id);
-    const map = new Map(
-      [...defaults, ...savedPortfolioItems].map((item) => [item.id, item]),
-    );
+    const map = new Map([...defaults, ...savedPortfolioItems].map((item) => [item.id, item]));
     return Array.from(map.values());
   }, [savedPortfolioItems, visibleMaster.id]);
-  const portfolioReviews = useMemo(
-    () => buildPortfolioReviews(portfolioItems, visibleMaster.reviews),
-    [portfolioItems, visibleMaster.reviews],
-  );
-  const portfolioSlideCount = portfolioItems.length || visibleMaster.works.length;
-  const isServiceAreaPlaceholder = !locationDraft.serviceArea.trim();
-  const isTravelPlaceholder = !locationDraft.travel.trim();
-  const isLocationRequiredFilled = Boolean(
-    locationDraft.city.trim() &&
-      locationDraft.district.trim() &&
-      locationDraft.serviceArea.trim() &&
-      locationDraft.travel.trim(),
-  );
-  const avatarCropStyle = {
-    objectPosition: `${visibleMaster.avatarPositionX ?? 50}% ${visibleMaster.avatarPositionY ?? 35}%`,
-    transformOrigin: `${visibleMaster.avatarPositionX ?? 50}% ${visibleMaster.avatarPositionY ?? 35}%`,
-    transform: `scale(${visibleMaster.avatarZoom ?? 1})`,
-  };
-  const avatarDraftStyle = avatarDraft
-    ? {
-        objectPosition: `${avatarDraft.positionX}% ${avatarDraft.positionY}%`,
-        transformOrigin: `${avatarDraft.positionX}% ${avatarDraft.positionY}%`,
-        transform: `scale(${avatarDraft.zoom})`,
-      }
-    : undefined;
+
+  const reviews = useMemo(() => buildReviews(visibleMaster.reviews), [visibleMaster.reviews]);
 
   useEffect(() => {
-    if (activePortfolioProjectIndex <= Math.max(portfolioSlideCount - 1, 0)) return;
-    setActivePortfolioProjectIndex(Math.max(portfolioSlideCount - 1, 0));
-  }, [activePortfolioProjectIndex, portfolioSlideCount]);
-
-  useEffect(() => {
-    if (isPortfolioSlideshowPaused || portfolioSlideCount < 2) return;
-
-    const timer = window.setInterval(() => {
-      setActivePortfolioProjectIndex((current) => (current + 1) % portfolioSlideCount);
-    }, 4500);
-
-    return () => window.clearInterval(timer);
-  }, [isPortfolioSlideshowPaused, portfolioSlideCount]);
-
-  useEffect(() => {
-    const initialSection = profileSectionFromHash[window.location.hash];
-    if (initialSection) {
-      setActiveProfileSection(initialSection);
-    }
-
-    function handleHashChange() {
-      const nextSection = profileSectionFromHash[window.location.hash];
-      if (nextSection) {
-        setActiveProfileSection(nextSection);
-      }
-    }
-
-    window.addEventListener("hashchange", handleHashChange);
-
     const localProfiles = JSON.parse(
       localStorage.getItem(masterProfileStorageKey) ?? "{}",
     ) as Record<string, EditableMasterProfile>;
-
-    if (localProfiles[master.id]) {
-      setProfileEdit(localProfiles[master.id]);
-    }
+    if (localProfiles[master.id]) setProfileEdit(localProfiles[master.id]);
 
     const localPortfolioItems = JSON.parse(
       localStorage.getItem(portfolioStorageKey) ?? "[]",
     ) as PortfolioItem[];
-    setSavedPortfolioItems(
-      localPortfolioItems.filter((item) => item.masterId === master.id),
-    );
-
-    const localLocationDetails = JSON.parse(
-      localStorage.getItem(locationDetailsStorageKey) ?? "{}",
-    ) as Record<string, Pick<LocationDraft, "serviceArea" | "travel" | "comment">>;
-
-    if (localLocationDetails[master.id]) {
-      setLocationDraft((current) => ({
-        ...current,
-        ...localLocationDetails[master.id],
-      }));
-    }
+    setSavedPortfolioItems(localPortfolioItems.filter((item) => item.masterId === master.id));
 
     fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
       .then((response) => response.json())
       .then((result: { profile?: EditableMasterProfile | null }) => {
-        if (!result.profile) return;
-        setProfileEdit((current) => ({
-          ...current,
-          ...result.profile!,
-          avatarUrl: result.profile!.avatarUrl || current?.avatarUrl || "",
-          coverImageUrl: result.profile!.coverImageUrl || current?.coverImageUrl || "",
-          avatarZoom: result.profile!.avatarZoom ?? current?.avatarZoom ?? 1,
-          avatarPositionX: result.profile!.avatarPositionX ?? current?.avatarPositionX ?? 50,
-          avatarPositionY: result.profile!.avatarPositionY ?? current?.avatarPositionY ?? 35,
-          coverZoom: result.profile!.coverZoom ?? current?.coverZoom ?? 1,
-          coverPositionX: result.profile!.coverPositionX ?? current?.coverPositionX ?? 50,
-          coverPositionY: result.profile!.coverPositionY ?? current?.coverPositionY ?? 50,
-        }));
+        if (result.profile) {
+          setProfileEdit((current) => ({
+            ...(current ?? result.profile!),
+            ...result.profile!,
+            contacts: hasFilledContacts(result.profile!.contacts)
+              ? result.profile!.contacts
+              : current?.contacts ?? master.contacts,
+          }));
+        }
       })
       .catch(() => undefined);
 
     fetch(`/api/portfolio?masterId=${encodeURIComponent(master.id)}`)
       .then((response) => response.json())
       .then((result: { items?: PortfolioItem[] }) => {
-        const remoteItems = result.items;
-        if (!remoteItems?.length) return;
+        if (!result.items?.length) return;
         setSavedPortfolioItems((current) => {
-          const map = new Map(
-            [...remoteItems, ...current].map((item) => [item.id, item]),
-          );
+          const map = new Map([...result.items!, ...current].map((item) => [item.id, item]));
           return Array.from(map.values());
         });
       })
       .catch(() => undefined);
-
-    return () => window.removeEventListener("hashchange", handleHashChange);
   }, [master.id]);
 
-  function persistLocalProfile(nextProfile: EditableMasterProfile) {
-    const localProfiles = JSON.parse(
-      localStorage.getItem(masterProfileStorageKey) ?? "{}",
-    ) as Record<string, EditableMasterProfile>;
-
-    localStorage.setItem(
-      masterProfileStorageKey,
-      JSON.stringify({ ...localProfiles, [master.id]: nextProfile }),
-    );
-  }
-
-  function getEditableProfile(overrides: Partial<EditableMasterProfile> = {}): EditableMasterProfile {
-    return {
-      id: visibleMaster.id,
-      name: visibleMaster.name,
-      profession: visibleMaster.profession,
-      city: visibleMaster.city,
-      district: visibleMaster.district ?? "",
-      description: visibleMaster.description,
-      fullDescription: visibleMaster.fullDescription,
-      avatarUrl: visibleMaster.avatarUrl ?? "",
-      coverImageUrl: visibleMaster.coverImageUrl ?? "",
-      avatarZoom: visibleMaster.avatarZoom ?? 1,
-      avatarPositionX: visibleMaster.avatarPositionX ?? 50,
-      avatarPositionY: visibleMaster.avatarPositionY ?? 35,
-      coverZoom: visibleMaster.coverZoom ?? 1,
-      coverPositionX: visibleMaster.coverPositionX ?? 50,
-      coverPositionY: visibleMaster.coverPositionY ?? 50,
-      priceFrom: visibleMaster.priceFrom,
-      experience: visibleMaster.experience,
-      services: visibleMaster.services,
-      ...overrides,
-    };
-  }
-
-  async function saveProfileSection(
-    nextProfile: EditableMasterProfile,
-    setStatus: (status: SaveStatus) => void,
-  ) {
-    setStatus("saving");
-    try {
-      const response = await fetch("/api/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nextProfile),
-      });
-      const result = (await response.json()) as {
-        profile?: EditableMasterProfile;
-        error?: string;
-      };
-
-      if (!response.ok || !result.profile) {
-        throw new Error(result.error ?? "Не вдалося зберегти опис.");
-      }
-
-      persistLocalProfile(result.profile);
-      setProfileEdit(result.profile);
-    } catch {
-      persistLocalProfile(nextProfile);
-      setProfileEdit(nextProfile);
-    }
-
-    setStatus("success");
-  }
-
-  async function saveAboutSection() {
-    const nextProfile = getEditableProfile({ fullDescription: aboutDraft.trim() });
-    await saveProfileSection(nextProfile, setAboutStatus);
-    setIsAboutEditing(false);
-  }
-
-  async function saveHeroSection() {
-    const nextProfile = getEditableProfile({
-      name: heroDraft.name.trim(),
-      profession: heroDraft.profession.trim(),
-      city: heroDraft.city.trim(),
-      district: heroDraft.district.trim(),
-      experience: heroDraft.experience.trim(),
-      description: limitHeroDescription(heroDraft.description),
-    });
-    await saveProfileSection(nextProfile, setHeroStatus);
-    setIsHeroEditing(false);
-  }
-
-  function openAvatarPhotoPicker() {
-    avatarInputRef.current?.click();
-  }
-
-  async function updateAvatarPhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    let avatarUrl = "";
-
-    try {
-      avatarUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-    } catch {
-      setAvatarStatus("error");
-      return;
-    }
-
-    if (!avatarUrl) {
-      setAvatarStatus("error");
-      return;
-    }
-
-    setAvatarStatus("idle");
-    setAvatarDraft({
-      url: avatarUrl,
-      zoom: visibleMaster.avatarZoom ?? 1,
-      positionX: visibleMaster.avatarPositionX ?? 50,
-      positionY: visibleMaster.avatarPositionY ?? 35,
-    });
-  }
-
-  function updateAvatarDraft(field: keyof Omit<AvatarDraft, "url">, value: string) {
-    const numberValue = Number(value);
-    if (!Number.isFinite(numberValue)) return;
-
-    setAvatarDraft((current) => (current ? { ...current, [field]: numberValue } : current));
-  }
-
-  async function saveAvatarPhoto() {
-    if (!avatarDraft) return;
-
-    const nextProfile = getEditableProfile({
-      avatarUrl: avatarDraft.url,
-      avatarZoom: avatarDraft.zoom,
-      avatarPositionX: avatarDraft.positionX,
-      avatarPositionY: avatarDraft.positionY,
-    });
-    await saveProfileSection(nextProfile, setAvatarStatus);
-    setAvatarDraft(null);
-  }
-
-  function cancelAvatarPhoto() {
-    setAvatarDraft(null);
-    setAvatarStatus("idle");
-  }
-
-  async function saveLocationSection() {
-    if (!isLocationRequiredFilled) {
-      setLocationError("Заповніть місто, район, зону роботи та виїзд.");
-      setLocationStatus("error");
-      return;
-    }
-
-    const nextProfile = getEditableProfile({
-      city: locationDraft.city.trim(),
-      district: locationDraft.district.trim(),
-    });
-    persistLocationDetails(locationDraft);
-    await saveProfileSection(nextProfile, setLocationStatus);
-    setIsLocationEditing(false);
-  }
-
-  function persistLocationDetails(nextLocation: LocationDraft) {
-    const localDetails = JSON.parse(
-      localStorage.getItem(locationDetailsStorageKey) ?? "{}",
-    ) as Record<string, Pick<LocationDraft, "serviceArea" | "travel" | "comment">>;
-
-    localStorage.setItem(
-      locationDetailsStorageKey,
-      JSON.stringify({
-        ...localDetails,
-        [visibleMaster.id]: {
-          serviceArea: nextLocation.serviceArea.trim(),
-          travel: nextLocation.travel.trim(),
-          comment: nextLocation.comment.trim(),
-        },
-      }),
-    );
-  }
-
-  async function saveServicesSection() {
-    const nextServices = normalizeMasterServices(
-      servicesDraft.map((service) => ({
-        name: service.name.trim(),
-        price: service.price.trim(),
-      })),
-    );
-    const nextProfile = getEditableProfile({ services: nextServices });
-    await saveProfileSection(nextProfile, setServicesStatus);
-    setIsServicesEditing(false);
-  }
-
-  function persistPortfolioItems(nextItems: PortfolioItem[]) {
-    const localItems = JSON.parse(
-      localStorage.getItem(portfolioStorageKey) ?? "[]",
-    ) as PortfolioItem[];
-    const otherItems = localItems.filter((item) => item.masterId !== visibleMaster.id);
-
-    localStorage.setItem(portfolioStorageKey, JSON.stringify([...otherItems, ...nextItems]));
-    setSavedPortfolioItems(nextItems);
-  }
-
-  function updatePortfolioDraft(
-    itemId: string,
-    field: "title" | "description" | "city" | "objectType" | "totalAmount",
-    value: string | number,
-  ) {
-    setPortfolioDraft((current) =>
-      current.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)),
-    );
-  }
-
-  function updatePortfolioLineDraft(
-    itemId: string,
-    lineId: string,
-    field: keyof Pick<PortfolioWorkLine, "workType" | "unit" | "unitPrice" | "volume">,
-    value: string,
-  ) {
-    setPortfolioDraft((current) =>
-      current.map((item) => {
-        if (item.id !== itemId) return item;
-
-        const workLines = item.workLines.map((line) => {
-          if (line.id !== lineId) return line;
-
-          const nextLine = {
-            ...line,
-            [field]: field === "unitPrice" || field === "volume" ? Number(value) : value,
-          };
-
-          return {
-            ...nextLine,
-            total: calculateLineTotal(nextLine.unitPrice, nextLine.volume),
-          };
-        });
-
-        return {
-          ...item,
-          workLines,
-          totalAmount: calculatePortfolioTotal(workLines),
-        };
-      }),
-    );
-  }
-
-  function addPortfolioLineDraft(itemId: string) {
-    setPortfolioDraft((current) =>
-      current.map((item) => {
-        if (item.id !== itemId) return item;
-
-        const workLines = [
-          ...item.workLines,
-          {
-            id: `line-${Date.now()}`,
-            workType: "",
-            unit: "м²",
-            unitPrice: 0,
-            volume: 1,
-            total: 0,
-          },
-        ];
-
-        return { ...item, workLines };
-      }),
-    );
-  }
-
-  function removePortfolioLineDraft(itemId: string, lineId: string) {
-    setPortfolioDraft((current) =>
-      current.map((item) => {
-        if (item.id !== itemId || item.workLines.length === 1) return item;
-
-        const workLines = item.workLines.filter((line) => line.id !== lineId);
-        return {
-          ...item,
-          workLines,
-          totalAmount: calculatePortfolioTotal(workLines),
-        };
-      }),
-    );
-  }
-
-  function updateServiceDraft(index: number, field: "name" | "price", value: string) {
-    setServicesDraft((current) =>
-      current.map((service, serviceIndex) =>
-        serviceIndex === index ? { ...service, [field]: value } : service,
-      ),
-    );
-  }
-
-  function removeServiceDraft(index: number) {
-    setServicesDraft((current) =>
-      current.length === 1 ? current : current.filter((_, serviceIndex) => serviceIndex !== index),
-    );
-  }
-
-  function scrollToHeroEditor() {
-    requestAnimationFrame(() => {
-      const editor = heroEditorRef.current;
-      if (!editor) return;
-
-      const topOffset = Math.min(320, Math.max(180, window.innerHeight * 0.32));
-      window.scrollTo({
-        top: Math.max(0, editor.getBoundingClientRect().top + window.scrollY - topOffset),
-        behavior: "smooth",
-      });
-    });
-  }
-
-  function openAboutEditor() {
-    setAboutDraft(visibleMaster.fullDescription);
-    setAboutStatus("idle");
-    setIsAboutEditing(true);
-  }
-
-  function openHeroEditor(shouldScroll = true) {
-    setHeroDraft({
-      name: visibleMaster.name,
-      profession: visibleMaster.profession,
-      city: visibleMaster.city,
-      district: visibleMaster.district ?? "",
-      experience: visibleMaster.experience,
-      description: limitHeroDescription(visibleMaster.description),
-    });
-    setHeroStatus("idle");
-    setIsHeroEditing(true);
-    if (shouldScroll) {
-      scrollToHeroEditor();
-    }
-  }
-
-  function openFullProfileEditor() {
-    openHeroEditor(false);
-    openAboutEditor();
-    openLocationEditor();
-    openServicesEditor();
-    openPortfolioEditor();
-    setActiveProfileSection("about");
-    scrollToHeroEditor();
-  }
-
-  function openLocationEditor() {
-    setLocationDraft({
-      city: "",
-      district: visibleMaster.district ?? "",
-      serviceArea: locationDraft.serviceArea,
-      travel: locationDraft.travel,
-      comment: locationDraft.comment,
-    });
-    setLocationStatus("idle");
-    setLocationError("");
-    setIsLocationEditing(true);
-  }
-
-  function openServicesEditor() {
-    setServicesDraft(visibleMaster.services);
-    setServicesStatus("idle");
-    setIsServicesEditing(true);
-  }
-
-  function openPortfolioEditor(itemId?: string) {
-    setPortfolioDraft(portfolioItems);
-    setActivePortfolioEditId(itemId ?? portfolioItems[0]?.id ?? null);
-    setIsPortfolioEditing(true);
-  }
-
-  function pausePortfolioSlideshow() {
-    setIsPortfolioSlideshowPaused(true);
-  }
-
-  function showPreviousPortfolioProject() {
-    pausePortfolioSlideshow();
-    setActivePortfolioProjectIndex((current) =>
-      (current - 1 + portfolioSlideCount) % portfolioSlideCount,
-    );
-  }
-
-  function showNextPortfolioProject() {
-    pausePortfolioSlideshow();
-    setActivePortfolioProjectIndex((current) => (current + 1) % portfolioSlideCount);
-  }
-
-  function showPortfolioProject(index: number) {
-    pausePortfolioSlideshow();
-    setActivePortfolioProjectIndex(index);
-  }
-
-  function openPortfolioProject(itemId: string) {
-    pausePortfolioSlideshow();
-    if (isOwnerView) {
-      openPortfolioEditor(itemId);
-    }
-  }
-
-  function closePortfolioEditor() {
-    setPortfolioDraft([]);
-    setActivePortfolioEditId(null);
-    setIsPortfolioEditing(false);
-  }
-
-  function savePortfolioSection() {
-    persistPortfolioItems(portfolioDraft);
-    setIsPortfolioEditing(false);
-  }
-
-  function cancelHeroEditor() {
-    setHeroDraft({
-      name: visibleMaster.name,
-      profession: visibleMaster.profession,
-      city: visibleMaster.city,
-      district: visibleMaster.district ?? "",
-      experience: visibleMaster.experience,
-      description: limitHeroDescription(visibleMaster.description),
-    });
-    setHeroStatus("idle");
-    setIsHeroEditing(false);
-  }
-
-  function cancelLocationEditor() {
-    setLocationDraft({
-      city: visibleMaster.city,
-      district: visibleMaster.district ?? "",
-      serviceArea: locationDraft.serviceArea,
-      travel: locationDraft.travel,
-      comment: locationDraft.comment,
-    });
-    setLocationStatus("idle");
-    setLocationError("");
-    setIsLocationEditing(false);
-  }
-
-  function cancelServicesEditor() {
-    setServicesDraft(visibleMaster.services);
-    setServicesStatus("idle");
-    setIsServicesEditing(false);
-  }
-
-  function keepSectionOpen(event: SyntheticEvent<HTMLDetailsElement>) {
-    if (!event.currentTarget.open) {
-      event.currentTarget.open = true;
-    }
-  }
-
-  function selectProfileSection(section: ProfileSectionId) {
-    setActiveProfileSection(section);
-
-    const hash = Object.entries(profileSectionFromHash).find(([, value]) => value === section)?.[0];
-    if (hash && window.location.hash !== hash) {
-      window.history.replaceState(null, "", hash);
-    }
-  }
-
-  function openReviewsSection() {
-    selectProfileSection("reviews");
-    window.setTimeout(() => {
-      document.getElementById("reviews")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 0);
-  }
-
   return (
-    <main className="masters-page profile-public-page">
+    <main className="masters-page bp-profile-page">
       <SiteHeader active="masters" showMasterCard />
 
-      <div className="profile-breadcrumb">
+      {ownerSource === "profile" && (
+        <div className="bp-owner-note">
+          <UserRoundCheck size={16} />
+          Ви переглядаєте свій публічний профіль очима клієнта.
+          <Link href="/dashboard/profile">Редагувати профіль</Link>
+        </div>
+      )}
+
+      <div className="bp-profile-breadcrumb">
         <Link href="/masters">← Каталог майстрів</Link>
       </div>
 
-      <section
-        className={`public-profile-hero ${visibleMaster.coverImageUrl ? "has-cover-image" : ""}`}
-        id="profile-top"
-        style={
-          visibleMaster.coverImageUrl
-            ? ({
-                "--profile-cover-image": `url(${visibleMaster.coverImageUrl})`,
-                "--profile-cover-x": `${visibleMaster.coverPositionX ?? 50}%`,
-                "--profile-cover-y": `${visibleMaster.coverPositionY ?? 50}%`,
-                "--profile-cover-scale": `${visibleMaster.coverZoom ?? 1}`,
-                "--profile-cover-zoom": `${Math.max(100, (visibleMaster.coverZoom ?? 1) * 100)}%`,
-              } as CSSProperties)
-            : undefined
-        }
-      >
-        <div className="profile-person">
-          <div className="profile-avatar-stack">
-            <div className={`profile-directory-avatar avatar-${visibleMaster.accent}`}>
-              {visibleMaster.avatarUrl ? (
-                <img src={visibleMaster.avatarUrl} alt={`Фото ${visibleMaster.name}`} style={avatarCropStyle} />
-              ) : (
-                visibleMaster.initials
-              )}
+      <ProfileHero master={visibleMaster} priceFromServices={priceFromServices} />
+
+      <div className="bp-profile-layout">
+        <div className="bp-profile-main">
+          <section className="bp-section" id="about-master">
+            <div className="bp-section-head">
+              <p className="bp-eyebrow">Про майстра</p>
+              <h2>Досвід і підхід до роботи</h2>
             </div>
-            {isOwnerView && (
-              <>
-                <input
-                  className="profile-avatar-file-input"
-                  id={avatarInputId}
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  aria-hidden="true"
-                  tabIndex={-1}
-                  onChange={updateAvatarPhoto}
-                />
-                <button className="profile-avatar-edit-button" type="button" onClick={openAvatarPhotoPicker}>
-                  <Pencil size={13} />
-                  Редагувати фото
-                </button>
-                {avatarDraft && (
-                  <div className="profile-avatar-crop-editor">
-                    <div className="profile-avatar-crop-preview">
-                      <img src={avatarDraft.url} alt="Превʼю фото" style={avatarDraftStyle} />
-                    </div>
-                    <label>
-                      Збільшення
-                      <input
-                        type="range"
-                        min="1"
-                        max="2.4"
-                        step="0.05"
-                        value={avatarDraft.zoom}
-                        onChange={(event) => updateAvatarDraft("zoom", event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Зсув по горизонталі
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={avatarDraft.positionX}
-                        onChange={(event) => updateAvatarDraft("positionX", event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Зсув по вертикалі
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={avatarDraft.positionY}
-                        onChange={(event) => updateAvatarDraft("positionY", event.target.value)}
-                      />
-                    </label>
-                    <div className="profile-avatar-crop-actions">
-                      <button type="button" onClick={cancelAvatarPhoto}>
-                        <X size={14} /> Скасувати
-                      </button>
-                      <button type="button" onClick={saveAvatarPhoto}>
-                        <Check size={14} /> Зберегти
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-            {avatarStatus === "success" && (
-              <p className="profile-avatar-status" role="status">
-                Фото оновлено.
-              </p>
-            )}
-            {avatarStatus === "error" && (
-              <p className="profile-avatar-status" role="alert">
-                Не вдалося відкрити фото.
-              </p>
-            )}
-            {(visibleMaster.lastSeenText || visibleMaster.registeredText) && (
-              <div className="profile-activity-row profile-activity-under-photo">
-                {visibleMaster.lastSeenText && <span>{visibleMaster.lastSeenText}</span>}
-                {visibleMaster.registeredText && <span>{visibleMaster.registeredText}</span>}
-              </div>
-            )}
-          </div>
-          <div className="profile-hero-main">
-            {isOwnerView ? (
-              <button className="eyebrow profile-profession-edit-trigger" type="button" onClick={() => openHeroEditor()}>
-                {visibleMaster.profession}
-              </button>
-            ) : (
-              <p className="eyebrow">{visibleMaster.profession}</p>
-            )}
-            <div
-              className={`profile-hero-edit-panel ${isOwnerView ? "" : "profile-hero-public-panel"}`}
-            >
-              <h1>{visibleMaster.name}</h1>
-              {isOwnerView && (
-                <button className="profile-hero-edit-button" type="button" onClick={openFullProfileEditor}>
-                  <Pencil size={13} /> Редагувати
-                </button>
-              )}
-              {isOwnerView ? (
-                <button
-                  className="profile-location profile-hero-edit-trigger"
-                  type="button"
-                  onClick={() => openHeroEditor()}
-                  aria-label="Редагувати локацію та досвід"
-                >
-                  <MapPin size={15} /> {visibleMaster.city}
-                  {visibleMaster.district ? `, ${visibleMaster.district}` : ""} · {visibleMaster.experience}
-                </button>
-              ) : (
-                <p className="profile-location">
-                  <MapPin size={15} /> {visibleMaster.city}
-                  {visibleMaster.district ? `, ${visibleMaster.district}` : ""} · {visibleMaster.experience}
-                </p>
-              )}
-              {isOwnerView ? (
-                <button
-                  className="profile-short-description profile-hero-edit-trigger"
-                  type="button"
-                  onClick={() => openHeroEditor()}
-                  aria-label="Редагувати короткий опис"
-                >
-                  {limitHeroDescription(visibleMaster.description)}
-                </button>
-              ) : (
-                <p className="profile-short-description">
-                  {limitHeroDescription(visibleMaster.description)}
-                </p>
-              )}
-              {isOwnerView ? (
-                <button
-                  className="profile-hero-location-details profile-hero-edit-trigger"
-                  type="button"
-                  onClick={openLocationEditor}
-                  aria-label="Редагувати повну локацію"
-                >
-                  <span className={isServiceAreaPlaceholder ? "is-placeholder" : undefined}>
-                    <strong>Зона роботи</strong>
-                    {locationDraft.serviceArea || defaultServiceArea}
-                  </span>
-                  <span className={isTravelPlaceholder ? "is-placeholder" : undefined}>
-                    <strong>Виїзд</strong>
-                    {locationDraft.travel || defaultTravelText}
-                  </span>
-                  {locationDraft.comment.trim() && (
-                    <span>
-                      <strong>Коментар</strong>
-                      {locationDraft.comment}
-                    </span>
-                  )}
-                </button>
-              ) : (
-                <div className="profile-hero-location-details">
-                  <span className={isServiceAreaPlaceholder ? "is-placeholder" : undefined}>
-                    <strong>Зона роботи</strong>
-                    {locationDraft.serviceArea || defaultServiceArea}
-                  </span>
-                  <span className={isTravelPlaceholder ? "is-placeholder" : undefined}>
-                    <strong>Виїзд</strong>
-                    {locationDraft.travel || defaultTravelText}
-                  </span>
-                  {locationDraft.comment.trim() && (
-                    <span>
-                      <strong>Коментар</strong>
-                      {locationDraft.comment}
-                    </span>
-                  )}
-                </div>
-              )}
-              {isOwnerView ? (
-                <button
-                  className="profile-hero-services profile-hero-edit-trigger"
-                  type="button"
-                  onClick={openServicesEditor}
-                  aria-label="Редагувати послуги"
-                >
-                  <span className="profile-hero-services-head">
-                    <strong>Послуги</strong>
-                    <small>{visibleMaster.services.length} позиції</small>
-                  </span>
-                  <span className="profile-hero-services-list">
-                    {visibleMaster.services.map((service) => (
-                      <span className="profile-hero-service-item" key={`${service.name}-${service.price}`}>
-                        <span>{service.name}</span>
-                        <strong>{service.price}</strong>
-                      </span>
-                    ))}
-                  </span>
-                </button>
-              ) : (
-                <div className="profile-hero-services">
-                  <span className="profile-hero-services-head">
-                    <strong>Послуги</strong>
-                    <small>{visibleMaster.services.length} позиції</small>
-                  </span>
-                  <span className="profile-hero-services-list">
-                    {visibleMaster.services.map((service) => (
-                      <span className="profile-hero-service-item" key={`${service.name}-${service.price}`}>
-                        <span>{service.name}</span>
-                        <strong>{service.price}</strong>
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="rating-row">
-              <Star className="rating-star" size={17} />
-              <strong>{visibleMaster.rating.toFixed(1)}</strong>
-              <button className="profile-reviews-link" type="button" onClick={openReviewsSection}>
-                {visibleMaster.reviews} відгуків
-              </button>
-            </div>
-          </div>
+            <p className="bp-about-text">
+              {visibleMaster.fullDescription ||
+                "Майстер працює акуратно, допомагає сформувати обсяг робіт і погодити зрозумілий бюджет до старту."}
+            </p>
+          </section>
+
+          <PublicContactsSection master={visibleMaster} />
+          <ProfileTrustStats master={visibleMaster} portfolioCount={portfolioItems.length} />
+          <ReviewsSection reviews={reviews} />
+
         </div>
 
-        <div className="profile-hero-side">
-          <div className="profile-action-card">
-            <span>Вартість робіт</span>
-            <strong>{priceFromServices}</strong>
-            {isOwnerView && (
-              <button className="profile-secondary-action" type="button" onClick={openFullProfileEditor}>
-                <Pencil size={15} /> Редагувати профіль
-              </button>
-            )}
-            <a href="#booking">
-              Онлайн-заявка
-              <small>(Домовитись на вільну дату майстра)</small>
-            </a>
-            <a className="profile-secondary-action" href="#message">
-              Прямий звʼязок
-              <small>(Написати майстру без вибору дати)</small>
-            </a>
-          </div>
-
-          <div className="profile-contact-card">
-            <span>Контакти</span>
-            <strong>Звʼязок з майстром</strong>
-            {contactMethods.length > 0 && (
-              <div className="profile-contact-list" aria-label="Контакти майстра">
-                {contactMethods.map((contact) => {
-                  const contactLabel = contact.label.toLowerCase();
-
-                  return (
-                    <a className="profile-contact-method" href={contact.href} key={`${contact.label}-${contact.value}`}>
-                      <span className={`profile-contact-icon profile-contact-icon-${contactLabel}`}>
-                        {contactLabel === "telegram" ? (
-                          <Send size={16} />
-                        ) : contactLabel === "viber" ? (
-                          <PhoneCall size={16} />
-                        ) : contactLabel === "whatsapp" ? (
-                          <MessageCircle size={16} />
-                        ) : (
-                          <Phone size={16} />
-                        )}
-                      </span>
-                      <span className="profile-contact-label">{contact.label}</span>
-                      <strong>{contact.value}</strong>
-                    </a>
-                  );
-                })}
-              </div>
-            )}
-            <a className="profile-contact-action" href="#message">Написати повідомлення</a>
-          </div>
-        </div>
-
-        {isOwnerView && isHeroEditing && (
-          <div className="profile-hero-inline-editor" ref={heroEditorRef}>
-            <label>
-              Імʼя
-              <input
-                value={heroDraft.name}
-                onChange={(event) =>
-                  setHeroDraft((current) => ({ ...current, name: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label>
-              Спеціалізація
-              <input
-                value={heroDraft.profession}
-                onChange={(event) =>
-                  setHeroDraft((current) => ({ ...current, profession: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label>
-              Місто
-              <input
-                value={heroDraft.city}
-                onChange={(event) =>
-                  setHeroDraft((current) => ({ ...current, city: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label>
-              Район
-              <input
-                value={heroDraft.district}
-                onChange={(event) =>
-                  setHeroDraft((current) => ({ ...current, district: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              Досвід
-              <input
-                value={heroDraft.experience}
-                onChange={(event) =>
-                  setHeroDraft((current) => ({ ...current, experience: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label className="profile-edit-wide">
-              Короткий опис
-              <textarea
-                rows={3}
-                value={heroDraft.description}
-                onChange={(event) =>
-                  setHeroDraft((current) => ({
-                    ...current,
-                    description: event.target.value.slice(0, heroDescriptionMaxLength),
-                  }))
-                }
-                maxLength={heroDescriptionMaxLength}
-                required
-              />
-              <span>{heroDraft.description.length} / {heroDescriptionMaxLength}</span>
-            </label>
-            <div className="profile-about-inline-actions">
-              <button type="button" onClick={cancelHeroEditor}>
-                <X size={15} /> Скасувати
-              </button>
-              <button
-                type="button"
-                disabled={
-                  heroStatus === "saving" ||
-                  !heroDraft.name.trim() ||
-                  !heroDraft.profession.trim() ||
-                  !heroDraft.city.trim() ||
-                  !heroDraft.experience.trim() ||
-                  !heroDraft.description.trim()
-                }
-                onClick={saveHeroSection}
-              >
-                <Check size={15} />
-                {heroStatus === "saving" ? "Зберігаємо..." : "Зберегти"}
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {isOwnerView && (
-        <aside className="public-profile-owner-bar profile-owner-return">
-          <span>Ви переглядаєте свій профіль очима клієнта</span>
-          <div>
-            <button type="button" onClick={openFullProfileEditor}>
-              <Pencil size={15} /> Редагувати профіль
-            </button>
-            <Link href="/dashboard">
-              <LayoutDashboard size={15} /> До кабінету
-            </Link>
-          </div>
-        </aside>
-      )}
-
-      <div className="profile-sections-layout">
-        <nav className="profile-section-nav" aria-label="Розділи профілю">
-          <p>Розділи профілю</p>
-          <button
-            className={activeProfileSection === "about" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("about")}
-          >
-            Про майстра
-          </button>
-          <button
-            className={activeProfileSection === "location" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("location")}
-          >
-            Локація
-          </button>
-          <button
-            className={activeProfileSection === "services" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("services")}
-          >
-            Послуги
-          </button>
-          <button
-            className={activeProfileSection === "portfolio" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("portfolio")}
-          >
-            Портфоліо
-          </button>
-          <button
-            className={activeProfileSection === "reviews" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("reviews")}
-          >
-            Відгуки
-          </button>
-          <button
-            className={activeProfileSection === "message" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("message")}
-          >
-            Прямий звʼязок
-          </button>
-          <button
-            className={activeProfileSection === "booking" ? "active" : ""}
-            type="button"
-            onClick={() => selectProfileSection("booking")}
-          >
-            Онлайн-заявка
-          </button>
-        </nav>
-
-        <div className="profile-sections-stack">
-          {activeProfileSection === "about" && (
-          <details className="profile-collapse" id="about-master" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Про майстра</span>
-                <strong>Досвід і підхід до роботи</strong>
-              </div>
-              {isOwnerView && (
-                <button
-                  className="profile-owner-edit-link"
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openAboutEditor();
-                  }}
-                >
-                  <Pencil size={14} /> Редагувати
-                </button>
-              )}
-            </summary>
-            <div className="profile-collapse-body profile-text-section">
-              {isAboutEditing ? (
-                <div className="profile-about-inline-editor">
-                  <label>
-                    Повний опис
-                    <textarea
-                      rows={6}
-                      value={aboutDraft}
-                      onChange={(event) => {
-                        setAboutDraft(event.target.value);
-                        setAboutStatus("idle");
-                      }}
-                      required
-                    />
-                  </label>
-                  <div className="profile-about-inline-actions">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAboutDraft(visibleMaster.fullDescription);
-                        setAboutStatus("idle");
-                        setIsAboutEditing(false);
-                      }}
-                    >
-                      <X size={15} /> Скасувати
-                    </button>
-                    <button
-                      type="button"
-                      disabled={aboutStatus === "saving" || !aboutDraft.trim()}
-                      onClick={saveAboutSection}
-                    >
-                      <Check size={15} />
-                      {aboutStatus === "saving" ? "Зберігаємо..." : "Зберегти"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p className="profile-about">{visibleMaster.fullDescription}</p>
-                  {aboutStatus === "success" && (
-                    <p className="profile-about-inline-status" role="status">
-                      Опис оновлено.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </details>
-          )}
-
-          {activeProfileSection === "location" && (
-          <details className="profile-collapse" id="location" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Локація</span>
-                <strong>Місцезнаходження та зона роботи</strong>
-              </div>
-              {isOwnerView && (
-                <button
-                  className="profile-owner-edit-link"
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openLocationEditor();
-                  }}
-                >
-                  <Pencil size={14} /> Редагувати
-                </button>
-              )}
-            </summary>
-            <div className="profile-collapse-body">
-              {isLocationEditing ? (
-                <div className="profile-about-inline-editor">
-                  <div className="profile-inline-grid">
-                    <label>
-                      Місто
-                      <input
-                        value={locationDraft.city}
-                        placeholder="Київ"
-                        onChange={(event) =>
-                          {
-                            setLocationDraft((current) => ({ ...current, city: event.target.value }));
-                            setLocationError("");
-                            setLocationStatus("idle");
-                          }
-                        }
-                        required
-                      />
-                    </label>
-                    <label>
-                      Район
-                      <input
-                        value={locationDraft.district}
-                        placeholder="Печерський район"
-                        onChange={(event) =>
-                          {
-                            setLocationDraft((current) => ({ ...current, district: event.target.value }));
-                            setLocationError("");
-                            setLocationStatus("idle");
-                          }
-                        }
-                        required
-                      />
-                    </label>
-                    <label>
-                      Зона роботи
-                      <input
-                        value={locationDraft.serviceArea}
-                        placeholder={defaultServiceArea}
-                        onChange={(event) =>
-                          {
-                            setLocationDraft((current) => ({ ...current, serviceArea: event.target.value }));
-                            setLocationError("");
-                            setLocationStatus("idle");
-                          }
-                        }
-                        required
-                      />
-                    </label>
-                    <label>
-                      Виїзд
-                      <input
-                        value={locationDraft.travel}
-                        placeholder={defaultTravelText}
-                        onChange={(event) =>
-                          {
-                            setLocationDraft((current) => ({ ...current, travel: event.target.value }));
-                            setLocationError("");
-                            setLocationStatus("idle");
-                          }
-                        }
-                        required
-                      />
-                    </label>
-                    <label className="profile-edit-wide">
-                      Коментар
-                      <textarea
-                        rows={3}
-                        value={locationDraft.comment}
-                        onChange={(event) =>
-                          {
-                            setLocationDraft((current) => ({ ...current, comment: event.target.value }));
-                            setLocationError("");
-                            setLocationStatus("idle");
-                          }
-                        }
-                        placeholder="Наприклад, зручний час для виїзду або додаткові умови роботи"
-                      />
-                    </label>
-                  </div>
-                  {locationError && (
-                    <p className="profile-about-inline-status profile-about-inline-error" role="alert">
-                      {locationError}
-                    </p>
-                  )}
-                  <div className="profile-about-inline-actions">
-                    <button type="button" onClick={cancelLocationEditor}>
-                      <X size={15} /> Скасувати
-                    </button>
-                    <button
-                      type="button"
-                      disabled={locationStatus === "saving" || !isLocationRequiredFilled}
-                      onClick={saveLocationSection}
-                    >
-                      <Check size={15} />
-                      {locationStatus === "saving" ? "Зберігаємо..." : "Зберегти"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="profile-location-grid">
-                    <div>
-                      <span>Місто</span>
-                      <strong>{visibleMaster.city}</strong>
-                    </div>
-                    <div>
-                      <span>Район</span>
-                      <strong>{visibleMaster.district ?? "Інформація буде додана пізніше"}</strong>
-                    </div>
-                    <div>
-                      <span>Зона роботи</span>
-                      <strong>{locationDraft.serviceArea}</strong>
-                    </div>
-                    <div>
-                      <span>Виїзд</span>
-                      <strong>{locationDraft.travel}</strong>
-                    </div>
-                    {locationDraft.comment.trim() && (
-                      <div className="profile-location-comment">
-                        <span>Коментар</span>
-                        <strong>{locationDraft.comment}</strong>
-                      </div>
-                    )}
-                  </div>
-                  {locationStatus === "success" && (
-                    <p className="profile-about-inline-status" role="status">
-                      Локацію оновлено.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </details>
-          )}
-
-          {activeProfileSection === "services" && (
-          <details className="profile-collapse" id="services" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Послуги</span>
-                <strong>Що виконує майстер</strong>
-              </div>
-              {isOwnerView && (
-                <button
-                  className="profile-owner-edit-link"
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openServicesEditor();
-                  }}
-                >
-                  <Pencil size={14} /> Редагувати
-                </button>
-              )}
-              <small>{visibleMaster.services.length} позиції</small>
-            </summary>
-            <div className="profile-collapse-body">
-              {isServicesEditing ? (
-                <div className="profile-about-inline-editor">
-                  <div className="profile-inline-service-list">
-                    {servicesDraft.map((service, index) => (
-                      <div className="profile-inline-service-row" key={index}>
-                        <label>
-                          Послуга
-                          <input
-                            value={service.name}
-                            onChange={(event) => updateServiceDraft(index, "name", event.target.value)}
-                            required
-                          />
-                        </label>
-                        <label>
-                          Ціна
-                          <input
-                            value={service.price}
-                            placeholder="від 350 грн/м²"
-                            onChange={(event) => updateServiceDraft(index, "price", event.target.value)}
-                            required
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => removeServiceDraft(index)}
-                          disabled={servicesDraft.length === 1}
-                          aria-label={`Видалити послугу ${index + 1}`}
-                        >
-                          <X size={15} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    className="profile-inline-add-button"
-                    type="button"
-                    onClick={() =>
-                      setServicesDraft((current) => [...current, { name: "", price: "" }])
-                    }
-                  >
-                    + Додати послугу
-                  </button>
-                  <div className="profile-about-inline-actions">
-                    <button type="button" onClick={cancelServicesEditor}>
-                      <X size={15} /> Скасувати
-                    </button>
-                    <button
-                      type="button"
-                      disabled={
-                        servicesStatus === "saving" ||
-                        servicesDraft.some((service) => !service.name.trim() || !service.price.trim())
-                      }
-                      onClick={saveServicesSection}
-                    >
-                      <Check size={15} />
-                      {servicesStatus === "saving" ? "Зберігаємо..." : "Зберегти"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="services-list services-list-inline">
-                    {visibleMaster.services.map((service) => (
-                      <div key={`${service.name}-${service.price}`}>
-                        <span>{service.name}</span>
-                        <strong>{service.price}</strong>
-                      </div>
-                    ))}
-                  </div>
-                  <a className="request-button profile-collapse-action" href="#booking">
-                    Обрати дату для заявки
-                  </a>
-                  {servicesStatus === "success" && (
-                    <p className="profile-about-inline-status" role="status">
-                      Послуги оновлено.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </details>
-          )}
-
-          {activeProfileSection === "portfolio" && (
-          <details className="profile-collapse" id="portfolio" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Портфоліо</span>
-                <strong>Виконані роботи</strong>
-              </div>
-              {isOwnerView && (
-                <button
-                  className="profile-owner-edit-link"
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openPortfolioEditor();
-                  }}
-                >
-                  <Pencil size={14} /> Редагувати
-                </button>
-              )}
-              <small>{portfolioItems.length || visibleMaster.works.length} проєкти</small>
-            </summary>
-            <div className="profile-collapse-body">
-              {isPortfolioEditing && activePortfolioEditId && (
-                <div className="profile-about-inline-editor profile-portfolio-inline-editor">
-                  {portfolioDraft
-                    .filter((item) => item.id === activePortfolioEditId)
-                    .map((item) => (
-                    <div className="profile-inline-portfolio-row" key={item.id}>
-                      <label>
-                        Назва роботи
-                        <input
-                          value={item.title}
-                          onChange={(event) =>
-                            updatePortfolioDraft(item.id, "title", event.target.value)
-                          }
-                        />
-                      </label>
-                      <label>
-                        Місто
-                        <input
-                          value={item.city}
-                          onChange={(event) =>
-                            updatePortfolioDraft(item.id, "city", event.target.value)
-                          }
-                        />
-                      </label>
-                      <label>
-                        Тип обʼєкта
-                        <input
-                          value={item.objectType}
-                          onChange={(event) =>
-                            updatePortfolioDraft(item.id, "objectType", event.target.value)
-                          }
-                        />
-                      </label>
-                      <label>
-                        Підсумкова вартість
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={item.totalAmount}
-                          onChange={(event) =>
-                            updatePortfolioDraft(item.id, "totalAmount", Number(event.target.value))
-                          }
-                        />
-                      </label>
-                      <label className="profile-edit-wide">
-                        Опис
-                        <textarea
-                          rows={3}
-                          value={item.description}
-                          onChange={(event) =>
-                            updatePortfolioDraft(item.id, "description", event.target.value)
-                          }
-                        />
-                      </label>
-                      <div className="profile-inline-work-lines">
-                        <div className="profile-inline-work-lines-head">
-                          <strong>Кошторис робіт</strong>
-                          <button type="button" onClick={() => addPortfolioLineDraft(item.id)}>
-                            + Додати рядок
-                          </button>
-                        </div>
-                        {item.workLines.map((line) => (
-                          <div className="profile-inline-work-line" key={line.id}>
-                            <label>
-                              Робота
-                              <input
-                                value={line.workType}
-                                onChange={(event) =>
-                                  updatePortfolioLineDraft(item.id, line.id, "workType", event.target.value)
-                                }
-                              />
-                            </label>
-                            <label>
-                              Обсяг
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={line.volume}
-                                onChange={(event) =>
-                                  updatePortfolioLineDraft(item.id, line.id, "volume", event.target.value)
-                                }
-                              />
-                            </label>
-                            <label>
-                              Одиниця
-                              <input
-                                value={line.unit}
-                                onChange={(event) =>
-                                  updatePortfolioLineDraft(item.id, line.id, "unit", event.target.value)
-                                }
-                              />
-                            </label>
-                            <label>
-                              Ціна
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={line.unitPrice}
-                                onChange={(event) =>
-                                  updatePortfolioLineDraft(item.id, line.id, "unitPrice", event.target.value)
-                                }
-                              />
-                            </label>
-                            <div>
-                              <span>Разом</span>
-                              <strong>{formatUah(line.total)}</strong>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removePortfolioLineDraft(item.id, line.id)}
-                              disabled={item.workLines.length === 1}
-                              aria-label={`Видалити рядок ${line.workType || "кошторису"}`}
-                            >
-                              <X size={15} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="profile-about-inline-actions">
-                    <button type="button" onClick={closePortfolioEditor}>
-                      <X size={15} /> Скасувати
-                    </button>
-                    <button type="button" onClick={savePortfolioSection}>
-                      <Check size={15} /> Зберегти
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div
-                className="portfolio-slideshow"
-                onPointerDown={pausePortfolioSlideshow}
-                onWheel={pausePortfolioSlideshow}
-              >
-                {portfolioSlideCount > 1 && (
-                  <div className="portfolio-slideshow-controls">
-                    <button type="button" onClick={showPreviousPortfolioProject} aria-label="Попередній проєкт">
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsPortfolioSlideshowPaused((current) => !current)}
-                      aria-label={isPortfolioSlideshowPaused ? "Запустити слайд-шоу" : "Зупинити слайд-шоу"}
-                    >
-                      {isPortfolioSlideshowPaused ? <Play size={16} /> : <Pause size={16} />}
-                      {isPortfolioSlideshowPaused ? "Запустити" : "Пауза"}
-                    </button>
-                    <button type="button" onClick={showNextPortfolioProject} aria-label="Наступний проєкт">
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                )}
-                <div className="portfolio-slideshow-viewport">
-              <div
-                className="work-gallery portfolio-slideshow-track"
-                style={{ transform: `translateX(-${activePortfolioProjectIndex * 100}%)` }}
-              >
-                {portfolioItems.map((item) => {
-                  const photos = getPortfolioPhotos(item);
-                  const activePhotoIndex = activePortfolioSlides[item.id] ?? 0;
-                  const activePhoto = photos[activePhotoIndex] ?? photos[0];
-                  const itemReviews = portfolioReviews.filter((review) => review.itemId === item.id);
-
-                  return (
-                  <article
-                    className={`work-card editable-work-card ${
-                      portfolioItems[activePortfolioProjectIndex]?.id === item.id ? "is-active" : ""
-                    }`}
-                    key={item.id}
-                    role={isOwnerView ? "button" : undefined}
-                    tabIndex={isOwnerView ? 0 : undefined}
-                    onClick={(event) => {
-                      if ((event.target as HTMLElement).closest("button")) return;
-                      openPortfolioProject(item.id);
-                    }}
-                    onKeyDown={(event) => {
-                      if (!isOwnerView || event.key !== "Enter") return;
-                      openPortfolioProject(item.id);
-                    }}
-                  >
-                    <div className="work-image portfolio-work-photo">
-                      <img src={activePhoto} alt={item.title} />
-                      {photos.length > 1 && (
-                        <div className="profile-portfolio-slider">
-                          <button
-                            type="button"
-                            aria-label="Попереднє фото"
-                            onClick={() =>
-                              setActivePortfolioSlides((current) => ({
-                                ...current,
-                                [item.id]: (activePhotoIndex - 1 + photos.length) % photos.length,
-                              }))
-                            }
-                          >
-                            <ChevronLeft size={17} />
-                          </button>
-                          <span>{activePhotoIndex + 1} / {photos.length}</span>
-                          <button
-                            type="button"
-                            aria-label="Наступне фото"
-                            onClick={() =>
-                              setActivePortfolioSlides((current) => ({
-                                ...current,
-                                [item.id]: (activePhotoIndex + 1) % photos.length,
-                              }))
-                            }
-                          >
-                            <ChevronRight size={17} />
-                          </button>
-                        </div>
-                      )}
-                      {isOwnerView && (
-                        <button
-                          className="portfolio-project-edit profile-portfolio-edit"
-                          type="button"
-                          onClick={() => openPortfolioEditor(item.id)}
-                        >
-                          <Pencil size={15} /> Редагувати
-                        </button>
-                      )}
-                    </div>
-                    <div className="work-card-body">
-                      <div className="work-meta-row">
-                        <span>{item.objectType}</span>
-                        <small>{item.city}</small>
-                      </div>
-                      <h3>{item.title}</h3>
-                      <p>{item.description}</p>
-                      {itemReviews[0] && (
-                        <div className="work-card-review">
-                          <div>
-                            <Star size={14} />
-                            <strong>{itemReviews[0].rating.toFixed(1)}</strong>
-                            <span>{itemReviews.length} відгуків</span>
-                          </div>
-                          <p>{itemReviews[0].text}</p>
-                        </div>
-                      )}
-                      <div className="work-total">
-                        <span>Підсумкова вартість</span>
-                        <strong>{formatUah(item.totalAmount)}</strong>
-                      </div>
-                      <div className="work-detail-list">
-                        {item.workLines.map((line) => (
-                          <div key={line.id}>
-                            <span>{line.workType}</span>
-                            <small>
-                              {line.volume} {line.unit} × {formatUah(line.unitPrice)} = {formatUah(line.total)}
-                            </small>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </article>
-                  );
-                })}
-                {portfolioItems.length === 0 && visibleMaster.works.map((work, index) => {
-                  const details =
-                    work.details ??
-                    (index === 0
-                      ? [
-                          {
-                            name: "Монтаж електрощита",
-                            quantity: "1 шт",
-                            unitPrice: "4 500 грн",
-                            total: "4 500 грн",
-                          },
-                          {
-                            name: "Монтаж електроточки",
-                            quantity: "62 шт",
-                            unitPrice: "350 грн",
-                            total: "21 700 грн",
-                          },
-                        ]
-                      : [
-                          {
-                            name: visibleMaster.services[0]?.name ?? "Основна послуга",
-                            quantity: "1 обʼєкт",
-                            unitPrice: visibleMaster.services[0]?.price ?? "за кошторисом",
-                            total: work.total ?? "за кошторисом",
-                          },
-                        ]);
-
-                  return (
-                    <article
-                      className={`work-card ${activePortfolioProjectIndex === index ? "is-active" : ""}`}
-                      key={work.title}
-                      onClick={pausePortfolioSlideshow}
-                    >
-                      <div className={`work-image work-crop-${work.crop}`} />
-                      <div className="work-card-body">
-                        <div className="work-meta-row">
-                          <span>{work.category ?? "Квартира"}</span>
-                          <small>{work.location}</small>
-                        </div>
-                        <h3>{work.title}</h3>
-                        <p>
-                          {work.description ??
-                            "Комплекс робіт виконано під ключ з погодженим кошторисом і фінальною перевіркою якості."}
-                        </p>
-                        <div className="work-total">
-                          <span>Підсумкова вартість</span>
-                          <strong>{work.total ?? (index === 0 ? "26 200 грн" : "за кошторисом")}</strong>
-                        </div>
-                        <div className="work-detail-list">
-                          {details.map((item) => (
-                            <div key={`${work.title}-${item.name}`}>
-                              <span>{item.name}</span>
-                              <small>
-                                {item.quantity} × {item.unitPrice} = {item.total}
-                              </small>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-                </div>
-                {portfolioSlideCount > 1 && (
-                  <div className="portfolio-slideshow-dots" aria-label="Проєкти портфоліо">
-                    {Array.from({ length: portfolioSlideCount }, (_, index) => (
-                      <button
-                        className={activePortfolioProjectIndex === index ? "active" : ""}
-                        type="button"
-                        key={index}
-                        aria-label={`Показати проєкт ${index + 1}`}
-                        onClick={() => showPortfolioProject(index)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-              {isOwnerView && (
-                <Link className="portfolio-add-card profile-portfolio-add" href="/dashboard/portfolio/new">
-                  <span>+</span>
-                  <strong>Додати роботу</strong>
-                  <small>Фото, опис і кошторис зʼявляться в публічному профілі.</small>
-                </Link>
-              )}
-            </div>
-          </details>
-          )}
-
-          {activeProfileSection === "reviews" && (
-          <details className="profile-collapse" id="reviews" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Відгуки</span>
-                <strong>Відгуки клієнтів</strong>
-              </div>
-              <small>{portfolioReviews.length} відгуків</small>
-            </summary>
-            <div className="profile-collapse-body">
-              <section className="portfolio-reviews-block">
-                <div className="portfolio-reviews-head">
-                  <div>
-                    <span>Відгуки до робіт</span>
-                    <strong>Що кажуть клієнти про виконані проєкти</strong>
-                  </div>
-                  <small>{visibleMaster.rating.toFixed(1)} середня оцінка</small>
-                </div>
-                <div className="portfolio-reviews-list">
-                  {portfolioReviews.map((review) => (
-                    <article className="portfolio-review-card" key={review.id}>
-                      <div className="portfolio-review-card-head">
-                        <div>
-                          <strong>{review.author}</strong>
-                          <span>{review.date}</span>
-                        </div>
-                        <span>
-                          <Star size={14} /> {review.rating.toFixed(1)}
-                        </span>
-                      </div>
-                      <p>{review.text}</p>
-                      <small>До роботи: {review.itemTitle}</small>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </details>
-          )}
-
-          {activeProfileSection === "message" && (
-          <details className="profile-collapse" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Прямий звʼязок</span>
-                <strong>Написати майстру без вибору дати</strong>
-              </div>
-              {isOwnerView && (
-                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-contacts`}>
-                  <Pencil size={14} /> Контакти
-                </Link>
-              )}
-            </summary>
-            <div className="profile-collapse-body profile-message-section">
-              <DirectMessageForm masterId={visibleMaster.id} masterName={visibleMaster.name} />
-            </div>
-          </details>
-          )}
-
-          {activeProfileSection === "booking" && (
-          <details className="profile-collapse" open onToggle={keepSectionOpen}>
-            <summary>
-              <div>
-                <span>Онлайн-заявка</span>
-                <strong>Період, заявка та пряме повідомлення</strong>
-              </div>
-              {isOwnerView && (
-                <Link className="profile-owner-edit-link" href={`/dashboard/profile?masterId=${visibleMaster.id}#profile-calendar`}>
-                  <Pencil size={14} /> Календар
-                </Link>
-              )}
-            </summary>
-            <div className="profile-collapse-body">
-              <BookingForm
-                masterId={visibleMaster.id}
-                masterName={visibleMaster.name}
-                busyDates={visibleMaster.busyDates}
-                masterServices={bookingServices}
-              />
-            </div>
-          </details>
-          )}
-        </div>
+        <BookingCard master={visibleMaster} />
       </div>
+
+      <MobileBookingBar master={visibleMaster} />
+      <BookingModal master={visibleMaster} masterServices={masterServices} />
+      <MessageModal master={visibleMaster} />
+      <ServicesModal services={visibleMaster.services} />
+      <PortfolioModal items={portfolioItems} fallbackWorks={visibleMaster.works} />
     </main>
   );
 }

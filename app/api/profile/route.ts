@@ -24,6 +24,27 @@ function optionalNumber(value: unknown, fallback: number) {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
+function parseContacts(value: unknown): EditableMasterProfile["contacts"] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+      const label = optionalText(row.label);
+      const contactValue = optionalText(row.value);
+
+      if (!label || !contactValue) return null;
+
+      return {
+        label,
+        value: contactValue,
+        href: optionalText(row.href) || "#",
+      };
+    })
+    .filter(Boolean) as NonNullable<EditableMasterProfile["contacts"]>;
+}
+
 function validateProfile(value: unknown): EditableMasterProfile {
   if (!value || typeof value !== "object") {
     throw new Error("Некоректні дані профілю.");
@@ -71,6 +92,9 @@ function validateProfile(value: unknown): EditableMasterProfile {
     priceFrom,
     experience: requiredText(profile.experience, "Досвід"),
     services,
+    contacts: parseContacts(profile.contacts),
+    isProfileActive: profile.isProfileActive !== false,
+    acceptsBudPomichRequests: profile.acceptsBudPomichRequests !== false,
   };
 }
 
@@ -94,6 +118,9 @@ function mapProfileRow(data: Record<string, any>): EditableMasterProfile {
     priceFrom: Number(data.price_from),
     experience: data.experience,
     services: data.services,
+    contacts: parseContacts(data.contacts),
+    isProfileActive: data.is_profile_active !== false,
+    acceptsBudPomichRequests: data.accepts_budpomich_requests !== false,
   };
 }
 
@@ -114,7 +141,7 @@ export async function GET(request: Request) {
   }
 
   const extendedSelect =
-    "master_id, name, profession, city, district, description, full_description, avatar_url, cover_image_url, avatar_zoom, avatar_position_x, avatar_position_y, cover_zoom, cover_position_x, cover_position_y, price_from, experience, services";
+    "master_id, name, profession, city, district, description, full_description, avatar_url, cover_image_url, avatar_zoom, avatar_position_x, avatar_position_y, cover_zoom, cover_position_x, cover_position_y, price_from, experience, services, is_profile_active, accepts_budpomich_requests";
   const baseSelect =
     "master_id, name, profession, city, description, full_description, price_from, experience, services";
 
@@ -124,7 +151,7 @@ export async function GET(request: Request) {
     .eq("master_id", masterId)
     .maybeSingle();
 
-  if (result.error && /avatar_url|cover_image_url|avatar_zoom|avatar_position|cover_zoom|cover_position|column/i.test(result.error.message)) {
+  if (result.error && /is_profile_active|accepts_budpomich_requests|avatar_url|cover_image_url|avatar_zoom|avatar_position|cover_zoom|cover_position|column/i.test(result.error.message)) {
     result = await supabase
       .from("master_profile_edits")
       .select(baseSelect)
@@ -174,6 +201,8 @@ export async function POST(request: Request) {
         price_from: profile.priceFrom,
         experience: profile.experience,
         services: profile.services,
+        is_profile_active: profile.isProfileActive,
+        accepts_budpomich_requests: profile.acceptsBudPomichRequests,
         updated_at: new Date().toISOString(),
       };
     const basePayload = {
@@ -194,7 +223,7 @@ export async function POST(request: Request) {
       { onConflict: "master_id" },
     );
 
-    if (error && /avatar_url|cover_image_url|avatar_zoom|avatar_position|cover_zoom|cover_position|column/i.test(error.message)) {
+    if (error && /is_profile_active|accepts_budpomich_requests|avatar_url|cover_image_url|avatar_zoom|avatar_position|cover_zoom|cover_position|column/i.test(error.message)) {
       const fallback = await supabase.from("master_profile_edits").upsert(
         basePayload,
         { onConflict: "master_id" },

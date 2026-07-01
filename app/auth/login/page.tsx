@@ -17,10 +17,10 @@ export default function LoginPage() {
   return (
     <main className="auth-page login-page">
       <header className="login-topbar">
-        <Link className="app-logo" href="/masters" aria-label="BudPomich">
+        <Link className="app-logo" href="/masters" aria-label="БудПомiч">
           <Image
             src="/logo/budpomich-logo.svg"
-            alt="BudPomich"
+            alt="БудПомiч"
             width={158}
             height={84}
             priority

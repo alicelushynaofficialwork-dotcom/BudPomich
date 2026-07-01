@@ -20,7 +20,11 @@ export type EditableMasterProfile = Pick<
   | "priceFrom"
   | "experience"
   | "services"
->;
+  | "contacts"
+> & {
+  isProfileActive?: boolean;
+  acceptsBudPomichRequests?: boolean;
+};
 
 export const masterProfileStorageKey = "budpomich.master-profile-edits";
 
@@ -48,6 +52,9 @@ export function mergeMasterProfile(
     ...edit,
     avatarUrl: edit.avatarUrl || master.avatarUrl,
     coverImageUrl: edit.coverImageUrl || master.coverImageUrl,
+    contacts: edit.contacts?.some((contact) => contact.value.trim()) ? edit.contacts : master.contacts,
+    isProfileActive: edit.isProfileActive ?? true,
+    acceptsBudPomichRequests: edit.acceptsBudPomichRequests ?? true,
     services: normalizeMasterServices(edit.services),
     initials: edit.name
       .split(/\s+/)

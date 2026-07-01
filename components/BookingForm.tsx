@@ -70,11 +70,13 @@ type BookingFormProps = {
   masterName: string;
   busyDates?: string[];
   masterServices?: MasterService[];
+  sectionId?: string;
 };
 
 type DirectMessageFormProps = {
   masterId: string;
   masterName: string;
+  formId?: string;
 };
 
 const monthNames = [
@@ -213,7 +215,7 @@ function buildCalendarDays(year: number, monthIndex: number) {
   ];
 }
 
-export function DirectMessageForm({ masterId, masterName }: DirectMessageFormProps) {
+export function DirectMessageForm({ masterId, masterName, formId = "message" }: DirectMessageFormProps) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState("");
@@ -242,7 +244,7 @@ export function DirectMessageForm({ masterId, masterName }: DirectMessageFormPro
   }
 
   return (
-    <form className="direct-message-form" id="message" onSubmit={submitMessage} noValidate>
+    <form className="direct-message-form" id={formId} onSubmit={submitMessage} noValidate>
       <div className="direct-message-title">
         <span>
           <MessageSquare size={18} />
@@ -261,7 +263,7 @@ export function DirectMessageForm({ masterId, masterName }: DirectMessageFormPro
             setSubject(event.target.value);
             setMessageError("");
           }}
-          placeholder="Наприклад, спільний проект"
+          placeholder="Наприклад, спільний проект, майбутнiй проект"
           required
           value={subject}
         />
@@ -303,6 +305,7 @@ export function BookingForm({
   masterName,
   busyDates = defaultBusyDates,
   masterServices = [],
+  sectionId = "booking",
 }: BookingFormProps) {
   const [visibleMonth, setVisibleMonth] = useState({ year: 2026, monthIndex: 5 });
   const [rangeStart, setRangeStart] = useState("");
@@ -366,7 +369,11 @@ export function BookingForm({
       const exists = current.includes(serviceId);
       const next = exists ? current.filter((id) => id !== serviceId) : [...current, serviceId];
       const normalized = next.length ? next : [serviceId];
-      const activeId = normalized.includes(activeServiceId) ? activeServiceId : normalized[0];
+      const activeId = exists
+        ? normalized.includes(activeServiceId)
+          ? activeServiceId
+          : normalized[0]
+        : serviceId;
 
       setActiveServiceId(activeId);
       setSelectedServiceId(activeId);
@@ -586,7 +593,7 @@ export function BookingForm({
   }
 
     return (
-    <section className="online-booking" id="booking">
+    <section className="online-booking" id={sectionId}>
       <div className="booking-intro">
         <p className="eyebrow">Онлайн-запис</p>
         <h2>Оберіть вільний період</h2>
@@ -848,12 +855,12 @@ export function BookingForm({
                 <button
                   className={service.id === selectedService?.id ? "active" : ""}
                   key={service.id}
+                  type="button"
                   onClick={() => {
                     setActiveServiceId(service.id);
                     setSelectedServiceId(service.id);
                     setBookingError("");
                   }}
-                  type="button"
                 >
                   {service.serviceTitle}
                 </button>

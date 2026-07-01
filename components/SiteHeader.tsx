@@ -15,10 +15,10 @@ export function SiteHeader({
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link className="app-logo" href="/masters" aria-label="BudPomich">
+        <Link className="app-logo" href="/masters" aria-label="БудПомiч">
           <Image
             src="/logo/budpomich-logo.svg"
-            alt="BudPomich"
+            alt="БудПомiч"
             width={220}
             height={117}
             priority

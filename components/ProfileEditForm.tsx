@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   CalendarDays,
+  CheckCircle2,
   Eye,
   MapPin,
   MessageSquare,
@@ -32,6 +33,58 @@ type ProfileEditFormProps = {
   onSaved?: (profile: EditableMasterProfile) => void;
 };
 
+const contactLabels = {
+  phone: "Телефон",
+  email: "Email",
+  telegram: "Telegram",
+  whatsapp: "WhatsApp / Viber",
+  preferred: "Бажаний спосіб звʼязку",
+} as const;
+
+function normalizeVisibleBrand(value: string) {
+  return value.replace(/BudPomich/g, "БудПомiч");
+}
+
+function normalizeContacts(
+  contacts: EditableMasterProfile["contacts"] | undefined,
+) {
+  return contacts?.map((contact) => ({
+    ...contact,
+    value: normalizeVisibleBrand(contact.value),
+  }));
+}
+
+function getContactValue(
+  contacts: EditableMasterProfile["contacts"] | undefined,
+  label: string | string[],
+) {
+  const labels = Array.isArray(label) ? label : [label];
+  const value = contacts?.find((contact) => labels.includes(contact.label) && contact.value.trim())?.value ?? "";
+  return normalizeVisibleBrand(value);
+}
+
+function hasFilledContacts(contacts: EditableMasterProfile["contacts"] | undefined) {
+  return Boolean(contacts?.some((contact) => contact.value.trim()));
+}
+
+function buildContactHref(label: string, value: string) {
+  const normalized = value.trim();
+  if (!normalized) return "#";
+
+  if (label === contactLabels.phone) return `tel:${normalized.replace(/\s/g, "")}`;
+  if (label === contactLabels.email) return `mailto:${normalized}`;
+  if (label === contactLabels.telegram) {
+    const username = normalized.replace(/^@/, "");
+    return username ? `https://t.me/${username}` : "#";
+  }
+  if (label === contactLabels.whatsapp) {
+    const digits = normalized.replace(/[^\d]/g, "");
+    return digits ? `https://wa.me/${digits}` : "#";
+  }
+
+  return "#";
+}
+
 export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormProps) {
   const [profile, setProfile] = useState<EditableMasterProfile>({
     id: master.id,
@@ -51,6 +104,9 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
     priceFrom: master.priceFrom,
     experience: master.experience,
     services: master.services,
+    contacts: normalizeContacts(master.contacts) ?? [],
+    isProfileActive: true,
+    acceptsBudPomichRequests: true,
   });
   const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
   const completedProfileItems = [
@@ -60,7 +116,7 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
     Boolean(profile.city.trim()),
     Boolean(profile.description.trim()),
     profile.services.some((service) => service.name.trim()),
-    true,
+    Boolean(profile.contacts?.some((contact) => contact.value.trim())),
     true,
   ];
   const completionPercent = Math.round(
@@ -72,7 +128,15 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
       const localProfiles = JSON.parse(
         localStorage.getItem(masterProfileStorageKey) ?? "{}",
       ) as Record<string, EditableMasterProfile>;
-      if (localProfiles[master.id]) setProfile(localProfiles[master.id]);
+      if (localProfiles[master.id]) {
+        setProfile((current) => ({
+          ...current,
+          ...localProfiles[master.id],
+          contacts: hasFilledContacts(localProfiles[master.id].contacts)
+            ? normalizeContacts(localProfiles[master.id].contacts)
+            : current.contacts,
+        }));
+      }
     }, 0);
 
     fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
@@ -90,6 +154,11 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
           coverZoom: result.profile!.coverZoom ?? current.coverZoom ?? 1,
           coverPositionX: result.profile!.coverPositionX ?? current.coverPositionX ?? 50,
           coverPositionY: result.profile!.coverPositionY ?? current.coverPositionY ?? 50,
+          contacts: hasFilledContacts(result.profile!.contacts)
+            ? normalizeContacts(result.profile!.contacts)
+            : current.contacts,
+          isProfileActive: result.profile!.isProfileActive ?? current.isProfileActive ?? true,
+          acceptsBudPomichRequests: result.profile!.acceptsBudPomichRequests ?? current.acceptsBudPomichRequests ?? true,
         }));
       })
       .catch(() => undefined);
@@ -124,6 +193,25 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
         serviceIndex === index ? { ...service, [field]: value } : service,
       ),
     }));
+  }
+
+  function updateContact(label: string, value: string) {
+    setProfile((current) => {
+      const contacts = current.contacts ?? [];
+      const nextContact = {
+        label,
+        value: normalizeVisibleBrand(value),
+        href: buildContactHref(label, value),
+      };
+      const existingContact = contacts.some((contact) => contact.label === label);
+
+      return {
+        ...current,
+        contacts: existingContact
+          ? contacts.map((contact) => (contact.label === label ? nextContact : contact))
+          : [...contacts, nextContact],
+      };
+    });
   }
 
   function handleImageUpload(field: "avatarUrl" | "coverImageUrl", file?: File) {
@@ -239,6 +327,27 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
     }
   }
 
+  const phoneContact = getContactValue(profile.contacts, contactLabels.phone);
+  const emailContact = getContactValue(profile.contacts, contactLabels.email);
+  const telegramContact = getContactValue(profile.contacts, contactLabels.telegram);
+  const whatsappContact = getContactValue(profile.contacts, [contactLabels.whatsapp, "WhatsApp", "Viber"]);
+  const preferredContact = getContactValue(profile.contacts, contactLabels.preferred);
+  const filledContacts = [
+    { label: contactLabels.phone, value: phoneContact },
+    { label: contactLabels.email, value: emailContact },
+    { label: contactLabels.telegram, value: telegramContact },
+    { label: contactLabels.whatsapp, value: whatsappContact },
+    { label: contactLabels.preferred, value: preferredContact },
+  ].filter((contact) => contact.value.trim());
+  const previewServices = profile.services.filter((service) => service.name.trim()).slice(0, 3);
+  const editorSections = [
+    { label: "Фото", done: Boolean(profile.avatarUrl), href: "#profile-main" },
+    { label: "Про майстра", done: Boolean(profile.description.trim() && profile.fullDescription.trim()), href: "#profile-about" },
+    { label: "Локація", done: Boolean(profile.city.trim()), href: "#profile-location" },
+    { label: "Послуги", done: profile.services.some((service) => service.name.trim() && service.price.trim()), href: "#profile-services" },
+    { label: "Контакти", done: filledContacts.length > 0, href: "#profile-contacts" },
+  ];
+
   return (
     <form className="profile-edit-form" onSubmit={handleSubmit}>
       <section
@@ -306,6 +415,8 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
         <a href="#profile-portfolio">Портфоліо</a>
         <a href="#profile-contacts">Контакти</a>
       </nav>
+      <div className="profile-editor-workspace">
+        <div className="profile-editor-form-column">
       <section className="profile-edit-card" id="profile-main">
         <div className="profile-edit-card-heading">
           <div>
@@ -441,7 +552,7 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
             />
           </label>
           <label>
-            РњС–СЃС‚Рѕ
+            Місто
             <input
               value={profile.city}
               onChange={(event) => updateField("city", event.target.value)}
@@ -672,30 +783,91 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
             <MessageSquare size={15} /> Редагувати контакти
           </a>
         </div>
+        {filledContacts.length > 0 && (
+          <div className="profile-contacts-preview" aria-label="Заповнені контакти">
+            {filledContacts.map((contact) => (
+              <span key={contact.label}>
+                <small>{contact.label}</small>
+                <strong>{contact.value}</strong>
+              </span>
+            ))}
+          </div>
+        )}
         <div className="profile-edit-grid">
           <label>
             Телефон
-            <input placeholder="+380..." />
+            <input
+              placeholder="+380..."
+              value={phoneContact}
+              onChange={(event) => updateContact(contactLabels.phone, event.target.value)}
+            />
           </label>
           <label>
             Email
-            <input placeholder="name@example.com" type="email" />
+            <input
+              placeholder="name@example.com"
+              type="email"
+              value={emailContact}
+              onChange={(event) => updateContact(contactLabels.email, event.target.value)}
+            />
           </label>
           <label>
             Telegram
-            <input placeholder="@username" />
+            <input
+              placeholder="@username"
+              value={telegramContact}
+              onChange={(event) => updateContact(contactLabels.telegram, event.target.value)}
+            />
           </label>
           <label>
             WhatsApp / Viber
-            <input placeholder="+380..." />
+            <input
+              placeholder="+380..."
+              value={whatsappContact}
+              onChange={(event) => updateContact(contactLabels.whatsapp, event.target.value)}
+            />
           </label>
           <label>
             Бажаний спосіб звʼязку
-            <input placeholder="BudPomich, телефон, Telegram" />
+            <input
+              placeholder="БудПомiч, телефон, Telegram"
+              value={preferredContact}
+              onChange={(event) => updateContact(contactLabels.preferred, event.target.value)}
+            />
           </label>
           <label className="profile-edit-wide profile-editor-checkbox">
-            <input type="checkbox" defaultChecked />
-            Приймати заявки через BudPomich
+            <input
+              type="checkbox"
+              checked={profile.isProfileActive !== false}
+              onChange={(event) =>
+                setProfile((current) => ({
+                  ...current,
+                  isProfileActive: event.target.checked,
+                  acceptsBudPomichRequests: event.target.checked ? current.acceptsBudPomichRequests : false,
+                }))
+              }
+            />
+            <span>
+              Публічний профіль активний і доступний для заявок
+              <small>Коли вимкнено, профіль виглядає неактивним і форма онлайн-заявки не показується.</small>
+            </span>
+          </label>
+          <label className="profile-edit-wide profile-editor-checkbox">
+            <input
+              type="checkbox"
+              checked={profile.isProfileActive !== false && profile.acceptsBudPomichRequests !== false}
+              disabled={profile.isProfileActive === false}
+              onChange={(event) =>
+                setProfile((current) => ({
+                  ...current,
+                  acceptsBudPomichRequests: event.target.checked,
+                }))
+              }
+            />
+            <span>
+              Приймати заявки через БудПомiч
+              <small>Додає бейдж у публічному профілі та відкриває клієнтам онлайн-запис.</small>
+            </span>
           </label>
         </div>
       </section>
@@ -730,6 +902,67 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
           )}
         </div>
       )}
+        </div>
+
+        <aside className="profile-editor-preview-panel" aria-label="Превʼю публічного профілю">
+          <div className="profile-editor-preview-card">
+            <div className="profile-editor-preview-top">
+              <span>Публічний профіль</span>
+              <Link href={`/profile/${master.id}?from=profile`}>
+                <Eye size={15} />
+                Відкрити
+              </Link>
+            </div>
+            <div className="profile-editor-preview-person">
+              <div className={`profile-editor-preview-avatar avatar-${master.accent}`}>
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="" style={imageStyle("avatar")} />
+                ) : (
+                  master.initials
+                )}
+              </div>
+              <div>
+                <small>{profile.profession || "Професія"}</small>
+                <strong>{profile.name || "Імʼя майстра"}</strong>
+                <span><MapPin size={13} /> {profile.city || "Місто"} · {profile.experience || "Досвід"}</span>
+              </div>
+            </div>
+            <p>{profile.description || "Короткий опис допомагає клієнту швидко зрозуміти, чим ви корисні."}</p>
+            <div className="profile-editor-preview-price">
+              <span>Старт ціни</span>
+              <strong>від {Number(profile.priceFrom || 0).toLocaleString("uk-UA")} грн</strong>
+            </div>
+            <div className="profile-editor-preview-services">
+              {(previewServices.length ? previewServices : [{ name: "Послуга", price: "ціна" }]).map((service) => (
+                <span key={`${service.name}-${service.price}`}>
+                  <small>{service.name || "Послуга"}</small>
+                  <strong>{service.price || "ціна"}</strong>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="profile-editor-check-card">
+            <div>
+              <span>Готовність профілю</span>
+              <strong>{completionPercent}%</strong>
+            </div>
+            <ul>
+              {editorSections.map((item) => (
+                <li className={item.done ? "done" : ""} key={item.label}>
+                  <CheckCircle2 size={16} />
+                  <a href={item.href}>{item.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="profile-editor-hint-card">
+            <strong>Як це повʼязано з публічним профілем</strong>
+            <p>Поля з цієї сторінки формують верхній блок, опис, послуги, контакти та заявку на сторінці майстра.</p>
+          </div>
+        </aside>
+      </div>
     </form>
   );
 }
