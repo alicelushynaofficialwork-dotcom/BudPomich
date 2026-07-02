@@ -600,6 +600,7 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
               rows={3}
               value={profile.description}
               onChange={(event) => updateField("description", event.target.value)}
+              placeholder="Виконую роботи з гіпсокартону та плитки у Києві. Працюю акуратно, допомагаю оцінити обсяг робіт."
               required
             />
             <small>Використовується у каталозі майстрів і верхньому блоці профілю.</small>
@@ -612,6 +613,7 @@ export function ProfileEditForm({ master, onCancel, onSaved }: ProfileEditFormPr
               onChange={(event) =>
                 updateField("fullDescription", event.target.value)
               }
+              placeholder="Виконую роботи з гіпсокартону та плитки у Києві. Працюю акуратно, допомагаю оцінити обсяг робіт, матеріали та реальний бюджет до початку ремонту."
               required
             />
           </label>

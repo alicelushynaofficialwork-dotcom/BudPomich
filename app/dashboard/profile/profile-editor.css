@@ -732,6 +732,12 @@
   line-height: 1.55;
 }
 
+.profile-edit-grid input::placeholder,
+.profile-edit-grid textarea::placeholder {
+  color: rgba(31, 41, 51, 0.38);
+  font-weight: 500;
+}
+
 .profile-edit-grid input:focus,
 .profile-edit-grid textarea:focus,
 .profile-service-row input:focus {

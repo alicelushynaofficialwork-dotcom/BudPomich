@@ -192,6 +192,7 @@
 
 .dash-button,
 .dash-section-head > a,
+.dash-section-head > button,
 .dash-request-actions button,
 .dash-request-actions a,
 .dash-calendar-actions button {
@@ -225,11 +226,16 @@
 
 .dash-button-light,
 .dash-section-head > a,
+.dash-section-head > button,
 .dash-request-actions a,
 .dash-request-actions button.muted {
   border-color: var(--dash-border);
   background: #fff;
   color: var(--dash-text);
+}
+
+.dash-section-head > button {
+  padding: 0 14px;
 }
 
 .dash-stats {
@@ -771,6 +777,505 @@
   font-size: 19px;
 }
 
+.dash-doc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dash-doc-grid article {
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--dash-border);
+  border-radius: 18px;
+  background: #FFFCF7;
+}
+
+.dash-doc-grid article > span {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #FFF4DC;
+  color: #92400E;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.dash-doc-grid strong {
+  font-size: 15px;
+}
+
+.dash-doc-grid p {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dash-doc-grid small {
+  color: var(--dash-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.dash-doc-grid label {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dash-text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.dash-doc-grid input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--dash-accent);
+}
+
+.dash-feed-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dash-feed-list a {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  background: #FFFCF7;
+}
+
+.dash-feed-list img,
+.dash-feed-list > a > span {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  object-fit: cover;
+  background: #FFF4DC;
+}
+
+.dash-feed-list strong,
+.dash-feed-list small {
+  display: block;
+}
+
+.dash-feed-list strong {
+  overflow: hidden;
+  color: var(--dash-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-feed-list small,
+.dash-feed-list p {
+  margin: 3px 0 0;
+  color: var(--dash-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.dash-message-center {
+  overflow: hidden;
+}
+
+.dash-message-tabs {
+  display: none;
+}
+
+.dash-message-crm {
+  display: grid;
+  grid-template-columns: 280px 230px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.dash-client-column,
+.dash-work-calendar,
+.dash-chat-column {
+  min-width: 0;
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
+  background: #FFFCF7;
+}
+
+.dash-client-column,
+.dash-work-calendar {
+  padding: 14px;
+}
+
+.dash-client-column h3,
+.dash-work-calendar h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.dash-client-column > input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  outline: 0;
+  color: var(--dash-text);
+  font: inherit;
+}
+
+.dash-message-filters {
+  margin: 12px 0;
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+}
+
+.dash-message-filters button,
+.dash-message-tabs button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dash-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.dash-message-filters button.active,
+.dash-message-tabs button.active {
+  border-color: #F59E0B;
+  background: #FFF4DC;
+  color: #92400E;
+}
+
+.dash-client-list {
+  display: grid;
+  gap: 9px;
+}
+
+.dash-client-list > button {
+  width: 100%;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--dash-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.dash-client-list > button.active {
+  border-color: #F59E0B;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+}
+
+.dash-client-list > button > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #FFF4DC;
+  color: #92400E;
+  font-weight: 950;
+}
+
+.dash-client-list strong,
+.dash-client-list small,
+.dash-client-list p {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-client-list small,
+.dash-client-list p {
+  margin: 3px 0 0;
+  color: var(--dash-muted);
+  font-size: 11px;
+}
+
+.dash-client-list em,
+.dash-client-list i {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: #FFF4DC;
+  color: #92400E;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dash-work-calendar > span {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--dash-muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.dash-work-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dash-work-calendar-grid button {
+  min-height: 54px;
+  padding: 6px 4px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--dash-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.dash-work-calendar-grid button.free {
+  background: #F0FDF4;
+  color: #166534;
+}
+
+.dash-work-calendar-grid button.busy {
+  background: #FEF2F2;
+  color: #991B1B;
+}
+
+.dash-work-calendar-grid button.pending {
+  background: #FEFCE8;
+  color: #854D0E;
+}
+
+.dash-work-calendar-grid button.request {
+  background: #FFF4DC;
+  color: #92400E;
+}
+
+.dash-work-calendar-grid small {
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.dash-chat-column {
+  min-height: 620px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+}
+
+.dash-chat-column > header {
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--dash-border);
+  background: #fff;
+}
+
+.dash-chat-column header button {
+  border: 0;
+  background: transparent;
+  color: var(--dash-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.dash-chat-column header strong,
+.dash-chat-column header span {
+  display: block;
+}
+
+.dash-chat-column header span {
+  margin-top: 3px;
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+.dash-chat-column nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.dash-chat-column nav a,
+.dash-chat-column nav button {
+  min-height: 34px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dash-text);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dash-request-side-card {
+  margin: 12px;
+  padding: 14px;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  background: #fffaf2;
+}
+
+.dash-request-side-card > p {
+  margin: 8px 0;
+  color: var(--dash-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dash-request-side-card > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.dash-request-side-card span {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dash-text);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.dash-request-side-actions {
+  margin-top: 10px;
+}
+
+.dash-request-side-actions button,
+.dash-request-side-actions a {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dash-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dash-chat-messages {
+  min-height: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  background: #F7F4EE;
+}
+
+.dash-chat-messages .system,
+.dash-chat-messages .client,
+.dash-chat-messages .master {
+  max-width: 78%;
+  padding: 10px 12px;
+  border-radius: 16px;
+}
+
+.dash-chat-messages .system {
+  align-self: center;
+  background: #fff;
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+.dash-chat-messages .client {
+  align-self: flex-start;
+  background: #fff;
+}
+
+.dash-chat-messages .master {
+  align-self: flex-end;
+  background: #F59E0B;
+  color: #fff;
+}
+
+.dash-chat-messages p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.dash-chat-messages time {
+  display: block;
+  margin-top: 5px;
+  opacity: 0.76;
+  font-size: 10px;
+}
+
+.dash-chat-templates {
+  padding: 10px 14px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border-top: 1px solid var(--dash-border);
+  background: #fff;
+}
+
+.dash-chat-templates button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dash-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dash-chat-input {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  border-top: 1px solid var(--dash-border);
+  background: #fff;
+}
+
+.dash-chat-input input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  outline: 0;
+  font: inherit;
+}
+
+.dash-chat-input button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 14px;
+  background: #F59E0B;
+  color: #fff;
+  cursor: pointer;
+}
+
 @media (max-width: 1180px) {
   .dash-app {
     grid-template-columns: 1fr;
@@ -833,13 +1338,56 @@
 
   .dash-stats,
   .dash-portfolio-grid,
-  .dash-services-grid {
+  .dash-services-grid,
+  .dash-doc-grid {
     grid-template-columns: 1fr;
   }
 
   .dash-panel {
     padding: 18px;
     border-radius: 20px;
+  }
+
+  .dash-message-center {
+    padding: 16px;
+  }
+
+  .dash-message-tabs {
+    margin-bottom: 12px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .dash-message-crm {
+    display: block;
+  }
+
+  .dash-client-column,
+  .dash-work-calendar,
+  .dash-chat-column {
+    display: none;
+  }
+
+  .dash-client-column.active,
+  .dash-work-calendar.active,
+  .dash-chat-column.active {
+    display: grid;
+  }
+
+  .dash-chat-column {
+    min-height: 640px;
+  }
+
+  .dash-chat-column > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dash-chat-messages .system,
+  .dash-chat-messages .client,
+  .dash-chat-messages .master {
+    max-width: 92%;
   }
 
   .dash-panel h2 {
