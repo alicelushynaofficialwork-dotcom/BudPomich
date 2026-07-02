@@ -28,18 +28,14 @@ import {
   masterProfileStorageKey,
   mergeMasterProfile,
 } from "@/lib/master-profile-edit";
-import { formatPriceFromServices } from "@/lib/master-pricing";
 import {
-  defaultCompanyDocuments,
   defaultMasterQualifications,
   defaultPortfolioItems,
   formatUah,
   getPortfolioPeriod,
   getProjectPublicLocation,
   getProjectSlug,
-  getPublicProjectDocuments,
   portfolioWorkCategories,
-  companyDocumentsStorageKey,
   masterQualificationsStorageKey,
   type CompanyDocument,
   type MasterQualification,
@@ -195,10 +191,8 @@ function PublicContactsSection({ master }: { master: MasterProfile }) {
 
 function ProfileHero({
   master,
-  priceFromServices,
 }: {
   master: MasterProfile;
-  priceFromServices: string;
 }) {
   const isProfileActive = master.isProfileActive !== false;
   const acceptsBudPomichRequests = master.acceptsBudPomichRequests !== false;
@@ -207,19 +201,11 @@ function ProfileHero({
     { href: "#services", label: "Послуги", note: "ціни", preview: "Перелік робіт, стартові ціни, одиниці виміру та швидкий вибір послуги.", icon: Hammer },
     { href: "#portfolio", label: "Роботи", note: "портфоліо", preview: "Фото виконаних проєктів, місто, обсяг, вартість і деталі кожної роботи.", icon: BriefcaseBusiness },
     { href: "#profile-panel-qualifications", label: "Кваліфікація", note: "досвід", preview: "Курси, сертифікати, навчальні центри, дати та фото документів майстра.", icon: BadgeCheck },
-    { href: "#profile-panel-documents", label: "Документи", note: "публічні", preview: "Публічні файли профілю: гарантії, прайси, дозволи або презентації.", icon: FileText },
-    { href: "#profile-panel-reviews", label: "Відгуки", note: "клієнти", preview: "Оцінки клієнтів, текст відгуків і дата, якщо вона вказана.", icon: Star },
   ];
 
   return (
     <section className="bp-profile-hero" id="profile-top">
       <div className="bp-profile-photo-column">
-        {hasPhoneContact(master) && (
-          <span className="bp-verified-badge">
-            <BadgeCheck size={16} />
-            Перевірений майстер
-          </span>
-        )}
         <div className="bp-profile-photo">
           {master.avatarUrl ? (
             <img src={master.avatarUrl} alt={`Фото майстра ${master.name}`} />
@@ -227,18 +213,10 @@ function ProfileHero({
             <span>{master.initials || "М"}</span>
           )}
         </div>
-        <div className="bp-photo-status-list">
-          <span className={canBookOnline ? "bp-status-badge" : "bp-status-badge bp-status-badge-inactive"}>
-            <span />
-            {canBookOnline ? "Доступний для заявок" : "Не доступний для заявок"}
-          </span>
-          {canBookOnline && (
-            <span className="bp-budpomich-request-badge">
-              <CheckCircle2 size={15} />
-              Приймаю заявки через БудПомiч
-            </span>
-          )}
-        </div>
+        <span className="bp-photo-experience-badge">
+          <BriefcaseBusiness size={16} />
+          {master.experience || "Досвід підтверджено"}
+        </span>
         <nav className="bp-hero-section-rail" aria-label="Розділи профілю">
           <strong>Розділи</strong>
           {profileQuickSections.map(({ href, label, note, preview, icon: Icon }) => (
@@ -257,8 +235,24 @@ function ProfileHero({
         </nav>
       </div>
 
-      <div className="bp-hero-follow-corner">
+      <div className="bp-hero-corner-actions">
         <FollowMasterButton masterId={master.id} masterName={master.name} />
+        {hasPhoneContact(master) && (
+          <span className="bp-verified-badge">
+            <BadgeCheck size={16} />
+            Перевірений майстер
+          </span>
+        )}
+        <span className={canBookOnline ? "bp-status-badge" : "bp-status-badge bp-status-badge-inactive"}>
+          <span />
+          {canBookOnline ? "Доступний для заявок" : "Не доступний для заявок"}
+        </span>
+        {canBookOnline && (
+          <span className="bp-budpomich-request-badge">
+            <CheckCircle2 size={15} />
+            Приймаю заявки через БудПомiч
+          </span>
+        )}
       </div>
 
       <div className="bp-profile-hero-content">
@@ -271,6 +265,16 @@ function ProfileHero({
               "Гіпсокартонні конструкції, перегородки, стелі та укладання плитки у комерційних будівлях."}
           </p>
         </div>
+        <div className="bp-hero-fit-grid">
+          <div>
+            <span>З якими обʼєктами працює</span>
+            <strong>Квартири, офіси, комерційні приміщення</strong>
+          </div>
+          <div>
+            <span>Не розглядає заявки</span>
+            <strong>Висотні роботи вище 5 метрів</strong>
+          </div>
+        </div>
         <div className="bp-hero-about-card">
           <p className="bp-eyebrow">Про майстра</p>
           <h2>Досвід і підхід до роботи</h2>
@@ -279,21 +283,6 @@ function ProfileHero({
               master.description ||
               "Виконую роботи з гіпсокартону та плитки у Києві. Працюю акуратно, допомагаю оцінити обсяг робіт, матеріали та реальний бюджет до початку ремонту."}
           </p>
-        </div>
-
-        <div className="bp-hero-facts">
-          <span>
-            <Star size={17} fill="currentColor" />
-            {master.rating?.toFixed(1) ?? "5.0"} · {master.reviews ?? 0} відгуків
-          </span>
-          <span>
-            <BriefcaseBusiness size={17} />
-            {master.experience || "Досвід підтверджено"}
-          </span>
-          <span>
-            <Hammer size={17} />
-            від {priceFromServices}
-          </span>
         </div>
 
         <div className="bp-hero-details" aria-label="Додаткова інформація">
@@ -309,10 +298,6 @@ function ProfileHero({
           <div className="bp-hero-detail-card">
             <span>Активність</span>
             <strong>{master.lastSeenText || "Швидко відповідає"}</strong>
-          </div>
-          <div className="bp-hero-detail-card">
-            <span>На БудПомiч</span>
-            <strong>{master.registeredText || "Профіль перевірено"}</strong>
           </div>
         </div>
 
@@ -643,7 +628,6 @@ function PortfolioJournalSection({ items, fallbackWorks }: { items: PortfolioIte
         {hasPortfolio
           ? visibleItems.map((item) => {
               const period = getPortfolioPeriod(item);
-              const documents = getPublicProjectDocuments(item);
               const slug = getProjectSlug(item);
               const comment = item.clientVisibleComment || item.description || "Майстер додасть короткий коментар до цього проєкту.";
               return (
@@ -671,11 +655,6 @@ function PortfolioJournalSection({ items, fallbackWorks }: { items: PortfolioIte
                       <small>{getItemUnitPrice(item)}</small>
                       <small>{formatUah(item.totalAmount || 0)}</small>
                     </div>
-                    {documents.length > 0 && (
-                      <span className="bp-document-badge">
-                        <FileText size={14} /> Документи: {documents.length}
-                      </span>
-                    )}
                     <div className="bp-portfolio-actions">
                       <a href={`#work-detail-${slug}`}>Детальніше</a>
                       <button type="button" onClick={() => shareWork(item)}>
@@ -723,7 +702,6 @@ function PortfolioJournalSection({ items, fallbackWorks }: { items: PortfolioIte
 }
 
 function WorkDetailModal({ item, slug }: { item: PortfolioItem; slug: string }) {
-  const documents = getPublicProjectDocuments(item);
   const photos = [
     ...(item.beforePhotos ?? []).map((photo) => photo.url),
     ...(item.beforePhotoUrls ?? []),
@@ -779,22 +757,6 @@ function WorkDetailModal({ item, slug }: { item: PortfolioItem; slug: string }) 
                 </div>
               ))}
             </div>
-          </section>
-          <section>
-            <h3>Документи по обʼєкту</h3>
-            {documents.length ? (
-              <div className="bp-work-documents-list">
-                {documents.map((document) => (
-                  <a href={document.externalUrl || document.fileUrl || "#"} key={document.id}>
-                    <FileText size={17} />
-                    <span>{document.title}</span>
-                    <small>{document.sourceType === "link" ? "посилання" : document.fileType || document.type}</small>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p>Документи по цьому проєкту не опубліковані.</p>
-            )}
           </section>
           <div className="bp-work-detail-actions">
             <a href="#booking">Замовити схожу роботу</a>
@@ -1251,19 +1213,27 @@ function ProfilePanelDrawer({
 }
 
 function ProfileQuickPanelModals({
-  reviews,
+  master,
   qualifications,
-  companyDocuments,
 }: {
-  reviews: Review[];
+  master: MasterProfile;
   qualifications: MasterQualification[];
-  companyDocuments: CompanyDocument[];
 }) {
-  const publicDocuments = companyDocuments.filter((item) => item.isPublic === true);
-
   return (
     <>
       <ProfilePanelDrawer id="profile-panel-qualifications" eyebrow="Кваліфікація" title="Навчання і сертифікати">
+        <article className="bp-qualification-experience-card">
+          <div>
+            <p className="bp-eyebrow">Практичний досвід</p>
+            <h3>{master.experience || "2 роки досвіду"}</h3>
+            <span>Робота на квартирах, офісах та комерційних приміщеннях у Києві.</span>
+          </div>
+          <ul>
+            <li>Монтаж гіпсокартонних перегородок, коробів і стель.</li>
+            <li>Підготовка основи, рівність площин, вузли примикання.</li>
+            <li>Укладання плитки та погодження обсягу робіт перед стартом.</li>
+          </ul>
+        </article>
         {qualifications.length ? (
           <div className="bp-qualification-drawer-grid">
             {qualifications.slice(0, 6).map((item) => (
@@ -1295,46 +1265,6 @@ function ProfileQuickPanelModals({
         )}
       </ProfilePanelDrawer>
 
-      <ProfilePanelDrawer id="profile-panel-documents" eyebrow="Документи" title="Публічні документи">
-        {publicDocuments.length ? (
-          <div className="bp-profile-drawer-list">
-            {publicDocuments.map((item) => (
-              <a href={item.fileUrl || "#profile-panel-documents"} key={item.id}>
-                <FileText size={18} />
-                <span>
-                  <strong>{item.title}</strong>
-                  <small>{item.description || "Публічний документ профілю."}</small>
-                </span>
-                <em>{item.fileType?.toUpperCase() || "PDF"}</em>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="bp-empty-state">Публічні документи ще не додані.</div>
-        )}
-      </ProfilePanelDrawer>
-
-      <ProfilePanelDrawer id="profile-panel-reviews" eyebrow="Відгуки" title="Що кажуть клієнти">
-        {reviews.length ? (
-          <div className="bp-profile-drawer-reviews">
-            {reviews.map((review) => (
-              <article key={review.id}>
-                <div>
-                  <strong>{review.author}</strong>
-                  {review.date && <time>{review.date}</time>}
-                </div>
-                <p>{review.text}</p>
-                <small>
-                  <Star size={15} fill="currentColor" />
-                  {review.rating.toFixed(1)}
-                </small>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="bp-empty-state">Відгуків поки немає. Будьте першим клієнтом, який залишить відгук.</div>
-        )}
-      </ProfilePanelDrawer>
     </>
   );
 }
@@ -1342,10 +1272,8 @@ function ProfileQuickPanelModals({
 export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProps) {
   const [profileEdit, setProfileEdit] = useState<EditableMasterProfile | null>(null);
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>([]);
-  const [companyDocuments, setCompanyDocuments] = useState<CompanyDocument[]>(defaultCompanyDocuments);
   const [qualifications, setQualifications] = useState<MasterQualification[]>(defaultMasterQualifications);
   const visibleMaster = useMemo(() => mergeMasterProfile(master, profileEdit), [master, profileEdit]);
-  const priceFromServices = formatPriceFromServices(visibleMaster.services, visibleMaster.priceFrom);
   const masterServices = useMemo(() => getMasterServices(visibleMaster.id), [visibleMaster.id]);
 
   const portfolioItems = useMemo(() => {
@@ -1353,8 +1281,6 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
     const map = new Map([...defaults, ...savedPortfolioItems].map((item) => [item.id, item]));
     return Array.from(map.values());
   }, [savedPortfolioItems, visibleMaster.id]);
-
-  const reviews = useMemo(() => buildReviews(visibleMaster.reviews), [visibleMaster.reviews]);
 
   useEffect(() => {
     const localProfiles = JSON.parse(
@@ -1366,13 +1292,9 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
       localStorage.getItem(portfolioStorageKey) ?? "[]",
     ) as PortfolioItem[];
     setSavedPortfolioItems(localPortfolioItems.filter((item) => item.masterId === master.id));
-    const localCompanyDocuments = JSON.parse(
-      localStorage.getItem(companyDocumentsStorageKey) ?? "[]",
-    ) as CompanyDocument[];
     const localQualifications = JSON.parse(
       localStorage.getItem(masterQualificationsStorageKey) ?? "[]",
     ) as MasterQualification[];
-    setCompanyDocuments(Array.from(new Map([...localCompanyDocuments, ...defaultCompanyDocuments].map((item) => [item.id, item])).values()));
     setQualifications(Array.from(new Map([...localQualifications, ...defaultMasterQualifications].map((item) => [item.id, item])).values()));
 
     fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
@@ -1408,8 +1330,6 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
       const hash = window.location.hash;
       const isProfilePanel = [
         "#profile-panel-qualifications",
-        "#profile-panel-documents",
-        "#profile-panel-reviews",
       ].includes(hash);
       const isKnownModal = ["#booking", "#message", "#services", "#portfolio", "#contacts"].includes(hash);
       if (!isKnownModal && !isProfilePanel && !hash.startsWith("#work-detail-") && !hash.startsWith("#qualification-")) return;
@@ -1440,45 +1360,11 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         <Link href="/masters">← Каталог майстрів</Link>
       </div>
 
-      <ProfileHero master={visibleMaster} priceFromServices={priceFromServices} />
+      <ProfileHero master={visibleMaster} />
 
       <div className="bp-profile-layout">
         <div className="bp-profile-main">
-          <section className="bp-section" id="about-master">
-            <div className="bp-section-head">
-              <p className="bp-eyebrow">Про майстра</p>
-              <h2>Досвід і підхід до роботи</h2>
-            </div>
-            <div className="bp-about-profile-grid">
-              <article className="bp-about-profile-card bp-about-profile-wide">
-                <span>Короткий опис</span>
-                <p>
-                  {visibleMaster.description ||
-                    "Гіпсокартонні конструкції, перегородки, стелі та укладання плитки у комерційних будівлях."}
-                </p>
-              </article>
-              <article className="bp-about-profile-card bp-about-profile-wide">
-                <span>Повний опис</span>
-                <p>
-                  {visibleMaster.fullDescription ||
-                    "Майстер працює акуратно, допомагає сформувати обсяг робіт і погодити зрозумілий бюджет до старту."}
-                </p>
-              </article>
-              <article className="bp-about-profile-card">
-                <span>З якими обʼєктами працює</span>
-                <strong>Квартири, офіси, комерційні приміщення</strong>
-              </article>
-              <article className="bp-about-profile-card">
-                <span>Мови спілкування</span>
-                <strong>Українська, російська</strong>
-              </article>
-            </div>
-          </section>
-
           <MasterActivitySection master={visibleMaster} items={portfolioItems} />
-          <QualificationsSection items={qualifications} />
-          <CompanyDocumentsSection items={companyDocuments} />
-          <ReviewsSection reviews={reviews} />
 
         </div>
 
@@ -1492,9 +1378,8 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
       <ServicesModal services={visibleMaster.services} />
       <PortfolioModal items={portfolioItems} fallbackWorks={visibleMaster.works} />
       <ProfileQuickPanelModals
-        reviews={reviews}
+        master={visibleMaster}
         qualifications={qualifications}
-        companyDocuments={companyDocuments}
       />
     </main>
   );

@@ -1646,35 +1646,31 @@ button.profile-portfolio-edit {
 
 .bp-profile-hero-content {
   min-width: 0;
-  padding-right: 154px;
+  padding-right: 220px;
 }
 
-.bp-hero-follow-corner {
+.bp-hero-corner-actions {
+  width: 200px;
   position: absolute;
   top: 24px;
   right: 24px;
   z-index: 3;
+  display: grid;
+  gap: 8px;
 }
 
 .bp-profile-badges,
 .bp-photo-status-list,
-.bp-hero-facts,
 .bp-hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.bp-photo-status-list {
-  width: 100%;
-  display: grid;
-  gap: 8px;
-}
-
 .bp-verified-badge,
 .bp-status-badge,
 .bp-budpomich-request-badge,
-.bp-hero-facts span {
+.bp-photo-experience-badge {
   min-height: 34px;
   padding: 8px 12px;
   display: inline-flex;
@@ -1688,13 +1684,23 @@ button.profile-portfolio-edit {
   font-weight: 850;
 }
 
+.bp-photo-experience-badge {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.bp-photo-experience-badge svg {
+  color: var(--bp-accent);
+}
+
 .bp-verified-badge {
   width: 100%;
   justify-content: center;
   color: #92400E;
 }
 
-.bp-photo-status-list .bp-status-badge,
+.bp-hero-corner-actions .bp-status-badge,
 .bp-budpomich-request-badge {
   width: 100%;
   justify-content: center;
@@ -1883,6 +1889,44 @@ button.profile-portfolio-edit {
   line-height: 1.5;
 }
 
+.bp-hero-fit-grid {
+  max-width: 800px;
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bp-hero-fit-grid > div {
+  min-height: 72px;
+  padding: 13px 14px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  border: 1px solid var(--bp-border);
+  border-radius: 16px;
+  background: #FFFCF7;
+}
+
+.bp-hero-fit-grid > div:last-child {
+  border-color: rgba(239, 68, 68, 0.22);
+  background: #FFF7ED;
+}
+
+.bp-hero-fit-grid span {
+  color: var(--bp-muted);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bp-hero-fit-grid strong {
+  color: var(--bp-text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
 .bp-hero-about-card {
   max-width: 800px;
   margin-top: 14px;
@@ -1909,14 +1953,6 @@ button.profile-portfolio-edit {
   color: var(--bp-muted);
   font-size: 15px;
   line-height: 1.6;
-}
-
-.bp-hero-facts {
-  margin-top: 18px;
-}
-
-.bp-hero-facts svg {
-  color: var(--bp-accent);
 }
 
 .bp-hero-details {
@@ -2023,7 +2059,7 @@ button.profile-portfolio-edit {
 .bp-primary-button,
 .bp-secondary-button,
 .bp-hero-actions .public-follow-button,
-.bp-hero-follow-corner .public-follow-button {
+.bp-hero-corner-actions .public-follow-button {
   min-height: 48px;
   padding: 0 18px;
   display: inline-flex;
@@ -2077,7 +2113,7 @@ button.profile-portfolio-edit {
 
 .bp-secondary-button,
 .bp-hero-actions .public-follow-button,
-.bp-hero-follow-corner .public-follow-button {
+.bp-hero-corner-actions .public-follow-button {
   width: auto;
   margin: 0;
   border: 1px solid var(--bp-border);
@@ -2086,7 +2122,7 @@ button.profile-portfolio-edit {
 }
 
 .bp-hero-actions .public-follow-button.active,
-.bp-hero-follow-corner .public-follow-button.active {
+.bp-hero-corner-actions .public-follow-button.active {
   border-color: rgba(34, 197, 94, 0.45);
   background: rgba(34, 197, 94, 0.12);
   color: #166534;
@@ -2534,21 +2570,6 @@ button.profile-portfolio-edit {
   color: var(--bp-text);
   font-size: 12px;
   font-weight: 800;
-}
-
-.bp-document-badge {
-  margin-top: 12px;
-  min-height: 32px;
-  padding: 7px 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #D1D5DB;
-  border-radius: 999px;
-  background: #F3F4F6;
-  color: #4B5563;
-  font-size: 12px;
-  font-weight: 900;
 }
 
 .bp-portfolio-actions {
@@ -3696,6 +3717,59 @@ button.profile-portfolio-edit {
   font-weight: 900;
 }
 
+.bp-qualification-experience-card {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(34, 197, 94, 0.07)),
+    #FFFCF7;
+  box-shadow: 0 14px 30px rgba(31, 41, 51, 0.06);
+}
+
+.bp-qualification-experience-card h3 {
+  margin: 0;
+  color: var(--bp-text);
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.bp-qualification-experience-card span {
+  color: var(--bp-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bp-qualification-experience-card ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+
+.bp-qualification-experience-card li {
+  padding-left: 18px;
+  position: relative;
+  color: var(--bp-text);
+  font-size: 14px;
+  font-weight: 780;
+  line-height: 1.45;
+}
+
+.bp-qualification-experience-card li::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  position: absolute;
+  left: 0;
+  top: 0.58em;
+  border-radius: 999px;
+  background: var(--bp-accent);
+}
+
 .bp-qualification-drawer-grid {
   display: grid;
   gap: 14px;
@@ -4344,12 +4418,13 @@ button.profile-portfolio-edit {
     padding-right: 0;
   }
 
-  .bp-hero-follow-corner {
+  .bp-hero-corner-actions {
+    width: 100%;
     position: static;
     justify-self: stretch;
   }
 
-  .bp-hero-follow-corner .public-follow-button {
+  .bp-hero-corner-actions .public-follow-button {
     width: 100%;
   }
 
@@ -4394,6 +4469,10 @@ button.profile-portfolio-edit {
 
   .bp-profile-hero h1 {
     font-size: 34px;
+  }
+
+  .bp-hero-fit-grid {
+    grid-template-columns: 1fr;
   }
 
   .bp-hero-details {
