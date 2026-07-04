@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
-.dash-app {
+.dash-app,
+.dash-role-host {
   --dash-bg: #f3eee4;
   --dash-card: #ffffff;
   --dash-border: #e9e1d2;
@@ -23,6 +24,9 @@
   --dash-navy-soft: #2a3448;
   --dash-navy-line: #39435a;
   --dash-shadow: 0 1px 2px rgba(33, 29, 22, 0.04), 0 2px 10px rgba(33, 29, 22, 0.04);
+}
+
+.dash-app {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
@@ -1784,6 +1788,66 @@ a.dash-stat-card:hover {
   background: var(--dash-card);
 }
 
+.dash-role-host {
+  min-height: 100vh;
+  background: var(--dash-bg);
+}
+
+.dash-role-host > .dash-role-switch {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 12px clamp(18px, 4vw, 52px);
+  border-bottom: 1px solid var(--dash-border);
+  background: rgba(241, 233, 216, 0.92);
+  backdrop-filter: blur(16px);
+}
+
+.dash-role-switch {
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 18px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  background: var(--dash-card);
+  box-shadow: 0 16px 36px rgba(28, 24, 18, 0.08);
+  overflow-x: auto;
+}
+
+.dash-role-switch > span {
+  padding: 0 10px 0 12px;
+  color: var(--dash-muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dash-role-switch a {
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dash-muted);
+  display: inline-flex;
+  align-items: center;
+  font-weight: 900;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.dash-role-switch a.active {
+  background: var(--dash-orange);
+  color: #fff;
+}
+
 .dash-context-switch button {
   min-height: 34px;
   padding: 7px 14px;
@@ -2393,5 +2457,632 @@ a.dash-stat-card:hover {
   .dash-project-media,
   .dash-stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Contractor cabinet */
+.contractor-cabinet {
+  min-height: calc(100vh - 68px);
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(232, 83, 10, 0.08), transparent 30%),
+    #f1e9d8;
+  color: #2b2a26;
+  font-family: "IBM Plex Sans", Arial, sans-serif;
+}
+
+.contractor-side {
+  position: sticky;
+  top: 68px;
+  height: calc(100vh - 68px);
+  padding: 20px 14px;
+  border-right: 1px solid #d9cda9;
+  background: #fbf7ec;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.contractor-brand {
+  display: grid;
+  gap: 8px;
+  padding: 4px 10px 12px;
+  color: #1d2f4b;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.contractor-brand img {
+  width: 132px;
+  height: auto;
+  display: block;
+}
+
+.contractor-nav-group {
+  padding: 8px 12px 0;
+  color: #9a8e78;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.contractor-side nav {
+  display: grid;
+  gap: 3px;
+}
+
+.contractor-side nav button {
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #6b6558;
+  text-align: left;
+}
+
+.contractor-side nav button span {
+  color: #c4b78c;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.contractor-side nav button b {
+  color: inherit;
+  font-family: "Oswald", sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.contractor-side nav button em {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #b23a2e;
+  color: #fff;
+  font-style: normal;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.contractor-side nav button.active,
+.contractor-side nav button:hover {
+  border-left-color: #f1591a;
+  background: #f6efde;
+  color: #1d2f4b;
+}
+
+.contractor-side nav button.active span {
+  color: #c7430e;
+}
+
+.contractor-side-foot {
+  margin-top: auto;
+  padding: 14px 12px 2px;
+  border-top: 1px solid #d9cda9;
+}
+
+.contractor-side-foot strong {
+  display: block;
+  color: #1d2f4b;
+}
+
+.contractor-side-foot p {
+  margin: 4px 0 0;
+  color: #6b6558;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.contractor-main {
+  min-width: 0;
+  padding: 30px clamp(20px, 4vw, 52px) 56px;
+}
+
+.contractor-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.contractor-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #c7430e;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.contractor-head h1 {
+  margin: 0;
+  color: #1d2f4b;
+  font-family: "Oswald", sans-serif;
+  font-size: clamp(44px, 5vw, 78px);
+  line-height: 0.98;
+  text-transform: uppercase;
+}
+
+.contractor-head p {
+  max-width: 720px;
+  margin: 12px 0 0;
+  color: #6b6558;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.contractor-user {
+  min-width: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.contractor-user > span {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  background: #1d2f4b;
+  color: #f1591a;
+  font-family: "Oswald", sans-serif;
+  font-weight: 900;
+}
+
+.contractor-user strong,
+.contractor-user small {
+  display: block;
+  text-align: right;
+}
+
+.contractor-user strong {
+  color: #1d2f4b;
+}
+
+.contractor-user small {
+  color: #6b6558;
+}
+
+.contractor-ruler {
+  height: 16px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #c4b78c;
+  background:
+    repeating-linear-gradient(90deg, #1d2f4b 0 1px, transparent 1px 10px),
+    repeating-linear-gradient(90deg, #1d2f4b 0 1px, transparent 1px 50px);
+  background-size: auto 6px, auto 12px;
+  background-position: 0 100%, 0 100%;
+  background-repeat: repeat-x;
+  opacity: 0.36;
+}
+
+.contractor-company-strip {
+  margin-bottom: 18px;
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-radius: 4px;
+  background: #1d2f4b;
+  color: white;
+}
+
+.contractor-company-strip > span {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  background: #f1591a;
+  color: #1d2f4b;
+  font-family: "Oswald", sans-serif;
+  font-weight: 900;
+}
+
+.contractor-company-strip h2 {
+  margin: 0;
+  color: #fff;
+  font-family: "Oswald", sans-serif;
+  font-size: 24px;
+}
+
+.contractor-company-strip p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.contractor-company-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 24px;
+}
+
+.contractor-company-stats strong,
+.contractor-company-stats small {
+  display: block;
+  text-align: right;
+}
+
+.contractor-company-stats strong {
+  color: #fff;
+  font-family: "Oswald", sans-serif;
+  font-size: 24px;
+}
+
+.contractor-company-stats small {
+  color: rgba(255, 255, 255, 0.68);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.contractor-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.contractor-kpi {
+  min-height: 92px;
+  padding: 14px 16px;
+  border: 1px solid #d9cda9;
+  border-radius: 4px;
+  background: #fbf7ec;
+}
+
+.contractor-kpi strong {
+  display: block;
+  color: #1d2f4b;
+  font-family: "Oswald", sans-serif;
+  font-size: 27px;
+}
+
+.contractor-kpi.wide strong {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 19px;
+}
+
+.contractor-kpi span {
+  display: block;
+  margin-top: 4px;
+  color: #6b6558;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.contractor-kpi.good strong {
+  color: #3f7a54;
+}
+
+.contractor-kpi.alert {
+  border-color: #b23a2e;
+}
+
+.contractor-kpi.alert strong {
+  color: #b23a2e;
+}
+
+.contractor-workgrid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 18px;
+}
+
+.contractor-panel,
+.contractor-soon {
+  border: 1px solid #d9cda9;
+  border-radius: 4px;
+  background: #fbf7ec;
+}
+
+.contractor-panel {
+  padding: 20px;
+}
+
+.contractor-panel-head {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contractor-panel-head h2 {
+  margin: 0;
+  color: #1d2f4b;
+  font-family: "Oswald", sans-serif;
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.contractor-panel-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, #c4b78c 0 4px, transparent 4px 8px);
+}
+
+.contractor-panel-head span {
+  color: #c7430e;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.contractor-attention-list,
+.contractor-team-list,
+.contractor-risk-list {
+  display: grid;
+}
+
+.contractor-attention-list article,
+.contractor-team-list article,
+.contractor-risk-list article {
+  padding: 11px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px dashed #c4b78c;
+}
+
+.contractor-attention-list article:last-child,
+.contractor-team-list article:last-child,
+.contractor-risk-list article:last-child {
+  border-bottom: 0;
+}
+
+.contractor-attention-list i {
+  width: 9px;
+  height: 9px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: #b23a2e;
+  flex: 0 0 auto;
+}
+
+.contractor-attention-list strong,
+.contractor-team-list strong,
+.contractor-risk-list strong {
+  display: block;
+  color: #2b2a26;
+}
+
+.contractor-attention-list p,
+.contractor-team-list p,
+.contractor-risk-list p {
+  margin: 3px 0 0;
+  color: #6b6558;
+  font-size: 12px;
+}
+
+.contractor-attention-list button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #1d2f4b;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.contractor-team-list article > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #3a4f70;
+  color: white;
+  font-family: "Oswald", sans-serif;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.contractor-team-list article em,
+.contractor-risk-list article em {
+  margin-left: auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f1e6cf;
+  color: #b9791f;
+  font-style: normal;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.contractor-team-list article em.free {
+  background: #e4ede3;
+  color: #3f7a54;
+}
+
+.contractor-team-list article em.off,
+.contractor-risk-list article em {
+  background: #f1deda;
+  color: #b23a2e;
+}
+
+.contractor-chart {
+  height: 170px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.contractor-chart > div {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.contractor-chart span {
+  color: #6b6558;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+}
+
+.contractor-chart i {
+  width: min(34px, 70%);
+  display: block;
+  border-radius: 3px 3px 0 0;
+  background: #3a4f70;
+}
+
+.contractor-chart .current i {
+  background: #f1591a;
+}
+
+.contractor-chart small {
+  color: #6b6558;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.contractor-finance-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px dashed #c4b78c;
+  color: #6b6558;
+  font-size: 12px;
+}
+
+.contractor-finance-foot b {
+  color: #1d2f4b;
+}
+
+.contractor-soon {
+  min-height: 420px;
+  padding: 64px 40px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.contractor-soon > span {
+  color: #c4b78c;
+  font-family: "Oswald", sans-serif;
+  font-size: 54px;
+  font-weight: 900;
+}
+
+.contractor-soon h2 {
+  margin: 4px 0 8px;
+  color: #1d2f4b;
+  font-family: "Oswald", sans-serif;
+  font-size: 34px;
+  text-transform: uppercase;
+}
+
+.contractor-soon p {
+  max-width: 520px;
+  margin: 0 0 18px;
+  color: #6b6558;
+}
+
+.contractor-soon button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #1d2f4b;
+  border-radius: 3px;
+  background: transparent;
+  color: #1d2f4b;
+  font-weight: 900;
+}
+
+@media (max-width: 1180px) {
+  .contractor-cabinet {
+    grid-template-columns: 1fr;
+  }
+
+  .contractor-side {
+    position: static;
+    height: auto;
+  }
+
+  .contractor-side nav {
+    grid-template-columns: repeat(6, minmax(140px, 1fr));
+    overflow-x: auto;
+  }
+
+  .contractor-side-foot {
+    display: none;
+  }
+
+  .contractor-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .contractor-workgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .contractor-main {
+    padding: 22px 14px 42px;
+  }
+
+  .contractor-head,
+  .contractor-company-strip,
+  .contractor-company-stats,
+  .contractor-finance-foot {
+    display: grid;
+  }
+
+  .contractor-user {
+    justify-content: flex-start;
+  }
+
+  .contractor-user strong,
+  .contractor-user small,
+  .contractor-company-stats strong,
+  .contractor-company-stats small {
+    text-align: left;
+  }
+
+  .contractor-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contractor-side nav {
+    grid-template-columns: repeat(6, minmax(126px, 1fr));
   }
 }

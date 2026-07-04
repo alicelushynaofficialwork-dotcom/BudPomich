@@ -30,6 +30,8 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import { ClientCabinetApp } from "@/components/ClientCabinetApp";
+import { ContractorCabinetApp } from "@/components/ContractorCabinetApp";
 import type { MasterProfile } from "@/lib/masters";
 import type { PortfolioItem } from "@/lib/portfolio";
 import {
@@ -44,12 +46,15 @@ import {
 } from "@/lib/requests";
 
 type DashboardMasterAppProps = {
+  defaultRole?: DashboardRole;
   master: MasterProfile;
+  masters: MasterProfile[];
   portfolioItems: PortfolioItem[];
 };
 
 type CalendarStatus = "free" | "busy" | "pending";
 type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "finance";
+type DashboardRole = "master" | "client" | "contractor";
 type MasterWorkspaceContext = "personal" | "team";
 
 const currentMasterId = "andrey-ponomarenko";
@@ -149,6 +154,27 @@ function MasterContextSwitch({
       <button className={value === "team" ? "active" : ""} onClick={() => onChange("team")} type="button">
         Команда «Укріплення»
       </button>
+    </div>
+  );
+}
+
+function DashboardRoleSwitch({
+  value,
+}: {
+  value: DashboardRole;
+}) {
+  return (
+    <div className="dash-role-switch" aria-label="Перемикання кабінету">
+      <span>Роль</span>
+      <Link className={value === "master" ? "active" : ""} href="/dashboard">
+        Кабінет майстра
+      </Link>
+      <Link className={value === "client" ? "active" : ""} href="/dashboard?role=client">
+        Кабінет клієнта
+      </Link>
+      <Link className={value === "contractor" ? "active" : ""} href="/dashboard?role=contractor">
+        Кабінет підрядника
+      </Link>
     </div>
   );
 }
@@ -1229,7 +1255,8 @@ function PortfolioPreview({ items }: { items: PortfolioItem[] }) {
   );
 }
 
-export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAppProps) {
+export function DashboardMasterApp({ defaultRole = "master", master, masters, portfolioItems }: DashboardMasterAppProps) {
+  const [dashboardRole, setDashboardRole] = useState<DashboardRole>(defaultRole);
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests.filter(requestMatchesMaster));
   const [messages, setMessages] = useState<RequestMessage[]>([]);
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>(portfolioItems);
@@ -1239,6 +1266,10 @@ export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAp
     Array.from({ length: 31 }, (_, index) => index + 1).filter((day) => getCalendarStatus(master, day) === "free").length,
   );
   const [activePanel, setActivePanel] = useState<DashboardPanelKey | null>(null);
+
+  useEffect(() => {
+    setDashboardRole(defaultRole);
+  }, [defaultRole]);
 
   useEffect(() => {
     const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
@@ -1297,8 +1328,28 @@ export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAp
   const profilePercent = getProfileCompletion(master, savedPortfolioItems.length);
   const defaultSelectedRequestId = selectedRequestId || requests[0]?.id || null;
 
+  if (dashboardRole === "client") {
+    return (
+      <section className="dash-role-host">
+        <DashboardRoleSwitch value={dashboardRole} />
+        <ClientCabinetApp masters={masters} />
+      </section>
+    );
+  }
+
+  if (dashboardRole === "contractor") {
+    return (
+      <section className="dash-role-host">
+        <DashboardRoleSwitch value={dashboardRole} />
+        <ContractorCabinetApp />
+      </section>
+    );
+  }
+
   return (
-    <section className="dashboard-page dash-app">
+    <section className="dash-role-host">
+      <DashboardRoleSwitch value={dashboardRole} />
+      <section className="dashboard-page dash-app">
       <DashboardSidebar activePanel={activePanel} master={master} onOpenPanel={setActivePanel} />
       <main className="dash-main">
         <DashboardTopbar master={master} unreadCount={unreadCount} />
@@ -1358,6 +1409,7 @@ export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAp
         portfolioItems={savedPortfolioItems}
         requests={requests}
       />
+      </section>
     </section>
   );
 }

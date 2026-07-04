@@ -57,6 +57,7 @@ export default function HomePage() {
           { href: "/about", label: "Про сервіс" },
         ]}
         showBecomeMaster
+        showBecomeClient
         showLogin
       />
 
@@ -191,6 +192,7 @@ export default function HomePage() {
         </div>
         <div className="home-register-side">
           <Link href="/auth/register">Зареєструватися як майстер →</Link>
+          <Link className="home-client-cta" href="/client/dashboard">Стати клієнтом →</Link>
           <div>
             <span><strong>{masterProfiles.length}+</strong> майстрів</span>
             <span><strong>2–3</strong> заявки / тиждень</span>

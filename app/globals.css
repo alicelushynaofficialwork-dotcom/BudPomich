@@ -197,6 +197,18 @@ a {
   font-weight: 900;
 }
 
+.header-client-cta {
+  background: #e8530a;
+  border-color: #e8530a;
+  color: #fff;
+}
+
+.header-client-cta:hover {
+  background: #b8420b;
+  border-color: #b8420b;
+  color: #fff;
+}
+
 @media (max-width: 820px) {
   .app-header-inner {
     width: min(100% - 28px, 1080px);

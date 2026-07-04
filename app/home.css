@@ -475,6 +475,17 @@
   background: #b8420b;
 }
 
+.home-register-side > a.home-client-cta {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.44);
+  color: #fff;
+}
+
+.home-register-side > a.home-client-cta:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.72);
+}
+
 .home-register-side > div {
   display: flex;
   gap: 22px;

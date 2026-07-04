@@ -13,6 +13,7 @@ type SiteHeaderProps = {
   showLogin?: boolean;
   showMasterCard?: boolean;
   showBecomeMaster?: boolean;
+  showBecomeClient?: boolean;
 };
 
 export function SiteHeader({
@@ -21,6 +22,7 @@ export function SiteHeader({
   showLogin = false,
   showMasterCard = false,
   showBecomeMaster = false,
+  showBecomeClient = false,
 }: SiteHeaderProps) {
   const links =
     navItems ??
@@ -62,6 +64,12 @@ export function SiteHeader({
           {showBecomeMaster && (
             <Link className="header-cta" href="/auth/register">
               Стати майстром
+            </Link>
+          )}
+
+          {showBecomeClient && (
+            <Link className="header-cta header-client-cta" href="/client/dashboard">
+              Стати клієнтом
             </Link>
           )}
 
