@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import "./home.css";
+import { SiteHeader } from "@/components/SiteHeader";
 import { masterProfiles } from "@/lib/masters";
 
 export const metadata = {
@@ -48,30 +49,16 @@ export default function HomePage() {
 
   return (
     <main className="home-page">
-      <header className="home-nav">
-        <Link className="home-logo" href="/" aria-label="БудПоміч, головна">
-          <Image
-            src="/logo/budpomich-logo-v4.svg"
-            alt="БудПоміч — будівельний помічник"
-            width={220}
-            height={102}
-            priority
-          />
-        </Link>
-
-        <nav className="home-nav-links" aria-label="Основна навігація">
-          <Link href="/masters">Майстри</Link>
-          <a href="#categories">Категорії</a>
-          <a href="#how-it-works">Як це працює</a>
-        </nav>
-
-        <div className="home-nav-actions">
-          <Link href="/auth/login">Увійти</Link>
-          <Link className="home-nav-cta" href="/auth/register">
-            Стати майстром
-          </Link>
-        </div>
-      </header>
+      <SiteHeader
+        navItems={[
+          { href: "/masters", label: "Майстри" },
+          { href: "/#categories", label: "Категорії" },
+          { href: "/#how-it-works", label: "Як це працює" },
+          { href: "/about", label: "Про сервіс" },
+        ]}
+        showBecomeMaster
+        showLogin
+      />
 
       <section className="home-hero">
         <div>

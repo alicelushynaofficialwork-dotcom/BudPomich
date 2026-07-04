@@ -319,7 +319,7 @@ function ProfileHero({
         <div className="bp-hero-actions">
           <div className="bp-hero-contact-group">
             {canBookOnline ? (
-              <a className="bp-primary-button" href="#booking">
+              <a className="bp-primary-button" href={`/profile/${master.id}/request`}>
                 Замовити майстра
               </a>
             ) : (
@@ -371,11 +371,100 @@ function ProfileTrustStats({
   );
 }
 
+function ProfileTemplateHero({ master }: { master: MasterProfile }) {
+  const canBookOnline = master.isProfileActive !== false && master.acceptsBudPomichRequests !== false;
+
+  return (
+    <section className="bp-template-hero" id="profile-top">
+      <div className="bp-template-photo">
+        {master.avatarUrl ? (
+          <img src={master.avatarUrl} alt={`Фото майстра ${master.name}`} />
+        ) : (
+          <span>{master.initials || "М"}</span>
+        )}
+      </div>
+
+      <div className="bp-template-hero-id">
+        <p className="bp-template-eyebrow">
+          {master.profession || "Майстер"} · {master.city || "Україна"}
+          {master.district ? `, ${master.district}` : ""}
+        </p>
+        <h1>{master.name || "Майстер БудПомiч"}</h1>
+        <div className="bp-template-meta">
+          <span>
+            <strong>{master.experience || "Досвід підтверджено"}</strong>
+          </span>
+          <span>{master.city || "Місто уточнюється"} та передмістя до 30 км</span>
+        </div>
+        <div className="bp-template-tags">
+          <span className={canBookOnline ? "is-available" : "is-muted"}>
+            {canBookOnline ? "Доступний для заявок" : "Не доступний для заявок"}
+          </span>
+          <span>Відповідає ~2 год</span>
+          {master.acceptsBudPomichRequests !== false && <span>Приймає заявки через БудПомiч</span>}
+        </div>
+      </div>
+
+      {hasPhoneContact(master) && (
+        <div className="bp-template-stamp" aria-label="Перевірений майстер">
+          <BadgeCheck size={18} />
+          <strong>Перевірений майстер</strong>
+          <span>BudPomich ID</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProfileTemplateAbout({ master }: { master: MasterProfile }) {
+  return (
+    <section className="bp-template-section" id="about-master">
+      <div className="bp-template-section-title">
+        <span>01</span>
+        Про майстра
+      </div>
+      <p className="bp-template-about-text">
+        {master.fullDescription ||
+          master.description ||
+          "Майстер виконує будівельні роботи, допомагає оцінити обсяг, матеріали та реальний бюджет до початку ремонту."}
+      </p>
+    </section>
+  );
+}
+
+function ProfileTemplateExtraInfo({ master }: { master: MasterProfile }) {
+  const rows = [
+    ["Обʼєкти", "Квартири, офіси, комерційні приміщення"],
+    ["Не розглядає", "Висотні роботи вище 5 метрів"],
+    ["Виїзд", "По місту та за містом за домовленістю"],
+    ["Місто", master.district ? `${master.city}, ${master.district}` : master.city || "Уточнюється"],
+  ];
+
+  return (
+    <section className="bp-template-section">
+      <div className="bp-template-section-title">
+        <span>02</span>
+        Додаткова інформація
+      </div>
+      <div className="bp-template-extra-list">
+        {rows.map(([label, value]) => (
+          <div className="bp-template-extra-row" key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ServicesSection({
   services,
+  requestHref = "#booking",
   isModal = false,
 }: {
   services: MasterProfile["services"];
+  requestHref?: string;
   isModal?: boolean;
 }) {
   const safeServices = services.length
@@ -404,7 +493,7 @@ function ServicesSection({
               <strong>{service.price || "за домовленістю"}</strong>
               <span>{getUnit(service.price || "")}</span>
             </div>
-            <a href="#booking">Обрати</a>
+            <a href={requestHref}>Обрати</a>
           </article>
         ))}
       </div>
@@ -530,7 +619,15 @@ function getItemTerm(item: PortfolioItem) {
   return getPortfolioMeta(item).term;
 }
 
-function PortfolioJournalSection({ items, fallbackWorks }: { items: PortfolioItem[]; fallbackWorks: MasterProfile["works"] }) {
+function PortfolioJournalSection({
+  items,
+  fallbackWorks,
+  masterId,
+}: {
+  items: PortfolioItem[];
+  fallbackWorks: MasterProfile["works"];
+  masterId: string;
+}) {
   const [yearFilter, setYearFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("Усі роботи");
@@ -661,7 +758,7 @@ function PortfolioJournalSection({ items, fallbackWorks }: { items: PortfolioIte
                         <Share2 size={15} /> Поділитися
                       </button>
                     </div>
-                    <WorkDetailModal item={item} slug={slug} />
+                    <WorkDetailModal item={item} slug={slug} masterId={masterId} />
                   </div>
                 </article>
               );
@@ -701,7 +798,7 @@ function PortfolioJournalSection({ items, fallbackWorks }: { items: PortfolioIte
   );
 }
 
-function WorkDetailModal({ item, slug }: { item: PortfolioItem; slug: string }) {
+function WorkDetailModal({ item, slug, masterId }: { item: PortfolioItem; slug: string; masterId: string }) {
   const photos = [
     ...(item.beforePhotos ?? []).map((photo) => photo.url),
     ...(item.beforePhotoUrls ?? []),
@@ -759,7 +856,7 @@ function WorkDetailModal({ item, slug }: { item: PortfolioItem; slug: string }) 
             </div>
           </section>
           <div className="bp-work-detail-actions">
-            <a href="#booking">Замовити схожу роботу</a>
+            <a href={`/profile/${masterId}/request`}>Замовити схожу роботу</a>
             <a href="#portfolio">Закрити</a>
           </div>
         </div>
@@ -943,6 +1040,292 @@ function ReviewsSection({ reviews }: { reviews: Review[] }) {
   );
 }
 
+function ProfileShowcaseSection({
+  id,
+  number,
+  eyebrow,
+  title,
+  children,
+  className = "",
+}: {
+  id: string;
+  number: string;
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`bp-showcase-section ${className}`} id={id}>
+      <div className="bp-showcase-title">
+        <span>{number}</span>
+        <div>
+          <p className="bp-eyebrow">{eyebrow}</p>
+          <h2>{title}</h2>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ProfileServicesShowcase({ master }: { master: MasterProfile }) {
+  const services = master.services;
+  const safeServices = services.length
+    ? services
+    : [{ name: "Консультація та оцінка робіт", price: "за домовленістю" }];
+
+  return (
+    <ProfileShowcaseSection
+      id="profile-services"
+      number="03"
+      eyebrow="Послуги"
+      title="Послуги та ціни"
+      className="bp-showcase-services"
+    >
+      <div className="bp-showcase-service-list">
+        {safeServices.map((service, index) => (
+          <article className="bp-showcase-service-row" key={`${service.name}-${index}`}>
+            <div>
+              <strong>{service.name}</strong>
+              <small>Акуратне виконання, попередня оцінка обсягу та зрозумілий кошторис перед стартом.</small>
+            </div>
+            <span>{service.price}</span>
+            <a href={`/profile/${master.id}/request`}>Обрати</a>
+          </article>
+        ))}
+      </div>
+    </ProfileShowcaseSection>
+  );
+}
+
+function ProfileCtaBand({ master }: { master: MasterProfile }) {
+  const canBookOnline = master.isProfileActive !== false && master.acceptsBudPomichRequests !== false;
+
+  return (
+    <section className="bp-showcase-cta" aria-label="Заявка майстру">
+      <div>
+        <p className="bp-eyebrow">Заявка</p>
+        <h2>Готові обговорити роботу?</h2>
+        <span>Оберіть дату для онлайн-запису або напишіть майстру напряму через прямий звʼязок.</span>
+      </div>
+      <div>
+        <a className="bp-showcase-cta-primary" href={canBookOnline ? `/profile/${master.id}/request` : "#message"}>
+          {canBookOnline ? "Замовити майстра" : "Прямий звʼязок"}
+        </a>
+        <a className="bp-showcase-cta-secondary" href="#message">
+          Написати
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function getPortfolioPreview(
+  items: PortfolioItem[],
+  fallbackWorks: MasterProfile["works"],
+) {
+  if (items.length) {
+    return items.slice(0, 3).map((item) => {
+      const meta = getPortfolioMeta(item);
+      return {
+        id: item.id,
+        title: item.title,
+        location: getProjectPublicLocation(item),
+        description: item.description || "Виконана робота з фото, обсягом і деталями.",
+        imageUrl: item.photoUrl || fallbackImage,
+        price: formatUah(item.totalAmount),
+        volume: meta.volume,
+        term: meta.term,
+        href: `#work-detail-${getProjectSlug(item)}`,
+      };
+    });
+  }
+
+  return fallbackWorks.slice(0, 3).map((work, index) => ({
+    id: `${work.title}-${index}`,
+    title: work.title,
+    location: work.location,
+    description: work.description || "Приклад виконаної роботи майстра.",
+    imageUrl: fallbackImage,
+    price: work.total || "вартість за домовленістю",
+    volume: work.category || "обсяг за кошторисом",
+    term: "1-5 днів",
+    href: "#portfolio",
+  }));
+}
+
+function ProfilePortfolioShowcase({
+  items,
+  fallbackWorks,
+}: {
+  items: PortfolioItem[];
+  fallbackWorks: MasterProfile["works"];
+}) {
+  const previewItems = getPortfolioPreview(items, fallbackWorks);
+
+  return (
+    <ProfileShowcaseSection
+      id="profile-portfolio"
+      number="04"
+      eyebrow="Портфоліо"
+      title="Виконані роботи"
+      className="bp-showcase-portfolio"
+    >
+      <div className="bp-showcase-portfolio-grid">
+        {previewItems.map((item) => (
+          <article className="bp-showcase-work-card" key={item.id}>
+            <div className="bp-showcase-work-image">
+              {item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : <span>Фото роботи</span>}
+            </div>
+            <div className="bp-showcase-work-body">
+              <small>{item.location}</small>
+              <h3>{item.title}</h3>
+              <p>{item.description}</p>
+              <dl>
+                <div>
+                  <dt>Ціна</dt>
+                  <dd>{item.price}</dd>
+                </div>
+                <div>
+                  <dt>Обсяг</dt>
+                  <dd>{item.volume}</dd>
+                </div>
+                <div>
+                  <dt>Термін</dt>
+                  <dd>{item.term}</dd>
+                </div>
+              </dl>
+              <a href={item.href}>Детальніше</a>
+            </div>
+          </article>
+        ))}
+      </div>
+      <a className="bp-showcase-more-link" href="#portfolio">
+        Переглянути всі роботи
+      </a>
+    </ProfileShowcaseSection>
+  );
+}
+
+function ProfileAreasShowcase({ master }: { master: MasterProfile }) {
+  const districts = Array.from(
+    new Set([master.district, "Печерський район", "Центр Києва", "Передмістя до 30 км"].filter(Boolean)),
+  ) as string[];
+
+  return (
+    <ProfileShowcaseSection
+      id="work-areas"
+      number="05"
+      eyebrow="Географія"
+      title="Райони роботи"
+      className="bp-showcase-areas"
+    >
+      <div className="bp-showcase-area-card">
+        <div>
+          <span>Зона роботи</span>
+          <strong>{master.city || "Київ"} та передмістя до 30 км</strong>
+        </div>
+        <div>
+          <span>Виїзд</span>
+          <strong>По місту та за місто за домовленістю</strong>
+        </div>
+        <div>
+          <span>Коментар</span>
+          <strong>Додаткові умови обговорюються перед стартом</strong>
+        </div>
+      </div>
+      <div className="bp-showcase-area-chips">
+        {districts.map((district) => (
+          <span key={district}>{district}</span>
+        ))}
+      </div>
+    </ProfileShowcaseSection>
+  );
+}
+
+function ProfileCalendarShowcase({ master }: { master: MasterProfile }) {
+  const busyDates = new Set(master.busyDates ?? []);
+  const pendingDates = new Set(master.pendingDates ?? []);
+  const days = Array.from({ length: 31 }, (_, index) => index + 1);
+
+  return (
+    <ProfileShowcaseSection
+      id="availability"
+      number="06"
+      eyebrow="Календар"
+      title="Найближчі вільні дати"
+      className="bp-showcase-calendar"
+    >
+      <div className="bp-showcase-calendar-card">
+        <div className="bp-showcase-calendar-head">
+          <span>Липень 2026</span>
+          <a href={`/profile/${master.id}/request`}>Обрати дату</a>
+        </div>
+        <div className="bp-showcase-weekdays" aria-hidden="true">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
+            <span key={day}>{day}</span>
+          ))}
+        </div>
+        <div className="bp-showcase-month-grid">
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          {days.map((day) => {
+            const dateKey = `2026-07-${String(day).padStart(2, "0")}`;
+            const isBusy = busyDates.has(dateKey);
+            const isPending = pendingDates.has(dateKey);
+            const className = isBusy ? "is-busy" : isPending ? "is-pending" : "is-free";
+            return (
+              <a className={className} href={isBusy ? "#availability" : `/profile/${master.id}/request`} key={dateKey}>
+                {day}
+              </a>
+            );
+          })}
+        </div>
+        <div className="bp-showcase-calendar-legend">
+          <span className="is-free">Вільно</span>
+          <span className="is-pending">Очікує</span>
+          <span className="is-busy">Зайнято</span>
+        </div>
+      </div>
+    </ProfileShowcaseSection>
+  );
+}
+
+function ProfileReviewsShowcase({ reviews }: { reviews: Review[] }) {
+  return (
+    <ProfileShowcaseSection
+      id="profile-reviews"
+      number="07"
+      eyebrow="Відгуки"
+      title="Що кажуть клієнти"
+      className="bp-showcase-reviews"
+    >
+      {reviews.length ? (
+        <div className="bp-showcase-review-list">
+          {reviews.map((review) => (
+            <article className="bp-showcase-review-card" key={review.id}>
+              <div>
+                <strong>{review.author}</strong>
+                <span>{review.date || "дата не вказана"}</span>
+              </div>
+              <p>{review.text}</p>
+              <small>
+                <Star size={14} fill="currentColor" />
+                {review.rating.toFixed(1)}
+              </small>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="bp-empty-state">
+          Відгуків поки немає. Будьте першим клієнтом, який залишить відгук.
+        </div>
+      )}
+    </ProfileShowcaseSection>
+  );
+}
+
 function BookingCard({ master }: { master: MasterProfile }) {
   const contactCount = master.contacts?.filter((contact) => contact.value.trim()).length ?? 0;
   const canBookOnline = master.isProfileActive !== false && master.acceptsBudPomichRequests !== false;
@@ -959,7 +1342,7 @@ function BookingCard({ master }: { master: MasterProfile }) {
         </div>
       </div>
       {canBookOnline ? (
-        <a className="bp-sticky-primary" href="#booking">
+        <a className="bp-sticky-primary" href={`/profile/${master.id}/request`}>
           Онлайн запис
         </a>
       ) : (
@@ -993,7 +1376,7 @@ function MobileBookingBar({ master }: { master: MasterProfile }) {
 
   return (
     <div className="bp-mobile-booking-bar">
-      <a href={canBookOnline ? "#booking" : "#message"}>
+      <a href={canBookOnline ? `/profile/${master.id}/request` : "#message"}>
         {canBookOnline ? "Онлайн запис" : "Прямий звʼязок"}
       </a>
     </div>
@@ -1127,8 +1510,10 @@ function ContactsModal({ master }: { master: MasterProfile }) {
 
 function ServicesModal({
   services,
+  masterId,
 }: {
   services: MasterProfile["services"];
+  masterId: string;
 }) {
   return (
     <div className="bp-booking-modal bp-services-modal" id="services" role="dialog" aria-modal="true" aria-labelledby="services-modal-title">
@@ -1144,7 +1529,7 @@ function ServicesModal({
           </a>
         </div>
         <div className="bp-services-modal-body">
-          <ServicesSection services={services} isModal />
+          <ServicesSection services={services} requestHref={`/profile/${masterId}/request`} isModal />
         </div>
       </div>
     </div>
@@ -1154,9 +1539,11 @@ function ServicesModal({
 function PortfolioModal({
   items,
   fallbackWorks,
+  masterId,
 }: {
   items: PortfolioItem[];
   fallbackWorks: MasterProfile["works"];
+  masterId: string;
 }) {
   const hasPortfolio = items.length > 0;
 
@@ -1175,7 +1562,7 @@ function PortfolioModal({
           </a>
         </div>
         <div className="bp-portfolio-modal-body">
-          <PortfolioJournalSection items={items} fallbackWorks={fallbackWorks} />
+          <PortfolioJournalSection items={items} fallbackWorks={fallbackWorks} masterId={masterId} />
         </div>
       </div>
     </div>
@@ -1275,6 +1662,7 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
   const [qualifications, setQualifications] = useState<MasterQualification[]>(defaultMasterQualifications);
   const visibleMaster = useMemo(() => mergeMasterProfile(master, profileEdit), [master, profileEdit]);
   const masterServices = useMemo(() => getMasterServices(visibleMaster.id), [visibleMaster.id]);
+  const reviews = useMemo(() => buildReviews(visibleMaster.reviews), [visibleMaster.reviews]);
 
   const portfolioItems = useMemo(() => {
     const defaults = defaultPortfolioItems.filter((item) => item.masterId === visibleMaster.id);
@@ -1360,23 +1748,30 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         <Link href="/masters">← Каталог майстрів</Link>
       </div>
 
-      <ProfileHero master={visibleMaster} />
+      <ProfileTemplateHero master={visibleMaster} />
 
-      <div className="bp-profile-layout">
+      <div className="bp-template-ruler" aria-hidden="true" />
+
+      <div className="bp-profile-layout bp-template-layout">
         <div className="bp-profile-main">
-          <MasterActivitySection master={visibleMaster} items={portfolioItems} />
+          <ProfileTemplateAbout master={visibleMaster} />
+          <ProfileTemplateExtraInfo master={visibleMaster} />
+          <ProfileServicesShowcase master={visibleMaster} />
+          <ProfileCtaBand master={visibleMaster} />
+          <ProfilePortfolioShowcase items={portfolioItems} fallbackWorks={visibleMaster.works} />
+          <ProfileAreasShowcase master={visibleMaster} />
+          <ProfileCalendarShowcase master={visibleMaster} />
+          <ProfileReviewsShowcase reviews={reviews} />
 
         </div>
-
-        <BookingCard master={visibleMaster} />
       </div>
 
       <MobileBookingBar master={visibleMaster} />
       <BookingModal master={visibleMaster} masterServices={masterServices} />
       <MessageModal master={visibleMaster} />
       <ContactsModal master={visibleMaster} />
-      <ServicesModal services={visibleMaster.services} />
-      <PortfolioModal items={portfolioItems} fallbackWorks={visibleMaster.works} />
+      <ServicesModal services={visibleMaster.services} masterId={visibleMaster.id} />
+      <PortfolioModal items={portfolioItems} fallbackWorks={visibleMaster.works} masterId={visibleMaster.id} />
       <ProfileQuickPanelModals
         master={visibleMaster}
         qualifications={qualifications}

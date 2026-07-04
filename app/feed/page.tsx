@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SiteHeader } from "@/components/SiteHeader";
 import { masterProfiles } from "@/lib/masters";
 
 export const metadata: Metadata = {
@@ -44,26 +44,7 @@ const works = [
 export default function FeedPage() {
   return (
     <main className="works-page">
-      <header className="works-header">
-        <Link className="works-brand" href="/masters">
-          <Image
-            className="brand-logo-image"
-            src="/logo/budpomich-logo-v4.svg"
-            alt="БудПоміч — будівельний помічник"
-            width={790}
-            height={420}
-            priority
-          />
-        </Link>
-        <nav aria-label="Основна навігація">
-          <Link href="/masters">Майстри</Link>
-          <Link className="active" href="/feed">Роботи</Link>
-          <Link href="/auth/login">Увійти</Link>
-        </nav>
-        <Link className="works-header-cta" href="/auth/register">
-          Стати майстром
-        </Link>
-      </header>
+      <SiteHeader active="feed" showBecomeMaster />
 
       <section className="works-hero">
         <p className="works-eyebrow">Реальні проєкти та ціни</p>

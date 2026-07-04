@@ -47,15 +47,21 @@ a {
 }
 
 .app-header {
-  width: min(1180px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 16px 0 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid #ddd6c4;
+  background: #fff;
+  color: #1c1b18;
 }
 
 .app-header-inner {
+  width: min(1080px, calc(100% - 64px));
+  min-height: 134px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 26px;
+  gap: 34px;
 }
 
 .app-logo {
@@ -66,22 +72,43 @@ a {
 
 .app-logo img {
   width: 220px;
-  max-width: 38vw;
+  max-width: 34vw;
   height: auto;
+  display: block;
 }
 
 .app-nav {
   display: flex;
   align-items: center;
-  gap: 28px;
-  color: #657069;
+  justify-content: center;
+  gap: 34px;
+  color: #5b5750;
   font-size: 14px;
   font-weight: 900;
 }
 
 .app-nav a:hover,
 .app-nav a.active {
-  color: #17201c;
+  color: #1c1b18;
+}
+
+.app-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #1c1b18;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.header-login {
+  padding: 10px 0;
+  color: #5b5750;
+}
+
+.header-login:hover {
+  color: #1c1b18;
 }
 
 .header-master-card {
@@ -161,12 +188,52 @@ a {
 }
 
 .header-cta {
-  padding: 11px 18px;
-  border: 1px solid #d8ddd8;
-  border-radius: 12px;
+  padding: 13px 18px;
+  border: 1px solid #22364f;
+  border-radius: 8px;
   background: white;
+  color: #22364f;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 900;
+}
+
+@media (max-width: 820px) {
+  .app-header-inner {
+    width: min(100% - 28px, 1080px);
+    min-height: auto;
+    padding: 18px 0;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .app-logo {
+    width: 170px;
+  }
+
+  .app-logo img {
+    width: 170px;
+    max-width: 100%;
+  }
+
+  .app-nav {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 18px;
+    overflow-x: auto;
+    padding: 2px 0 4px;
+  }
+
+  .app-header-actions {
+    margin-left: auto;
+    gap: 10px;
+  }
+
+  .header-cta,
+  .header-login {
+    white-space: nowrap;
+  }
 }
 
 .masters-hero {

@@ -1,29 +1,37 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bell,
   BriefcaseBusiness,
   CalendarDays,
+  Camera,
   CheckCircle2,
   ChevronRight,
+  CircleDollarSign,
   ClipboardList,
-  Clock3,
-  CreditCard,
   Eye,
+  FileCheck2,
   FileText,
+  FolderKanban,
+  History,
   ImagePlus,
-  LayoutDashboard,
+  ListChecks,
+  LogOut,
   MessageSquare,
-  Pencil,
   Plus,
-  Send,
+  ReceiptText,
   Settings,
-  SlidersHorizontal,
-  Star,
   UserRound,
+  UsersRound,
+  WalletCards,
   X,
 } from "lucide-react";
+import type { MasterProfile } from "@/lib/masters";
+import type { PortfolioItem } from "@/lib/portfolio";
 import {
   mockRequestMessages,
   mockRequests,
@@ -34,38 +42,26 @@ import {
   type RequestMessage,
   type RequestStatus,
 } from "@/lib/requests";
-import {
-  companyDocumentsStorageKey,
-  defaultCompanyDocuments,
-  defaultMasterQualifications,
-  followFeedStorageKey,
-  getPortfolioPeriod,
-  getProjectPublicLocation,
-  getProjectSlug,
-  masterQualificationsStorageKey,
-  portfolioStorageKey,
-  type CompanyDocument,
-  type FollowFeedItem,
-  type MasterQualification,
-  type PortfolioItem,
-} from "@/lib/portfolio";
-import type { MasterProfile } from "@/lib/masters";
 
 type DashboardMasterAppProps = {
   master: MasterProfile;
   portfolioItems: PortfolioItem[];
 };
 
+type CalendarStatus = "free" | "busy" | "pending";
+type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "finance";
+type MasterWorkspaceContext = "personal" | "team";
+
 const currentMasterId = "andrey-ponomarenko";
 
-const sidebarItems = [
-  { label: "Огляд", href: "#overview", icon: LayoutDashboard },
-  { label: "Заявки", href: "#requests", icon: ClipboardList },
-  { label: "Календар", href: "#calendar", icon: CalendarDays },
-  { label: "Повідомлення", href: "#messages", icon: MessageSquare },
-  { label: "Мій профіль", href: "/dashboard/profile", icon: UserRound },
-  { label: "Портфоліо", href: "#portfolio-manager", icon: ImagePlus },
-  { label: "Послуги та ціни", href: "#services-manager", icon: CreditCard },
+const navItems = [
+  { label: "Повідомлення", panel: "messages" as const, icon: MessageSquare, active: true },
+  { label: "Заявки", panel: "requests" as const, icon: ClipboardList },
+  { label: "Клієнти та проєкти", panel: "objects" as const, icon: FolderKanban },
+  { label: "Календар", panel: "calendar" as const, icon: CalendarDays },
+  { label: "Кошториси та оплати", panel: "finance" as const, icon: WalletCards },
+  { label: "Портфоліо", panel: "portfolio" as const, icon: ImagePlus },
+  { label: "Публічний профіль", href: "/dashboard/profile", icon: UserRound },
   { label: "Налаштування", href: "/dashboard/profile#profile-contacts", icon: Settings },
 ];
 
@@ -81,40 +77,8 @@ function mergeById<T extends { id: string }>(items: T[]) {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
 }
 
-function formatDate(value: string) {
-  if (!value) return "Дата уточнюється";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-
-  return new Intl.DateTimeFormat("uk-UA", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(parsed);
-}
-
-function formatUah(value: number) {
-  return `${Math.round(value).toLocaleString("uk-UA")} грн`;
-}
-
-function getServiceUnit(price: string) {
-  if (price.includes("/м²") || price.includes("/м2") || price.includes("/мВІ")) return "грн/м²";
-  if (price.toLowerCase().includes("день")) return "грн/день";
-  return "грн/робота";
-}
-
 function requestMatchesMaster(request: MasterRequest) {
   return request.masterId === currentMasterId;
-}
-
-function getRequestPrimaryDate(request: MasterRequest) {
-  return request.periods[0]?.period || request.desiredDate || "Дата уточнюється";
-}
-
-function getSectionIdFromHash(hash: string) {
-  const normalized = hash.replace("#", "");
-  return sidebarItems.some((item) => item.href === `#${normalized}`) ? normalized : "overview";
 }
 
 function getProfileCompletion(master: MasterProfile, portfolioCount: number) {
@@ -129,202 +93,623 @@ function getProfileCompletion(master: MasterProfile, portfolioCount: number) {
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
-function getCalendarMonth(busyDates: string[] = []) {
-  const firstBusyDate = busyDates.find((date) => !Number.isNaN(new Date(date).getTime()));
-  const base = firstBusyDate ? new Date(`${firstBusyDate}T00:00:00`) : new Date();
-  const year = base.getFullYear();
-  const month = base.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const title = new Intl.DateTimeFormat("uk-UA", { month: "long", year: "numeric" }).format(base);
-
-  return { daysInMonth, month, title, year };
+function getCalendarStatus(master: MasterProfile, day: number): CalendarStatus {
+  const date = `2026-07-${String(day).padStart(2, "0")}`;
+  if (master.busyDates?.includes(date)) return "busy";
+  if (master.pendingDates?.includes(date)) return "pending";
+  return "free";
 }
 
-function getInitialCalendarDays(busyDates: string[] = []) {
-  const { daysInMonth, month, year } = getCalendarMonth(busyDates);
-  const busyDays = new Set(
-    busyDates
-      .map((date) => new Date(`${date}T00:00:00`))
-      .filter((date) => !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month)
-      .map((date) => date.getDate()),
-  );
-
-  return Array.from({ length: daysInMonth }, (_, index) => index + 1).reduce<Record<number, CalendarStatus>>(
-    (days, day) => {
-      if (busyDays.has(day)) {
-        days[day] = "busy";
-      } else if (day === 8 || day === 21) {
-        days[day] = "pending";
-      } else {
-        days[day] = "free";
-      }
-
-      return days;
-    },
-    {},
-  );
+function getDateText(request?: MasterRequest) {
+  return request?.periods[0]?.period || request?.desiredDate || "Дата уточнюється";
 }
 
-function DashboardSidebar({ activeSection }: { activeSection: string }) {
+function getRequestCost(request: MasterRequest) {
+  return request.budget || request.additionalWorks[0]?.totalPrice || "Кошторис після огляду";
+}
+
+function formatMoney(value: number) {
+  return `${Math.round(value).toLocaleString("uk-UA")} грн`;
+}
+
+function getConversationStatus(request: MasterRequest, unread: number) {
+  if (request.status === "completed") return "Завершено";
+  if (request.status === "in_progress") return "Проєкт в роботі";
+  if (request.status === "accepted") return "Дату запропоновано";
+  if (request.status === "declined") return "Відхилена";
+  if (unread > 0) return "Потрібна відповідь";
+  return request.budget ? "Очікує кошторис" : "Нова заявка";
+}
+
+function getRequestService(master: MasterProfile, request?: MasterRequest) {
+  if (!request) return master.services[0]?.name || "Ремонтні роботи";
+  return request.selectedServiceTitle || request.workType || master.services[0]?.name || "Ремонтні роботи";
+}
+
+function getRequestAddress(request?: MasterRequest) {
+  return request?.cityArea || "Адреса уточнюється у чаті";
+}
+
+function getRequestBudget(request?: MasterRequest) {
+  return request?.budget || request?.additionalWorks[0]?.totalPrice || "Після огляду";
+}
+
+function MasterContextSwitch({
+  value,
+  onChange,
+}: {
+  value: MasterWorkspaceContext;
+  onChange: (value: MasterWorkspaceContext) => void;
+}) {
   return (
-    <aside className="dash-sidebar" aria-label="Навігація кабінету">
-      <div className="dash-sidebar-brand">
-        <span>BP</span>
-        <div>
-          <strong>БудПомiч</strong>
-          <small>кабінет майстра</small>
-        </div>
-      </div>
-      <nav>
-        {sidebarItems.map(({ label, href, icon: Icon }) => (
-          <Link className={href === `#${activeSection}` ? "active" : ""} href={href} key={label}>
-            <Icon size={18} />
-            {label}
-          </Link>
-        ))}
+    <div className="dash-context-switch" aria-label="Режим роботи кабінету">
+      <button className={value === "personal" ? "active" : ""} onClick={() => onChange("personal")} type="button">
+        Особисті замовлення
+      </button>
+      <button className={value === "team" ? "active" : ""} onClick={() => onChange("team")} type="button">
+        Команда «Укріплення»
+      </button>
+    </div>
+  );
+}
+
+function DashboardSidebar({
+  master,
+  onOpenPanel,
+  activePanel,
+}: {
+  master: MasterProfile;
+  onOpenPanel: (panel: DashboardPanelKey) => void;
+  activePanel: DashboardPanelKey | null;
+}) {
+  return (
+    <aside className="dash-sidebar" aria-label="Навігація кабінету майстра">
+      <Link className="dash-sidebar-brand" href="/dashboard">
+        <Image
+          src="/logo/budpomich-logo-v4.svg"
+          alt="БудПомiч"
+          width={790}
+          height={420}
+          priority
+        />
+        <span>Кабінет майстра</span>
+      </Link>
+
+      <nav className="dash-sidebar-nav">
+        {navItems.map((item, index) => {
+          const Icon = item.icon;
+          const number = String(index + 1).padStart(2, "0");
+          if ("panel" in item && item.panel) {
+            return (
+              <button
+                className={(activePanel === item.panel || (!activePanel && item.active)) ? "active" : ""}
+                onClick={() => onOpenPanel(item.panel)}
+                type="button"
+                key={item.label}
+              >
+                <span className="dash-nav-num">{number}</span>
+                <Icon size={18} />
+                {item.label}
+              </button>
+            );
+          }
+
+          if ("href" in item && item.href) {
+            return (
+              <Link href={item.href} key={item.label}>
+                <span className="dash-nav-num">{number}</span>
+                <Icon size={18} />
+                {item.label}
+              </Link>
+            );
+          }
+
+          return (
+            <button className="active" type="button" key={item.label}>
+              <span className="dash-nav-num">{number}</span>
+              <Icon size={18} />
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
-      <div className="dash-sidebar-score">
-        <span>
-          <Star size={16} fill="currentColor" />
-          5.0
-        </span>
-        <strong>12 відгуків</strong>
-        <p>Профіль виглядає активним. Додайте ще 1-2 роботи, щоб підсилити довіру.</p>
+
+      <div className="dash-sidebar-bottom">
+        <Link className="dash-side-link" href={`/profile/${master.id}`}>
+          <Eye size={16} />
+          Публічний профіль
+        </Link>
+        <button className="dash-side-link danger" type="button">
+          <LogOut size={16} />
+          Вийти
+        </button>
+        <div className="dash-mini-master">
+          {master.avatarUrl ? (
+            <Image src={master.avatarUrl} alt={master.name} width={42} height={42} />
+          ) : (
+            <span>{master.initials}</span>
+          )}
+          <div>
+            <strong>{master.name}</strong>
+            <small>{master.city}</small>
+          </div>
+        </div>
       </div>
     </aside>
   );
 }
 
-function DashboardHeader({ master }: { master: MasterProfile }) {
+function DashboardTopbar({ master, unreadCount }: { master: MasterProfile; unreadCount: number }) {
   return (
-    <header className="dash-header" id="overview">
+    <header className="dash-topbar">
       <div>
-        <p className="dash-eyebrow">Кабінет майстра</p>
-        <h1>Вітаємо, Андрію 👋</h1>
-        <p>Керуйте заявками, профілем, календарем та повідомленнями.</p>
+        <p className="dash-platform-tag">Кабінет майстра</p>
+        <h1>Добрий день, Андрію!</h1>
+        <p>Керуйте заявками, обʼєктами, календарем, чатами та фінансами в одному місці.</p>
       </div>
-      <div className="dash-header-actions">
-        <Link className="dash-button dash-button-light" href={`/profile/${master.id}`}>
-          <Eye size={17} />
-          Переглянути публічний профіль
-        </Link>
-        <Link className="dash-button dash-button-primary" href="/dashboard/profile">
-          <Pencil size={17} />
-          Редагувати профіль
+      <div className="dash-topbar-actions">
+        <button className="dash-icon-button" type="button" aria-label="Сповіщення">
+          <Bell size={19} />
+          {unreadCount > 0 && <span>{unreadCount}</span>}
+        </button>
+        <Link className="dash-account-chip" href="/dashboard/profile">
+          {master.avatarUrl ? (
+            <Image src={master.avatarUrl} alt="" width={34} height={34} />
+          ) : (
+            <span>{master.initials}</span>
+          )}
+          <strong>{master.name}</strong>
         </Link>
       </div>
     </header>
   );
 }
 
-function StatsCards({
-  requests,
-  messages,
-  profilePercent,
-  freeDatesCount,
-}: {
-  requests: MasterRequest[];
-  messages: RequestMessage[];
-  profilePercent: number;
-  freeDatesCount: number;
-}) {
-  const newRequests = requests.filter((request) => request.status === "new").length;
-  const unreadMessages = messages.filter((message) => !message.isRead && message.senderRole === "client").length;
-
-  const stats = [
-    {
-      label: "Нові заявки",
-      value: newRequests,
-      note: "потребують відповіді",
-      icon: ClipboardList,
-    },
-    {
-      label: "Повідомлення",
-      value: unreadMessages,
-      note: "непрочитані або нові",
-      icon: MessageSquare,
-    },
-    {
-      label: "Вільні дати",
-      value: freeDatesCount,
-      note: "днів у календарі",
-      icon: CalendarDays,
-    },
-    {
-      label: "Заповнення профілю",
-      value: `${profilePercent}%`,
-      note: "видимість для клієнтів",
-      icon: CheckCircle2,
-    },
-  ];
+function ProfileNotice({ percent }: { percent: number }) {
+  if (percent >= 100) return null;
 
   return (
-    <section className="dash-stats" aria-label="Статистика кабінету">
-      {stats.map(({ label, value, note, icon: Icon }) => (
-        <article className="dash-stat-card" key={label}>
-          <span>
-            <Icon size={20} />
-          </span>
-          <div>
-            <strong>{value}</strong>
-            <p>{label}</p>
-            <small>{note}</small>
-          </div>
-        </article>
-      ))}
+    <section className="dash-notice-card">
+      <div className="dash-notice-ring" style={{ "--progress": `${percent}%` } as CSSProperties}>
+        <strong>{percent}%</strong>
+      </div>
+      <div>
+        <h2>Ваш профіль заповнений на {percent}%</h2>
+        <p>Додайте ціни та ще кілька фотографій робіт, щоб клієнтам було легше обрати вас.</p>
+      </div>
+      <Link href="/dashboard/profile">Завершити профіль</Link>
     </section>
   );
 }
 
-function RequestsSection({
+function StatsCards({
+  requests,
+  messages,
+  freeDatesCount,
+  profilePercent,
+  onOpenPanel,
+}: {
+  requests: MasterRequest[];
+  messages: RequestMessage[];
+  freeDatesCount: number;
+  profilePercent: number;
+  onOpenPanel: (panel: DashboardPanelKey) => void;
+}) {
+  const stats = [
+    {
+      label: "Нові заявки",
+      value: requests.filter((request) => request.status === "new").length,
+      note: "+2 за останні 7 днів",
+      icon: ClipboardList,
+      panel: "requests" as const,
+    },
+    {
+      label: "У роботі",
+      value: requests.filter((request) => request.status === "accepted" || request.status === "in_progress").length,
+      note: "активні проєкти",
+      icon: BriefcaseBusiness,
+      panel: "objects" as const,
+    },
+    {
+      label: "Цього тижня",
+      value: Math.min(5, freeDatesCount),
+      note: "вільних слотів",
+      icon: CalendarDays,
+      panel: "calendar" as const,
+    },
+    {
+      label: "Повідомлення",
+      value: messages.filter((message) => !message.isRead && message.senderRole === "client").length,
+      note: "очікують відповіді",
+      icon: MessageSquare,
+      panel: "messages" as const,
+    },
+    {
+      label: "Профіль",
+      value: `${profilePercent}%`,
+      note: "готовність",
+      icon: CheckCircle2,
+      href: "/dashboard/profile",
+    },
+  ];
+
+  return (
+    <section className="dash-stats" aria-label="Коротка статистика">
+      {stats.map((item) => {
+        const Icon = item.icon;
+        const content = (
+          <>
+            <span>
+              <Icon size={19} />
+            </span>
+            <div>
+              <small>{item.label}</small>
+              <strong>{item.value}</strong>
+              <p>{item.note}</p>
+            </div>
+          </>
+        );
+
+        if ("panel" in item && item.panel) {
+          return (
+            <button className="dash-stat-card" onClick={() => onOpenPanel(item.panel)} type="button" key={item.label}>
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <Link className="dash-stat-card" href={item.href} key={item.label}>
+            {content}
+          </Link>
+        );
+      })}
+    </section>
+  );
+}
+
+function ProjectCommandCenter({
+  requests,
+  portfolioItems,
+  freeDatesCount,
+}: {
+  requests: MasterRequest[];
+  portfolioItems: PortfolioItem[];
+  freeDatesCount: number;
+}) {
+  const activeProjects = requests.filter((request) => request.status === "accepted" || request.status === "in_progress");
+  const newRequests = requests.filter((request) => request.status === "new").length;
+  const portfolioRevenue = portfolioItems.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+  const latestProject = activeProjects[0] || requests[0];
+
+  const flow = [
+    { label: "Заявки", value: newRequests, note: "нові", icon: ClipboardList },
+    { label: "Обʼєкти", value: activeProjects.length, note: "в роботі", icon: FolderKanban },
+    { label: "Календар", value: freeDatesCount, note: "вільних дат", icon: CalendarDays },
+    { label: "Чати", value: requests.length, note: "діалогів", icon: MessageSquare },
+    { label: "Фото", value: portfolioItems.length, note: "робіт", icon: Camera },
+    { label: "Документи", value: "MVP", note: "чеки та акти", icon: FileCheck2 },
+  ];
+
+  return (
+    <section className="dash-crm-hero" id="objects" aria-label="Центр керування ремонтом">
+      <div className="dash-crm-copy">
+        <span className="dash-platform-tag">Маркетплейс + календар + чат + CRM</span>
+        <h2>Не тільки пошук майстра, а керування ремонтом</h2>
+        <p>
+          Кожна заявка переходить в обʼєкт ремонту: тут видно клієнта, етапи, календар, чат, фото,
+          документи, кошторис і домовленості.
+        </p>
+      </div>
+
+      <div className="dash-crm-active">
+        <small>Активний обʼєкт</small>
+        <strong>{latestProject?.selectedServiceTitle || latestProject?.workType || "Новий ремонтний обʼєкт"}</strong>
+        <span>{latestProject?.clientName || "Клієнт уточнюється"} · {latestProject?.cityArea || "Київ"}</span>
+        <div className="dash-crm-progress">
+          <i style={{ width: activeProjects.length ? "65%" : "20%" }} />
+        </div>
+        <em>{activeProjects.length ? "Етап у роботі: узгодження строків і матеріалів" : "Очікує першого підтвердження"}</em>
+      </div>
+
+      <div className="dash-crm-flow">
+        {flow.map(({ label, value, note, icon: Icon }) => (
+          <article key={label}>
+            <Icon size={18} />
+            <strong>{value}</strong>
+            <span>{label}</span>
+            <small>{note}</small>
+          </article>
+        ))}
+      </div>
+
+      <div className="dash-crm-footer">
+        <span>Портфоліо після завершення робіт: {formatMoney(portfolioRevenue || 0)}</span>
+        <Link href="#requests">Перейти до заявок</Link>
+      </div>
+    </section>
+  );
+}
+
+function MasterMessagesWorkspace({
+  master,
+  requests,
+  messages,
+  selectedRequestId,
+  onSelectRequest,
+  onOpenPanel,
+}: {
+  master: MasterProfile;
+  requests: MasterRequest[];
+  messages: RequestMessage[];
+  selectedRequestId: string | null;
+  onSelectRequest: (id: string) => void;
+  onOpenPanel: (panel: DashboardPanelKey) => void;
+}) {
+  const requestById = new Map(requests.map((request) => [request.id, request]));
+  const conversations = requests.map((request) => {
+    const requestMessages = messages
+      .filter((message) => message.requestId === request.id)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const lastMessage = requestMessages.at(-1);
+    const unread = requestMessages.filter((message) => !message.isRead && message.senderRole === "client").length;
+
+    return {
+      request,
+      lastMessage,
+      unread,
+      status: getConversationStatus(request, unread),
+    };
+  });
+
+  const selectedRequest = selectedRequestId
+    ? requestById.get(selectedRequestId) || conversations[0]?.request
+    : conversations[0]?.request;
+  const selectedMessages = selectedRequest
+    ? messages
+        .filter((message) => message.requestId === selectedRequest.id)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    : [];
+  const selectedStatus = selectedRequest
+    ? getConversationStatus(
+        selectedRequest,
+        selectedMessages.filter((message) => !message.isRead && message.senderRole === "client").length,
+      )
+    : "Нова заявка";
+
+  return (
+    <section className="dash-inbox-shell" id="messages" aria-label="Повідомлення майстра">
+      <aside className="dash-dialogs-column">
+        <div className="dash-section-label">01 · Повідомлення</div>
+        <div className="dash-dialogs-head">
+          <div>
+            <h2>Діалоги з клієнтами</h2>
+            <p>Заявки, проєкти і погодження в одному місці.</p>
+          </div>
+          <button type="button" aria-label="Додати клієнта">
+            <Plus size={18} />
+          </button>
+        </div>
+        <label className="dash-dialog-search">
+          <span>Пошук</span>
+          <input placeholder="Клієнт, адреса або послуга" />
+        </label>
+        <div className="dash-dialog-tabs" aria-label="Фільтр діалогів">
+          {["Усі", "Непрочитані", "Заявки", "Проєкти"].map((tab, index) => (
+            <button className={index === 0 ? "active" : ""} type="button" key={tab}>
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="dash-dialog-list">
+          {conversations.length ? (
+            conversations.map(({ request, lastMessage, unread, status }) => (
+              <button
+                className={selectedRequest?.id === request.id ? "active" : ""}
+                onClick={() => onSelectRequest(request.id)}
+                type="button"
+                key={request.id}
+              >
+                <span className="dash-dialog-avatar">{request.clientName?.slice(0, 1) || "К"}</span>
+                <div>
+                  <strong>{request.clientName || "Клієнт"}</strong>
+                  <small>{getRequestService(master, request)}</small>
+                  <p>{lastMessage?.body || request.description || "Нова заявка очікує відповіді."}</p>
+                  <em>{status}</em>
+                </div>
+                <time>
+                  {lastMessage
+                    ? new Date(lastMessage.createdAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
+                    : "сьогодні"}
+                </time>
+                {unread > 0 && <b>{unread}</b>}
+              </button>
+            ))
+          ) : (
+            <div className="dash-empty">Діалогів поки немає. Нові заявки зʼявляться тут автоматично.</div>
+          )}
+        </div>
+      </aside>
+
+      <main className="dash-chat-column">
+        <header className="dash-chat-head">
+          <div>
+            <span className="dash-section-label">Чат</span>
+            <h2>{selectedRequest?.clientName || "Новий клієнт"}</h2>
+            <p>{getRequestService(master, selectedRequest)} · {selectedStatus}</p>
+          </div>
+          <div>
+            <a href={selectedRequest?.clientPhone ? `tel:${selectedRequest.clientPhone}` : "#"}>
+              {selectedRequest?.clientPhone || "Телефон після заявки"}
+            </a>
+            <button onClick={() => onOpenPanel("objects")} type="button">
+              Відкрити проєкт
+            </button>
+          </div>
+        </header>
+
+        <div className="dash-chat-actions" aria-label="Швидкі дії">
+          <button type="button">Запропонувати дату</button>
+          <button type="button">Створити кошторис</button>
+          <button type="button">Запросити фото</button>
+          <button onClick={() => onOpenPanel("objects")} type="button">Створити проєкт</button>
+          <button onClick={() => onOpenPanel("finance")} type="button">Додати оплату</button>
+        </div>
+
+        <div className="dash-chat-feed">
+          {selectedMessages.length ? (
+            selectedMessages.map((message) => (
+              <article className={`dash-chat-message ${message.senderRole}`} key={message.id}>
+                <p>{message.body}</p>
+                <time>{new Date(message.createdAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}</time>
+              </article>
+            ))
+          ) : (
+            <article className="dash-chat-message client">
+              <p>{selectedRequest?.message || selectedRequest?.description || "Клієнт ще не написав повідомлення."}</p>
+              <time>нова заявка</time>
+            </article>
+          )}
+
+          <article className="dash-agreement-card date">
+            <span>Пропозиція дати</span>
+            <strong>{getDateText(selectedRequest || requests[0])}</strong>
+            <p>Клієнт може підтвердити дату або запропонувати інший період.</p>
+            <div>
+              <button type="button">Підтвердити</button>
+              <button type="button">Запропонувати іншу</button>
+            </div>
+          </article>
+
+          <article className="dash-agreement-card estimate">
+            <span>Кошторис</span>
+            <strong>{getRequestBudget(selectedRequest)}</strong>
+            <dl>
+              <div><dt>Роботи</dt><dd>{getRequestService(master, selectedRequest)}</dd></div>
+              <div><dt>Матеріали</dt><dd>після огляду</dd></div>
+              <div><dt>Дійсний</dt><dd>3 дні</dd></div>
+            </dl>
+            <div>
+              <button type="button">Погодити</button>
+              <button type="button">Обговорити</button>
+              <button type="button">Відхилити</button>
+            </div>
+          </article>
+
+          <article className="dash-agreement-card payment">
+            <span>Оплата</span>
+            <strong>Очікує передплату</strong>
+            <p>Після погодження кошторису можна додати оплату і привʼязати її до проєкту.</p>
+            <div>
+              <button onClick={() => onOpenPanel("finance")} type="button">Додати оплату</button>
+              <button type="button">Написати коментар</button>
+            </div>
+          </article>
+        </div>
+
+        <form className="dash-chat-composer">
+          <button type="button" aria-label="Додати файл">
+            <FileText size={18} />
+          </button>
+          <input placeholder="Напишіть повідомлення клієнту..." />
+          <button type="button">Надіслати</button>
+        </form>
+      </main>
+
+      <aside className="dash-project-column">
+        <div className="dash-section-label">Картка заявки</div>
+        <h2>{getRequestService(master, selectedRequest)}</h2>
+        <p>{selectedRequest?.description || selectedRequest?.message || "Опис задачі буде тут після заявки клієнта."}</p>
+        <div className="dash-project-facts">
+          <div><span>Клієнт</span><strong>{selectedRequest?.clientName || "Клієнт"}</strong></div>
+          <div><span>Телефон</span><strong>{selectedRequest?.clientPhone || "не вказано"}</strong></div>
+          <div><span>Адреса</span><strong>{getRequestAddress(selectedRequest)}</strong></div>
+          <div><span>Бажана дата</span><strong>{getDateText(selectedRequest || requests[0])}</strong></div>
+          <div><span>Бюджет</span><strong>{getRequestBudget(selectedRequest)}</strong></div>
+          <div><span>Оплачено</span><strong>0 грн</strong></div>
+          <div><span>Залишок</span><strong>{getRequestBudget(selectedRequest)}</strong></div>
+          <div><span>Статус</span><strong>{selectedStatus}</strong></div>
+        </div>
+        <div className="dash-project-media">
+          <span>
+            <Camera size={18} />
+            Фото обʼєкта
+          </span>
+          <span>
+            <FileCheck2 size={18} />
+            Документи
+          </span>
+        </div>
+        <div className="dash-project-actions">
+          <button type="button">Змінити статус</button>
+          <button type="button">Запропонувати дату</button>
+          <button type="button">Створити кошторис</button>
+          <button onClick={() => onOpenPanel("calendar")} type="button">Додати в календар</button>
+          <button onClick={() => onOpenPanel("objects")} type="button">Створити проєкт</button>
+          <button onClick={() => onOpenPanel("finance")} type="button">Додати оплату</button>
+          <button type="button">Завершити роботу</button>
+        </div>
+      </aside>
+    </section>
+  );
+}
+
+function RequestsPanel({
   requests,
   onStatusChange,
 }: {
   requests: MasterRequest[];
   onStatusChange: (id: string, status: RequestStatus) => void;
 }) {
-  const visibleRequests = requests.slice(0, 4);
+  const visible = requests.slice(0, 3);
 
   return (
-    <section className="dash-panel dash-requests" id="requests">
-      <div className="dash-section-head">
+    <section className="dash-panel" id="requests">
+      <div className="dash-panel-head">
         <div>
-          <p className="dash-eyebrow">Заявки</p>
           <h2>Нові заявки</h2>
+          <p>Останні звернення клієнтів</p>
         </div>
-        <Link href="#calendar">Календар <ChevronRight size={15} /></Link>
+        <Link href="/dashboard#requests">
+          Переглянути всі
+          <ChevronRight size={15} />
+        </Link>
       </div>
 
       <div className="dash-request-list">
-        {visibleRequests.length ? (
-          visibleRequests.map((request) => (
+        {visible.length ? (
+          visible.map((request) => (
             <article className="dash-request-card" key={request.id}>
-              <div className="dash-request-top">
+              <div className="dash-request-client">
+                <span>{request.clientName?.slice(0, 1) || "К"}</span>
                 <div>
                   <strong>{request.clientName || "Клієнт"}</strong>
-                  <span>{request.selectedServiceTitle || request.workType || "Ремонтні роботи"}</span>
+                  <small className={`dash-status ${statusClass[request.status]}`}>
+                    {requestStatusLabels[request.status]}
+                  </small>
                 </div>
-                <em className={`dash-status dash-status-${statusClass[request.status]}`}>
-                  {requestStatusLabels[request.status]}
-                </em>
               </div>
-              <div className="dash-request-meta">
-                <span>{request.cityArea || "Місто уточнюється"}</span>
-                <span>{getRequestPrimaryDate(request)}</span>
+
+              <div className="dash-request-body">
+                <strong>{request.selectedServiceTitle || request.workType || "Ремонтні роботи"}</strong>
+                <p>{request.description || request.message || "Клієнт ще не додав детальний опис задачі."}</p>
+                <div>
+                  <span>{request.cityArea || "Місто уточнюється"}</span>
+                  <span>{getDateText(request)}</span>
+                </div>
               </div>
-              <p>{request.description || request.message || "Клієнт ще не додав детальний опис задачі."}</p>
-              <div className="dash-request-actions">
-                <button onClick={() => onStatusChange(request.id, "accepted")} type="button">
-                  Прийняти
-                </button>
-                <a href="#messages">
-                  <MessageSquare size={15} />
-                  Написати
-                </a>
-                <button className="muted" onClick={() => onStatusChange(request.id, "declined")} type="button">
-                  <X size={15} />
-                  Відхилити
-                </button>
+
+              <div className="dash-request-aside">
+                <strong>{getRequestCost(request)}</strong>
+                <div>
+                  <button onClick={() => onStatusChange(request.id, "accepted")} type="button">
+                    Прийняти
+                  </button>
+                  <a href="#messages">Написати</a>
+                  <button className="muted" onClick={() => onStatusChange(request.id, "declined")} type="button">
+                    Відхилити
+                  </button>
+                </div>
               </div>
             </article>
           ))
@@ -336,320 +721,427 @@ function RequestsSection({
   );
 }
 
-function UpcomingWork({ requests }: { requests: MasterRequest[] }) {
-  const planned = requests.filter((request) => request.status === "accepted" || request.status === "in_progress");
+function TodaySchedule({ requests }: { requests: MasterRequest[] }) {
+  const active = requests.filter((request) => request.status === "accepted" || request.status === "in_progress").slice(0, 3);
 
   return (
     <section className="dash-panel">
-      <div className="dash-section-head">
+      <div className="dash-panel-head">
         <div>
-          <p className="dash-eyebrow">План</p>
-          <h2>Найближчі роботи</h2>
+          <h2>Розклад на сьогодні</h2>
+          <p>Короткий план робочого дня</p>
         </div>
-        <Clock3 size={21} />
       </div>
-      <div className="dash-work-list">
-        {(planned.length ? planned : requests.slice(0, 2)).map((request) => (
+      <div className="dash-timeline">
+        {(active.length ? active : requests.slice(0, 2)).map((request, index) => (
           <article key={request.id}>
-            <span>{getRequestPrimaryDate(request)}</span>
-            <strong>{request.selectedServiceTitle || request.workType || "Робота клієнта"}</strong>
-            <p>{request.cityArea || "Локація уточнюється"}</p>
+            <time>{index === 0 ? "10:00" : "15:30"}</time>
+            <div>
+              <strong>{request.selectedServiceTitle || request.workType}</strong>
+              <p>{request.cityArea || getDateText(request)}</p>
+            </div>
           </article>
         ))}
-        {!requests.length && (
-          <div className="dash-empty">Найближчих робіт поки немає.</div>
+        {!requests.length && <div className="dash-empty">На сьогодні робіт не заплановано.</div>}
+      </div>
+    </section>
+  );
+}
+
+function MessagesPanel({
+  requests,
+  messages,
+}: {
+  requests: MasterRequest[];
+  messages: RequestMessage[];
+}) {
+  const messageRows = messages.slice(0, 4);
+  const requestById = new Map(requests.map((request) => [request.id, request]));
+
+  return (
+    <section className="dash-panel" id="messages">
+      <div className="dash-panel-head">
+        <div>
+          <h2>Останні повідомлення</h2>
+          <p>Швидко відповідайте клієнтам</p>
+        </div>
+        <Link href="#messages">
+          Відкрити чат
+          <ChevronRight size={15} />
+        </Link>
+      </div>
+      <div className="dash-message-list">
+        {messageRows.length ? (
+          messageRows.map((message) => {
+            const request = requestById.get(message.requestId);
+            return (
+              <article key={message.id}>
+                <span>{request?.clientName?.slice(0, 1) || "К"}</span>
+                <div>
+                  <strong>{request?.clientName || "Клієнт"}</strong>
+                  <p>{message.body}</p>
+                </div>
+                <time>{new Date(message.createdAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}</time>
+              </article>
+            );
+          })
+        ) : (
+          <div className="dash-empty">Повідомлень поки немає.</div>
         )}
       </div>
     </section>
   );
 }
 
-function getRequestDateIso(request: MasterRequest) {
-  return request.periods[0]?.dateFrom || request.desiredDate.slice(0, 10) || request.createdAt.slice(0, 10);
-}
-
-function MessagesSection({
-  requests,
-  messages,
-  onStatusChange,
-}: {
-  requests: MasterRequest[];
-  messages: RequestMessage[];
-  onStatusChange: (id: string, status: RequestStatus) => void;
-}) {
-  const [activeRequestId, setActiveRequestId] = useState(requests[0]?.id ?? "");
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | RequestStatus | "waiting">("all");
-  const [mobileTab, setMobileTab] = useState<"calendar" | "clients" | "chat">("clients");
-  const [draft, setDraft] = useState("");
-  const [localMessages, setLocalMessages] = useState<RequestMessage[]>(messages);
-  const activeRequest = requests.find((request) => request.id === activeRequestId) ?? requests[0];
-  const activeMessages = localMessages
-    .filter((message) => message.requestId === activeRequest?.id)
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const normalizedQuery = query.trim().toLowerCase();
-  const filteredRequests = requests.filter((request) => {
-    const matchesQuery = [request.clientName, request.workType, request.selectedServiceTitle, request.cityArea]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedQuery);
-    const hasUnread = localMessages.some((message) => message.requestId === request.id && !message.isRead && message.senderRole === "client");
-    const matchesFilter =
-      filter === "all" ||
-      request.status === filter ||
-      (filter === "waiting" && hasUnread);
-
-    return matchesQuery && matchesFilter;
-  });
-  const calendarMonth = getCalendarMonth(activeRequest?.periods.map((period) => period.dateFrom) ?? []);
-  const requestsByDay = new Map<number, MasterRequest[]>();
-
-  requests.forEach((request) => {
-    const date = new Date(`${getRequestDateIso(request)}T00:00:00`);
-    if (date.getFullYear() !== calendarMonth.year || date.getMonth() !== calendarMonth.month) return;
-    const dayRequests = requestsByDay.get(date.getDate()) ?? [];
-    dayRequests.push(request);
-    requestsByDay.set(date.getDate(), dayRequests);
-  });
-
-  useEffect(() => setLocalMessages(messages), [messages]);
-
-  useEffect(() => {
-    if (!activeRequestId && requests[0]) setActiveRequestId(requests[0].id);
-  }, [activeRequestId, requests]);
-
-  function selectRequest(request: MasterRequest) {
-    setActiveRequestId(request.id);
-    setMobileTab("chat");
-  }
-
-  function sendMessage(text = draft) {
-    if (!activeRequest || !text.trim()) return;
-    const nextMessage: RequestMessage = {
-      id: `local-message-${Date.now()}`,
-      requestId: activeRequest.id,
-      senderRole: "master",
-      body: text.trim(),
-      isRead: true,
-      createdAt: new Date().toISOString(),
-    };
-    const nextMessages = [...localMessages, nextMessage];
-    setLocalMessages(nextMessages);
-    localStorage.setItem(requestMessagesStorageKey, JSON.stringify(nextMessages));
-    setDraft("");
-  }
+function ClientsPanel({ requests }: { requests: MasterRequest[] }) {
+  const clients = mergeById(
+    requests.map((request) => ({
+      id: request.clientPhone || request.clientName || request.id,
+      name: request.clientName || "Клієнт",
+      city: request.cityArea || "Локація уточнюється",
+      phone: request.clientPhone || "Контакт після підтвердження",
+      project: request.selectedServiceTitle || request.workType || "Ремонтний обʼєкт",
+      status: requestStatusLabels[request.status],
+      requestId: request.id,
+    })),
+  ).slice(0, 4);
 
   return (
-    <section className="dash-panel dash-message-center" id="messages">
-      <div className="dash-section-head">
+    <section className="dash-panel" id="clients">
+      <div className="dash-panel-head">
         <div>
-          <p className="dash-eyebrow">Повідомлення</p>
-          <h2>Клієнти, календар і чат</h2>
+          <h2>Клієнти та обʼєкти</h2>
+          <p>CRM-список: контакт, заявка, чат і поточний ремонт</p>
         </div>
-        <MessageSquare size={21} />
+        <Link href="#messages">
+          Відкрити чати
+          <ChevronRight size={15} />
+        </Link>
       </div>
-
-      <div className="dash-message-tabs">
-        <button className={mobileTab === "calendar" ? "active" : ""} onClick={() => setMobileTab("calendar")} type="button">Календар</button>
-        <button className={mobileTab === "clients" ? "active" : ""} onClick={() => setMobileTab("clients")} type="button">Клієнти</button>
-        <button className={mobileTab === "chat" ? "active" : ""} onClick={() => setMobileTab("chat")} type="button">Чат</button>
-      </div>
-
-      <div className="dash-message-crm">
-        <aside className={`dash-client-column ${mobileTab === "clients" ? "active" : ""}`}>
-          <h3>Клієнти та заявки</h3>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук клієнта або роботи" />
-          <div className="dash-message-filters">
-            {[
-              ["all", "Усі"],
-              ["new", "Нові"],
-              ["in_progress", "В роботі"],
-              ["waiting", "Очікують відповіді"],
-              ["completed", "Завершені"],
-            ].map(([value, label]) => (
-              <button className={filter === value ? "active" : ""} onClick={() => setFilter(value as typeof filter)} type="button" key={value}>{label}</button>
-            ))}
-          </div>
-          <div className="dash-client-list">
-            {filteredRequests.length ? filteredRequests.map((request) => {
-              const lastMessage = [...localMessages].reverse().find((message) => message.requestId === request.id);
-              const unread = localMessages.filter((message) => message.requestId === request.id && !message.isRead && message.senderRole === "client").length;
-
-              return (
-                <button className={activeRequest?.id === request.id ? "active" : ""} onClick={() => selectRequest(request)} type="button" key={request.id}>
-                  <span>{request.clientName?.slice(0, 1) || "К"}</span>
-                  <div>
-                    <strong>{request.clientName || "Клієнт"}</strong>
-                    <small>{request.selectedServiceTitle || request.workType || "Робота"} · {getRequestPrimaryDate(request)}</small>
-                    <p>{lastMessage?.body || request.description || "Немає повідомлень"}</p>
-                  </div>
-                  {unread ? <em>{unread}</em> : <i>{requestStatusLabels[request.status]}</i>}
-                </button>
-              );
-            }) : <div className="dash-empty">Поки немає заявок від клієнтів.</div>}
-          </div>
-        </aside>
-
-        <div className={`dash-work-calendar ${mobileTab === "calendar" ? "active" : ""}`}>
-          <h3>Календар робіт</h3>
-          <span>{calendarMonth.title}</span>
-          <div className="dash-work-calendar-grid">
-            {Array.from({ length: calendarMonth.daysInMonth }, (_, index) => {
-              const day = index + 1;
-              const dayRequests = requestsByDay.get(day) ?? [];
-              const dayStatus = dayRequests.some((request) => request.status === "new")
-                ? "request"
-                : dayRequests.some((request) => request.status === "accepted" || request.status === "in_progress")
-                  ? "busy"
-                  : dayRequests.some((request) => request.status === "completed")
-                    ? "pending"
-                    : "free";
-
-              return (
-                <button
-                  className={dayStatus}
-                  onClick={() => dayRequests[0] ? selectRequest(dayRequests[0]) : undefined}
-                  type="button"
-                  key={day}
-                >
-                  <strong>{day}</strong>
-                  {dayRequests.length ? <small>{dayRequests.length} заяв.</small> : <small>вільно</small>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className={`dash-chat-column ${mobileTab === "chat" ? "active" : ""}`}>
-          {activeRequest ? (
-            <>
-              <header>
-                <div>
-                  <button onClick={() => setMobileTab("clients")} type="button">←</button>
-                  <strong>{activeRequest.clientName || "Клієнт"}</strong>
-                  <span>{requestStatusLabels[activeRequest.status]} · {activeRequest.selectedServiceTitle || activeRequest.workType}</span>
-                </div>
-                <nav>
-                  <a href="#request-details">Деталі заявки</a>
-                  <a href="#request-documents">Документи</a>
-                  <button onClick={() => setMobileTab("calendar")} type="button">Календар</button>
-                </nav>
-              </header>
-              <article className="dash-request-side-card" id="request-details">
-                <strong>Заявка клієнта</strong>
-                <p>{activeRequest.description || activeRequest.message || "Клієнт ще не додав опис задачі."}</p>
-                <div>
-                  <span>{activeRequest.cityArea || "Локація уточнюється"}</span>
-                  <span>{getRequestPrimaryDate(activeRequest)}</span>
-                  <span>{activeRequest.budget || "Бюджет уточнюється"}</span>
-                </div>
-                <div className="dash-request-side-actions">
-                  <button onClick={() => onStatusChange(activeRequest.id, "accepted")} type="button">Прийняти заявку</button>
-                  <button onClick={() => onStatusChange(activeRequest.id, "in_progress")} type="button">В роботі</button>
-                  <button onClick={() => onStatusChange(activeRequest.id, "completed")} type="button">Завершити</button>
-                  <button onClick={() => onStatusChange(activeRequest.id, "declined")} type="button">Відхилити</button>
-                  <Link href={`/dashboard/portfolio/new?requestId=${activeRequest.id}`}>Створити проєкт</Link>
-                </div>
-              </article>
-              <div className="dash-chat-messages">
-                <div className="system">Заявку створено. Чат повʼязаний з календарем і заявкою.</div>
-                {activeMessages.map((message) => (
-                  <div className={message.senderRole === "master" ? "master" : "client"} key={message.id}>
-                    <p>{message.body}</p>
-                    <time>{formatDate(message.createdAt)}</time>
-                  </div>
-                ))}
+      <div className="dash-client-list">
+        {clients.length ? (
+          clients.map((client) => (
+            <article className="dash-client-card" key={client.id}>
+              <span>{client.name.slice(0, 1)}</span>
+              <div>
+                <strong>{client.name}</strong>
+                <p>{client.project}</p>
+                <small>{client.city} · {client.phone}</small>
               </div>
-              <div className="dash-chat-templates">
-                {[
-                  "Доброго дня, уточніть, будь ласка, деталі обʼєкта.",
-                  "Можу приїхати на огляд у зручний для вас час.",
-                  "Надішліть, будь ласка, фото приміщення.",
-                  "Кошторис підготую після уточнення обсягу робіт.",
-                ].map((template) => (
-                  <button onClick={() => sendMessage(template)} type="button" key={template}>{template}</button>
-                ))}
-              </div>
-              <form className="dash-chat-input" onSubmit={(event) => { event.preventDefault(); sendMessage(); }}>
-                <button type="button">+</button>
-                <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Напишіть клієнту про деталі роботи..." />
-                <button type="submit"><Send size={16} /></button>
-              </form>
-            </>
-          ) : (
-            <div className="dash-empty">Оберіть клієнта або день у календарі, щоб відкрити переписку.</div>
-          )}
-        </div>
+              <em>{client.status}</em>
+            </article>
+          ))
+        ) : (
+          <div className="dash-empty">Клієнтів поки немає. Нові заявки зʼявляться тут автоматично.</div>
+        )}
       </div>
     </section>
   );
 }
 
-function ProfileProgressCard({
-  master,
-  profilePercent,
+function TasksPanel({ requests }: { requests: MasterRequest[] }) {
+  const active = requests.filter((request) => request.status === "accepted" || request.status === "in_progress");
+  const tasks = [
+    {
+      title: "Відповісти на нові заявки",
+      detail: `${requests.filter((request) => request.status === "new").length} звернення очікують рішення`,
+      icon: MessageSquare,
+      tone: "orange",
+    },
+    {
+      title: "Узгодити етапи ремонту",
+      detail: active[0]?.selectedServiceTitle || active[0]?.workType || "Після прийняття заявки зʼявиться перший обʼєкт",
+      icon: ListChecks,
+      tone: "green",
+    },
+    {
+      title: "Додати фото з обʼєкта",
+      detail: "До початку, процес і результат для історії робіт",
+      icon: Camera,
+      tone: "blue",
+    },
+  ];
+
+  return (
+    <section className="dash-panel">
+      <div className="dash-panel-head">
+        <div>
+          <h2>Задачі та етапи</h2>
+          <p>Що потрібно зробити сьогодні по обʼєктах</p>
+        </div>
+      </div>
+      <div className="dash-task-list">
+        {tasks.map(({ title, detail, icon: Icon, tone }) => (
+          <article className={`dash-task-card ${tone}`} key={title}>
+            <Icon size={18} />
+            <div>
+              <strong>{title}</strong>
+              <p>{detail}</p>
+            </div>
+            <button type="button">Відкрити</button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FinanceDocumentsPanel({
+  requests,
+  portfolioItems,
 }: {
-  master: MasterProfile;
-  profilePercent: number;
+  requests: MasterRequest[];
+  portfolioItems: PortfolioItem[];
 }) {
+  const portfolioRevenue = portfolioItems.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+  const pendingBudgets = requests.filter((request) => request.status === "new").length;
+  const expenses = Math.round(portfolioRevenue * 0.28);
+
+  const financeRows = [
+    { label: "Погоджено робіт", value: formatMoney(portfolioRevenue || 0), icon: CircleDollarSign },
+    { label: "Орієнтовні витрати", value: formatMoney(expenses || 0), icon: ReceiptText },
+    { label: "Потрібно кошторисів", value: pendingBudgets, icon: ClipboardList },
+  ];
+
+  return (
+    <section className="dash-panel dash-finance-card" id="finance">
+      <div className="dash-panel-head compact">
+        <div>
+          <h2>Фінанси і документи</h2>
+          <p>Простий облік без складної бухгалтерії</p>
+        </div>
+      </div>
+      <div className="dash-finance-grid">
+        {financeRows.map(({ label, value, icon: Icon }) => (
+          <article key={label}>
+            <Icon size={17} />
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </div>
+      <div className="dash-document-stack">
+        <button type="button">
+          <FileCheck2 size={16} />
+          Додати акт або чек
+        </button>
+        <button type="button">
+          <History size={16} />
+          Історія змін кошторису
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function DashboardModuleGrid({
+  requests,
+  messages,
+  portfolioItems,
+  freeDatesCount,
+  onOpenPanel,
+}: {
+  requests: MasterRequest[];
+  messages: RequestMessage[];
+  portfolioItems: PortfolioItem[];
+  freeDatesCount: number;
+  onOpenPanel: (panel: DashboardPanelKey) => void;
+}) {
+  const modules = [
+    {
+      panel: "requests" as const,
+      title: "Заявки",
+      text: "Нові звернення, статуси та швидкі дії",
+      value: requests.filter((request) => request.status === "new").length,
+      icon: ClipboardList,
+    },
+    {
+      panel: "objects" as const,
+      title: "Обʼєкти",
+      text: "Ремонти в роботі, етапи та задачі",
+      value: requests.filter((request) => request.status === "accepted" || request.status === "in_progress").length,
+      icon: FolderKanban,
+    },
+    {
+      panel: "calendar" as const,
+      title: "Календар",
+      text: "Вільні, зайняті та очікувані дати",
+      value: freeDatesCount,
+      icon: CalendarDays,
+    },
+    {
+      panel: "messages" as const,
+      title: "Чат",
+      text: "Листування по заявках і обʼєктах",
+      value: messages.filter((message) => !message.isRead && message.senderRole === "client").length,
+      icon: MessageSquare,
+    },
+    {
+      panel: "clients" as const,
+      title: "Клієнти",
+      text: "Контакти, історія заявок і співпраця",
+      value: mergeById(requests.map((request) => ({ id: request.clientPhone || request.clientName || request.id }))).length,
+      icon: UsersRound,
+    },
+    {
+      panel: "portfolio" as const,
+      title: "Портфоліо",
+      text: "Роботи, фото і підготовка публічного профілю",
+      value: portfolioItems.length,
+      icon: ImagePlus,
+    },
+    {
+      panel: "finance" as const,
+      title: "Фінанси",
+      text: "Кошториси, витрати, чеки та документи",
+      value: portfolioItems.reduce((sum, item) => sum + (item.totalAmount || 0), 0) ? "грн" : 0,
+      icon: WalletCards,
+    },
+  ];
+
+  return (
+    <section className="dash-module-grid" aria-label="Розділи кабінету">
+      {modules.map(({ panel, title, text, value, icon: Icon }) => (
+        <button className="dash-module-card" onClick={() => onOpenPanel(panel)} type="button" key={panel}>
+          <span>
+            <Icon size={20} />
+          </span>
+          <strong>{title}</strong>
+          <p>{text}</p>
+          <em>{value}</em>
+        </button>
+      ))}
+    </section>
+  );
+}
+
+function DashboardPanelModal({
+  panel,
+  master,
+  requests,
+  messages,
+  portfolioItems,
+  freeDatesCount,
+  onClose,
+  onStatusChange,
+  onFreeDatesChange,
+}: {
+  panel: DashboardPanelKey | null;
+  master: MasterProfile;
+  requests: MasterRequest[];
+  messages: RequestMessage[];
+  portfolioItems: PortfolioItem[];
+  freeDatesCount: number;
+  onClose: () => void;
+  onStatusChange: (id: string, status: RequestStatus) => void;
+  onFreeDatesChange: (count: number) => void;
+}) {
+  if (!panel) return null;
+
+  const titles: Record<DashboardPanelKey, { title: string; eyebrow: string }> = {
+    requests: { title: "Заявки", eyebrow: "Нові звернення" },
+    objects: { title: "Обʼєкти ремонту", eyebrow: "Етапи і задачі" },
+    calendar: { title: "Календар майстра", eyebrow: "Доступність" },
+    messages: { title: "Чат з клієнтами", eyebrow: "Повідомлення" },
+    clients: { title: "Клієнти", eyebrow: "CRM" },
+    portfolio: { title: "Портфоліо", eyebrow: "Публічний профіль" },
+    finance: { title: "Фінанси і документи", eyebrow: "Облік" },
+  };
+
+  return (
+    <div className="dash-panel-modal" role="dialog" aria-modal="true" aria-labelledby="dash-panel-modal-title">
+      <button className="dash-panel-backdrop" onClick={onClose} type="button" aria-label="Закрити панель" />
+      <div className="dash-panel-drawer">
+        <header className="dash-panel-drawer-head">
+          <div>
+            <span>{titles[panel].eyebrow}</span>
+            <h2 id="dash-panel-modal-title">{titles[panel].title}</h2>
+          </div>
+          <button onClick={onClose} type="button" aria-label="Закрити">
+            <X size={21} />
+          </button>
+        </header>
+
+        <div className="dash-panel-drawer-body">
+          {panel === "requests" && <RequestsPanel requests={requests} onStatusChange={onStatusChange} />}
+          {panel === "objects" && (
+            <>
+              <ProjectCommandCenter
+                freeDatesCount={freeDatesCount}
+                portfolioItems={portfolioItems}
+                requests={requests}
+              />
+              <TasksPanel requests={requests} />
+              <TodaySchedule requests={requests} />
+            </>
+          )}
+          {panel === "calendar" && <DashboardCalendar master={master} onFreeDatesChange={onFreeDatesChange} />}
+          {panel === "messages" && <MessagesPanel messages={messages} requests={requests} />}
+          {panel === "clients" && <ClientsPanel requests={requests} />}
+          {panel === "portfolio" && <PortfolioPreview items={portfolioItems} />}
+          {panel === "finance" && <FinanceDocumentsPanel portfolioItems={portfolioItems} requests={requests} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileProgressCard({ percent }: { percent: number }) {
   const checklist = [
-    { label: "Додати фото профілю", done: Boolean(master.avatarUrl) },
-    { label: "Додати опис", done: Boolean(master.fullDescription || master.description) },
-    { label: "Додати послуги та ціни", done: master.services.length > 0 },
-    { label: "Додати портфоліо", done: master.works.length > 0 },
-    { label: "Додати місто та райони роботи", done: Boolean(master.city && master.district) },
+    "Додати фото профілю",
+    "Додати опис",
+    "Додати послуги та ціни",
+    "Додати портфоліо",
+    "Додати місто та райони роботи",
   ];
 
   return (
     <section className="dash-panel dash-progress-card">
-      <div className="dash-section-head">
+      <div className="dash-panel-head compact">
         <div>
-          <p className="dash-eyebrow">Профіль</p>
-          <h2>Ваш профіль заповнений на {profilePercent}%</h2>
+          <h2>Заповнення профілю</h2>
+          <p>Ваш профіль заповнений на {percent}%</p>
         </div>
       </div>
-      <div className="dash-progress-line" aria-label={`Заповнення профілю ${profilePercent}%`}>
-        <span style={{ width: `${profilePercent}%` }} />
+      <div className="dash-progress-line" aria-label={`Профіль заповнений на ${percent}%`}>
+        <span style={{ width: `${percent}%` }} />
       </div>
       <ul>
-        {checklist.map((item) => (
-          <li className={item.done ? "done" : ""} key={item.label}>
+        {checklist.map((item, index) => (
+          <li key={item} className={index < Math.round((percent / 100) * checklist.length) ? "done" : ""}>
             <CheckCircle2 size={16} />
-            {item.label}
+            {item}
           </li>
         ))}
       </ul>
-      <Link className="dash-button dash-button-primary" href="/dashboard/profile">
+      <Link className="dash-primary-link" href="/dashboard/profile">
         Покращити профіль
       </Link>
     </section>
   );
 }
 
-function QuickActionsCard() {
+function QuickActionsCard({ master }: { master: MasterProfile }) {
   const actions = [
     { label: "Додати роботу в портфоліо", href: "/dashboard/portfolio/new", icon: ImagePlus },
     { label: "Додати послугу", href: "/dashboard/profile#profile-services", icon: Plus },
     { label: "Оновити календар", href: "#calendar", icon: CalendarDays },
-    { label: "Переглянути профіль", href: "/profile/andrey-ponomarenko", icon: Eye },
+    { label: "Переглянути профіль", href: `/profile/${master.id}`, icon: Eye },
   ];
 
   return (
     <section className="dash-panel dash-quick-card">
-      <div className="dash-section-head">
+      <div className="dash-panel-head compact">
         <div>
-          <p className="dash-eyebrow">Дії</p>
           <h2>Швидкі дії</h2>
+          <p>Часті задачі в один клік</p>
         </div>
       </div>
       <div>
         {actions.map(({ label, href, icon: Icon }) => (
           <Link href={href} key={label}>
-            <span>
-              <Icon size={17} />
-              {label}
-            </span>
-            <ChevronRight size={16} />
+            <Icon size={17} />
+            {label}
           </Link>
         ))}
       </div>
@@ -657,272 +1149,81 @@ function QuickActionsCard() {
   );
 }
 
-type CalendarStatus = "free" | "busy" | "pending";
-
-const calendarStatusLabels: Record<CalendarStatus, string> = {
-  free: "вільний",
-  busy: "зайнятий",
-  pending: "очікує",
-};
-
 function DashboardCalendar({
-  busyDates = [],
+  master,
   onFreeDatesChange,
 }: {
-  busyDates?: string[];
+  master: MasterProfile;
   onFreeDatesChange: (count: number) => void;
 }) {
-  const [mode, setMode] = useState<CalendarStatus>("free");
-  const calendarMonth = useMemo(() => getCalendarMonth(busyDates), [busyDates]);
-  const [days, setDays] = useState<Record<number, CalendarStatus>>(() => getInitialCalendarDays(busyDates));
+  const days = Array.from({ length: 31 }, (_, index) => index + 1);
 
   useEffect(() => {
-    setDays(getInitialCalendarDays(busyDates));
-  }, [busyDates]);
-
-  useEffect(() => {
-    onFreeDatesChange(Object.values(days).filter((status) => status === "free").length);
-  }, [days, onFreeDatesChange]);
-
-  function markDay(day: number) {
-    setDays((current) => ({ ...current, [day]: mode }));
-  }
+    onFreeDatesChange(days.filter((day) => getCalendarStatus(master, day) === "free").length);
+  }, [days, master, onFreeDatesChange]);
 
   return (
-    <section className="dash-panel dash-calendar" id="calendar">
-      <div className="dash-section-head">
+    <section className="dash-panel dash-calendar-card" id="calendar">
+      <div className="dash-panel-head compact">
         <div>
-          <p className="dash-eyebrow">Календар</p>
           <h2>Календар доступності</h2>
-          <span className="dash-calendar-month">{calendarMonth.title}</span>
+          <p>Липень 2026</p>
         </div>
       </div>
-      <div className="dash-calendar-actions">
-        <button className={mode === "free" ? "active free" : ""} onClick={() => setMode("free")} type="button">
-          Додати вільний день
-        </button>
-        <button className={mode === "busy" ? "active busy" : ""} onClick={() => setMode("busy")} type="button">
-          Позначити зайнятим
-        </button>
-      </div>
       <div className="dash-calendar-legend">
-        <span><i className="free" /> вільний день</span>
-        <span><i className="busy" /> зайнятий день</span>
-        <span><i className="pending" /> очікує підтвердження</span>
-      </div>
-      <div className="dash-calendar-weekdays">
-        {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => <span key={day}>{day}</span>)}
+        <span className="free">Вільно</span>
+        <span className="pending">Очікує</span>
+        <span className="busy">Зайнято</span>
       </div>
       <div className="dash-calendar-grid">
-        {Array.from({ length: calendarMonth.daysInMonth }, (_, index) => {
-          const day = index + 1;
-          const status = days[day] ?? "free";
-
+        {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
+          <strong key={day}>{day}</strong>
+        ))}
+        <i />
+        <i />
+        {days.map((day) => {
+          const status = getCalendarStatus(master, day);
           return (
-            <button className={status} onClick={() => markDay(day)} type="button" key={day}>
-              <strong>{day}</strong>
-              <small>{calendarStatusLabels[status]}</small>
+            <button className={status} key={day} type="button">
+              {day}
             </button>
           );
         })}
       </div>
+      <div className="dash-calendar-actions">
+        <button type="button">Додати вільний день</button>
+        <button type="button">Позначити зайнятим</button>
+      </div>
     </section>
   );
 }
 
-function PortfolioManager({ items }: { items: PortfolioItem[] }) {
+function PortfolioPreview({ items }: { items: PortfolioItem[] }) {
   return (
-    <section className="dash-panel dash-portfolio-manager" id="portfolio-manager">
-      <div className="dash-section-head">
+    <section className="dash-panel">
+      <div className="dash-panel-head">
         <div>
-          <p className="dash-eyebrow">Портфоліо</p>
-          <h2>Роботи у профілі</h2>
+          <h2>Портфоліо</h2>
+          <p>Останні виконані роботи</p>
         </div>
-        <Link href="/dashboard/portfolio/new">
-          <Plus size={16} />
+        <Link href="/dashboard/portfolio">
           Додати роботу
+          <ChevronRight size={15} />
         </Link>
       </div>
-      <div className="dash-portfolio-grid">
-        {items.length ? items.slice(0, 4).map((item) => {
-          const volume = item.workLines.reduce((sum, line) => sum + line.volume, 0);
-          const unit = item.workLines[0]?.unit || "м²";
-
-          return (
-            <article key={item.id}>
-              <div className="dash-portfolio-image">
-                {item.photoUrl ? <img src={item.photoUrl} alt={item.title} /> : <span>Фото роботи</span>}
-              </div>
-              <div>
-                <span>{item.city || "Київ"}</span>
-                <h3>{item.title || "Робота майстра"}</h3>
-                <p>{item.description || "Опис роботи буде додано пізніше."}</p>
-                <div className="dash-portfolio-meta">
-                  <small>{formatUah(item.totalAmount || 0)}</small>
-                  <small>{volume ? `${volume} ${unit}` : "обсяг уточнюється"}</small>
-                  <small>1-7 днів</small>
-                </div>
-                <Link href={`/dashboard/portfolio/${item.id}/edit`}>
-                  <Pencil size={15} />
-                  Редагувати
-                </Link>
-              </div>
-            </article>
-          );
-        }) : <div className="dash-empty">Портфоліо поки порожнє. Додайте першу роботу, щоб клієнти бачили приклади.</div>}
-      </div>
-    </section>
-  );
-}
-
-function ServicesManager({ services }: { services: MasterProfile["services"] }) {
-  const safeServices = services.length ? services : [{ name: "Ремонтні роботи", price: "за кошторисом" }];
-
-  return (
-    <section className="dash-panel dash-services-manager" id="services-manager">
-      <div className="dash-section-head">
-        <div>
-          <p className="dash-eyebrow">Послуги</p>
-          <h2>Послуги та ціни</h2>
-        </div>
-        <Link href="/dashboard/profile#profile-services">
-          <Plus size={16} />
-          Додати послугу
-        </Link>
-      </div>
-      <div className="dash-services-grid">
-        {safeServices.map((service) => (
-          <article key={`${service.name}-${service.price}`}>
-            <div>
-              <h3>{service.name}</h3>
-              <p>Акуратне виконання, попередня оцінка обсягу та зрозумілий кошторис перед стартом.</p>
-            </div>
-            <div>
-              <strong>{service.price || "за домовленістю"}</strong>
-              <span>{getServiceUnit(service.price || "")}</span>
-            </div>
-            <Link href="/dashboard/profile#profile-services">
-              <Pencil size={15} />
-              Редагувати
-            </Link>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function QualificationsManager({
-  items,
-  onAdd,
-}: {
-  items: MasterQualification[];
-  onAdd: () => void;
-}) {
-  return (
-    <section className="dash-panel dash-document-manager" id="qualifications-manager">
-      <div className="dash-section-head">
-        <div>
-          <p className="dash-eyebrow">Кваліфікація</p>
-          <h2>Підвищення кваліфікації</h2>
-        </div>
-        <button onClick={onAdd} type="button">
-          <Plus size={16} />
-          Додати сертифікат
-        </button>
-      </div>
-      <div className="dash-doc-grid">
-        {items.map((item) => (
+      <div className="dash-portfolio-preview">
+        {items.slice(0, 2).map((item) => (
           <article key={item.id}>
-            <span>{item.type}</span>
-            <strong>{item.title}</strong>
-            <p>{item.issuer || item.description || "Професійний документ майстра."}</p>
-            <small>{item.issuedAt ? new Date(item.issuedAt).toLocaleDateString("uk-UA") : item.category || "Будівельні роботи"}</small>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CompanyDocumentsManager({
-  items,
-  onAdd,
-  onToggle,
-}: {
-  items: CompanyDocument[];
-  onAdd: () => void;
-  onToggle: (id: string) => void;
-}) {
-  return (
-    <section className="dash-panel dash-document-manager" id="company-documents-manager">
-      <div className="dash-section-head">
-        <div>
-          <p className="dash-eyebrow">Документи</p>
-          <h2>Документи компанії</h2>
-        </div>
-        <button onClick={onAdd} type="button">
-          <Plus size={16} />
-          Додати документ
-        </button>
-      </div>
-      <div className="dash-doc-grid">
-        {items.map((document) => (
-          <article key={document.id}>
-            <span>{document.type}</span>
-            <strong>{document.title}</strong>
-            <p>{document.description || "Документ профілю майстра або компанії."}</p>
-            <label>
-              <input
-                checked={document.isPublic === true}
-                onChange={() => onToggle(document.id)}
-                type="checkbox"
-              />
-              Публічний документ
-            </label>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function buildFollowFeed(master: MasterProfile, items: PortfolioItem[]): FollowFeedItem[] {
-  return items.slice(0, 6).map((item) => ({
-    id: `follow-${item.id}`,
-    followerId: "local-client",
-    masterId: master.id,
-    masterName: master.name,
-    masterAvatarUrl: master.avatarUrl,
-    type: "new_work",
-    title: `Нова робота: ${item.title}`,
-    description: `${getProjectPublicLocation(item)} · ${getPortfolioPeriod(item).year}`,
-    imageUrl: item.photoUrl,
-    createdAt: item.completedAt || item.createdAt,
-    targetUrl: `/profile/${master.id}#work-detail-${getProjectSlug(item)}`,
-  }));
-}
-
-function FollowFeedCard({ items }: { items: FollowFeedItem[] }) {
-  return (
-    <section className="dash-panel dash-follow-feed">
-      <div className="dash-section-head">
-        <div>
-          <p className="dash-eyebrow">Підписки</p>
-          <h2>Новини від майстрів, на яких ви підписані</h2>
-        </div>
-      </div>
-      <div className="dash-feed-list">
-        {items.length ? items.map((item) => (
-          <a href={item.targetUrl || "/feed"} key={item.id}>
-            {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <span />}
+            <Image src={item.photoUrl} alt={item.title} width={160} height={110} />
             <div>
               <strong>{item.title}</strong>
-              <small>{item.masterName}</small>
-              {item.description && <p>{item.description}</p>}
+              <p>{item.city} · {item.objectArea ? `${item.objectArea} м²` : "обсяг уточнюється"}</p>
+              <span>{formatMoney(item.totalAmount)}</span>
             </div>
-          </a>
-        )) : <div className="dash-empty">Новин підписок поки немає.</div>}
+            <Link href={`/dashboard/portfolio/${item.id}/edit`}>Редагувати</Link>
+          </article>
+        ))}
+        {!items.length && <div className="dash-empty">Портфоліо поки порожнє.</div>}
       </div>
     </section>
   );
@@ -932,35 +1233,16 @@ export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAp
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests.filter(requestMatchesMaster));
   const [messages, setMessages] = useState<RequestMessage[]>([]);
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>(portfolioItems);
-  const [qualifications, setQualifications] = useState<MasterQualification[]>(defaultMasterQualifications);
-  const [companyDocuments, setCompanyDocuments] = useState<CompanyDocument[]>(defaultCompanyDocuments);
-  const [followFeed, setFollowFeed] = useState<FollowFeedItem[]>([]);
-  const [activeSection, setActiveSection] = useState("overview");
+  const [workspaceContext, setWorkspaceContext] = useState<MasterWorkspaceContext>("personal");
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [freeDatesCount, setFreeDatesCount] = useState(() =>
-    Object.values(getInitialCalendarDays(master.busyDates)).filter((status) => status === "free").length,
+    Array.from({ length: 31 }, (_, index) => index + 1).filter((day) => getCalendarStatus(master, day) === "free").length,
   );
-  const requestIds = useMemo(() => new Set(requests.map((request) => request.id)), [requests]);
-  const masterMessages = useMemo(
-    () => messages.filter((message) => requestIds.has(message.requestId)),
-    [messages, requestIds],
-  );
-  const profilePercent = getProfileCompletion(master, savedPortfolioItems.length);
+  const [activePanel, setActivePanel] = useState<DashboardPanelKey | null>(null);
 
   useEffect(() => {
     const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
     const localMessages = JSON.parse(localStorage.getItem(requestMessagesStorageKey) ?? "[]") as RequestMessage[];
-    const localPortfolio = JSON.parse(localStorage.getItem(portfolioStorageKey) ?? "[]") as PortfolioItem[];
-    const localQualifications = JSON.parse(localStorage.getItem(masterQualificationsStorageKey) ?? "[]") as MasterQualification[];
-    const localCompanyDocuments = JSON.parse(localStorage.getItem(companyDocumentsStorageKey) ?? "[]") as CompanyDocument[];
-    const localFollowFeed = JSON.parse(localStorage.getItem(followFeedStorageKey) ?? "[]") as FollowFeedItem[];
-
-    setQualifications(mergeById([...localQualifications, ...defaultMasterQualifications]));
-    setCompanyDocuments(mergeById([...localCompanyDocuments, ...defaultCompanyDocuments]));
-    setFollowFeed(mergeById([...localFollowFeed, ...buildFollowFeed(master, portfolioItems)]));
-
-    setSavedPortfolioItems(
-      mergeById([...localPortfolio.filter((item) => item.masterId === currentMasterId), ...portfolioItems]),
-    );
 
     fetch(`/api/requests?masterId=${currentMasterId}`)
       .then((response) => response.json())
@@ -983,23 +1265,12 @@ export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAp
     fetch(`/api/portfolio?masterId=${currentMasterId}`)
       .then((response) => response.json())
       .then((result: { items?: PortfolioItem[] }) => {
-        if (!result.items?.length) return;
-        setSavedPortfolioItems((current) => {
-          const next = mergeById([...result.items!, ...current]);
-          setFollowFeed((feed) => mergeById([...feed, ...buildFollowFeed(master, next)]));
-          return next;
-        });
+        if (result.items?.length) {
+          setSavedPortfolioItems(mergeById([...result.items, ...portfolioItems]));
+        }
       })
       .catch(() => undefined);
-  }, [master, portfolioItems]);
-
-  useEffect(() => {
-    const handleHashChange = () => setActiveSection(getSectionIdFromHash(window.location.hash));
-    handleHashChange();
-    window.addEventListener("hashchange", handleHashChange);
-
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
+  }, [portfolioItems]);
 
   function updateRequestStatus(id: string, status: RequestStatus) {
     setRequests((current) => {
@@ -1017,89 +1288,76 @@ export function DashboardMasterApp({ master, portfolioItems }: DashboardMasterAp
     }).catch(() => undefined);
   }
 
-  function addQualification() {
-    setQualifications((current) => {
-      const next = [
-        {
-          id: crypto.randomUUID(),
-          type: "certificate" as const,
-          title: "Новий сертифікат майстра",
-          issuer: "Навчальний центр",
-          issuedAt: new Date().toISOString().slice(0, 10),
-          description: "Опишіть документ у наступній версії редактора.",
-          category: "Будівельні роботи",
-        },
-        ...current,
-      ];
-      localStorage.setItem(masterQualificationsStorageKey, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function addCompanyDocument() {
-    setCompanyDocuments((current) => {
-      const next = [
-        {
-          id: crypto.randomUUID(),
-          title: "Новий документ компанії",
-          type: "other" as const,
-          description: "Документ профілю, який можна зробити публічним.",
-          fileUrl: "#",
-          fileType: "pdf" as const,
-          uploadedAt: new Date().toISOString(),
-          isPublic: false,
-        },
-        ...current,
-      ];
-      localStorage.setItem(companyDocumentsStorageKey, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function toggleCompanyDocument(id: string) {
-    setCompanyDocuments((current) => {
-      const next = current.map((document) =>
-        document.id === id ? { ...document, isPublic: document.isPublic !== true } : document,
-      );
-      localStorage.setItem(companyDocumentsStorageKey, JSON.stringify(next));
-      return next;
-    });
-  }
+  const requestIds = useMemo(() => new Set(requests.map((request) => request.id)), [requests]);
+  const masterMessages = useMemo(
+    () => messages.filter((message) => requestIds.has(message.requestId)),
+    [messages, requestIds],
+  );
+  const unreadCount = masterMessages.filter((message) => !message.isRead && message.senderRole === "client").length;
+  const profilePercent = getProfileCompletion(master, savedPortfolioItems.length);
+  const defaultSelectedRequestId = selectedRequestId || requests[0]?.id || null;
 
   return (
     <section className="dashboard-page dash-app">
-      <DashboardSidebar activeSection={activeSection} />
+      <DashboardSidebar activePanel={activePanel} master={master} onOpenPanel={setActivePanel} />
       <main className="dash-main">
-        <DashboardHeader master={master} />
+        <DashboardTopbar master={master} unreadCount={unreadCount} />
+        <MasterContextSwitch onChange={setWorkspaceContext} value={workspaceContext} />
+        {workspaceContext === "team" && (
+          <section className="dash-team-mode-note">
+            <span className="dash-platform-tag">Командний режим</span>
+            <h2>Робота в команді «Укріплення»</h2>
+            <p>
+              Тут залишиться сценарій задач підрядника: обʼєкти команди, внутрішні повідомлення,
+              звіти та синхронізація календаря. Особисті замовлення відкриті як основний режим.
+            </p>
+          </section>
+        )}
+        {workspaceContext === "personal" && (
+          <MasterMessagesWorkspace
+            master={master}
+            messages={masterMessages}
+            onOpenPanel={setActivePanel}
+            onSelectRequest={setSelectedRequestId}
+            requests={requests}
+            selectedRequestId={defaultSelectedRequestId}
+          />
+        )}
         <StatsCards
           freeDatesCount={freeDatesCount}
-          requests={requests}
           messages={masterMessages}
+          onOpenPanel={setActivePanel}
           profilePercent={profilePercent}
+          requests={requests}
         />
+        <ProfileNotice percent={profilePercent} />
 
-        <div className="dash-overview-grid">
-          <div className="dash-primary-column">
-            <RequestsSection requests={requests} onStatusChange={updateRequestStatus} />
-            <UpcomingWork requests={requests} />
-            <MessagesSection requests={requests} messages={masterMessages} onStatusChange={updateRequestStatus} />
-            <PortfolioManager items={savedPortfolioItems} />
-            <ServicesManager services={master.services} />
-            <QualificationsManager items={qualifications} onAdd={addQualification} />
-            <CompanyDocumentsManager
-              items={companyDocuments}
-              onAdd={addCompanyDocument}
-              onToggle={toggleCompanyDocument}
-            />
-          </div>
-          <aside className="dash-side-column">
-            <ProfileProgressCard master={master} profilePercent={profilePercent} />
-            <QuickActionsCard />
-            <DashboardCalendar busyDates={master.busyDates} onFreeDatesChange={setFreeDatesCount} />
-            <FollowFeedCard items={followFeed} />
+        <div className="dash-clean-workspace">
+          <DashboardModuleGrid
+            freeDatesCount={freeDatesCount}
+            messages={masterMessages}
+            onOpenPanel={setActivePanel}
+            portfolioItems={savedPortfolioItems}
+            requests={requests}
+          />
+          <aside className="dash-clean-aside">
+            <FinanceDocumentsPanel portfolioItems={savedPortfolioItems} requests={requests} />
+            <ProfileProgressCard percent={profilePercent} />
+            <QuickActionsCard master={master} />
           </aside>
         </div>
       </main>
+      <DashboardPanelModal
+        freeDatesCount={freeDatesCount}
+        master={master}
+        messages={masterMessages}
+        onClose={() => setActivePanel(null)}
+        onFreeDatesChange={setFreeDatesCount}
+        onStatusChange={updateRequestStatus}
+        panel={activePanel}
+        portfolioItems={savedPortfolioItems}
+        requests={requests}
+      />
     </section>
   );
 }

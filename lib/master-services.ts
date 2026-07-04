@@ -1,3 +1,5 @@
+import type { MasterProfile } from "@/lib/masters";
+
 export type MasterServiceType =
   | "tile"
   | "drywall"
@@ -15,6 +17,7 @@ export type MasterService = {
   serviceType: MasterServiceType;
   serviceTitle: string;
   serviceDescription: string;
+  priceLabel?: string;
   isTurnkey: boolean;
   createdAt: string;
   updatedAt: string;
@@ -133,4 +136,58 @@ export function getMasterServices(masterId: string) {
       updatedAt: new Date().toISOString(),
     },
   ];
+}
+
+function normalizeServiceName(value: string) {
+  return value.trim().toLocaleLowerCase("uk-UA");
+}
+
+function inferServiceType(name: string): MasterServiceType {
+  const normalized = normalizeServiceName(name);
+
+  if (normalized.includes("плит")) return "tile";
+  if (normalized.includes("гіпс") || normalized.includes("гипс")) return "drywall";
+  if (normalized.includes("фарб") || normalized.includes("маляр") || normalized.includes("шпак")) return "painting";
+  if (normalized.includes("сантех")) return "plumbing";
+  if (normalized.includes("елект") || normalized.includes("элект")) return "electric";
+  if (normalized.includes("ванн")) return "bathroom_turnkey";
+  if (normalized.includes("кухн")) return "kitchen_turnkey";
+  if (normalized.includes("ремонт") || normalized.includes("під ключ") || normalized.includes("под ключ")) return "renovation_turnkey";
+
+  return "other";
+}
+
+export function getMasterRequestServices(master: MasterProfile) {
+  const detailedServices = getMasterServices(master.id);
+  const detailedByName = new Map(
+    detailedServices.map((service) => [normalizeServiceName(service.serviceTitle), service]),
+  );
+  const usedDetailedIds = new Set<string>();
+
+  const profileServices = master.services.map((service, index): MasterService => {
+    const detailedService = detailedByName.get(normalizeServiceName(service.name));
+    if (detailedService) usedDetailedIds.add(detailedService.id);
+
+    return {
+      id: detailedService?.id ?? `${master.id}-profile-service-${index}`,
+      masterId: master.id,
+      serviceType: detailedService?.serviceType ?? inferServiceType(service.name),
+      serviceTitle: service.name,
+      serviceDescription:
+        detailedService?.serviceDescription || "Уточніть деталі задачі, обсяг робіт і бажаний результат.",
+      priceLabel: service.price,
+      isTurnkey: detailedService?.isTurnkey ?? inferServiceType(service.name).includes("turnkey"),
+      createdAt: detailedService?.createdAt ?? new Date().toISOString(),
+      updatedAt: detailedService?.updatedAt ?? new Date().toISOString(),
+    };
+  });
+
+  const extraDetailedServices = detailedServices
+    .filter((service) => !usedDetailedIds.has(service.id))
+    .map((service) => ({
+      ...service,
+      priceLabel: service.priceLabel,
+    }));
+
+  return [...profileServices, ...extraDetailedServices];
 }

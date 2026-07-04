@@ -1,23 +1,41 @@
 import Image from "next/image";
 import Link from "next/link";
 
+type HeaderNavItem = {
+  href: string;
+  label: string;
+  active?: boolean;
+};
+
 type SiteHeaderProps = {
   active?: "masters" | "feed" | "dashboard";
+  navItems?: HeaderNavItem[];
+  showLogin?: boolean;
   showMasterCard?: boolean;
   showBecomeMaster?: boolean;
 };
 
 export function SiteHeader({
   active,
+  navItems,
+  showLogin = false,
   showMasterCard = false,
   showBecomeMaster = false,
 }: SiteHeaderProps) {
+  const links =
+    navItems ??
+    [
+      { href: "/masters", label: "Майстри", active: active === "masters" },
+      { href: "/feed", label: "Роботи", active: active === "feed" },
+      { href: "/dashboard", label: "Кабінет", active: active === "dashboard" },
+    ];
+
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link className="app-logo" href="/masters" aria-label="БудПомiч">
+        <Link className="app-logo" href="/" aria-label="БудПомiч">
           <Image
-            src="/logo/budpomich-logo.svg"
+            src="/logo/budpomich-logo-v4.svg"
             alt="БудПомiч"
             width={220}
             height={117}
@@ -27,32 +45,36 @@ export function SiteHeader({
         </Link>
 
         <nav className="app-nav" aria-label="Основна навігація">
-          <Link className={active === "masters" ? "active" : ""} href="/masters">
-            Майстри
-          </Link>
-          <Link className={active === "feed" ? "active" : ""} href="/feed">
-            Роботи
-          </Link>
-          <Link className={active === "dashboard" ? "active" : ""} href="/dashboard">
-            Кабінет
-          </Link>
+          {links.map((item) => (
+            <Link className={item.active ? "active" : ""} href={item.href} key={item.href}>
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
-        {showBecomeMaster && (
-          <Link className="header-cta" href="/auth/register">
-            Стати майстром
-          </Link>
-        )}
+        <div className="app-header-actions">
+          {showLogin && (
+            <Link className="header-login" href="/auth/login">
+              Увійти
+            </Link>
+          )}
 
-        {showMasterCard && (
-          <Link className="header-master-card" href="/profile/andrey-ponomarenko">
-            <span className="avatar avatar-small">АП</span>
-            <span>
-              <strong>Профіль майстра</strong>
-              <small>Андрей Пономаренко · Київ</small>
-            </span>
-          </Link>
-        )}
+          {showBecomeMaster && (
+            <Link className="header-cta" href="/auth/register">
+              Стати майстром
+            </Link>
+          )}
+
+          {showMasterCard && (
+            <Link className="header-master-card" href="/profile/andrey-ponomarenko">
+              <span className="avatar avatar-small">АП</span>
+              <span>
+                <strong>Профіль майстра</strong>
+                <small>Андрей Пономаренко · Київ</small>
+              </span>
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );

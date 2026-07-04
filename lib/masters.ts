@@ -36,6 +36,7 @@ export type MasterProfile = {
     details?: { name: string; quantity: string; unitPrice: string; total: string }[];
   }[];
   busyDates?: string[];
+  pendingDates?: string[];
 };
 
 export const masterProfiles: MasterProfile[] = [
@@ -254,7 +255,8 @@ export const masterProfiles: MasterProfile[] = [
         ],
       },
     ],
-    busyDates: ["2026-06-10", "2026-06-11", "2026-06-17"],
+    busyDates: ["2026-06-10", "2026-06-11", "2026-06-17", "2026-07-04", "2026-07-05", "2026-07-12", "2026-07-13", "2026-07-21"],
+    pendingDates: ["2026-07-09", "2026-07-18", "2026-07-24"],
   },
 ];
 
