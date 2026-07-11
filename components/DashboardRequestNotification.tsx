@@ -7,11 +7,11 @@ import { useEffect, useState } from "react";
 type DashboardRequestView = "new" | "messages" | "files" | "multi" | "incomplete" | "in_progress";
 
 export function DashboardRequestNotification() {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(() =>
+    typeof window === "undefined" ? false : window.location.hash === "#request-messages",
+  );
 
   useEffect(() => {
-    setIsVisible(window.location.hash === "#request-messages");
-
     function handleRequestView(event: Event) {
       const view = (event as CustomEvent<{ view?: DashboardRequestView }>).detail?.view;
       setIsVisible(view === "messages");

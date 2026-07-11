@@ -2,32 +2,14 @@
 > budpomich@0.1.0 dev
 > next dev --hostname 127.0.0.1 --port 3000
 
-   ▲ Next.js 15.5.19
-   - Local:        http://127.0.0.1:3000
-   - Network:      http://127.0.0.1:3000
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+- Environments: .env.local
+✓ Ready in 1777ms
 
- ✓ Starting...
- ✓ Ready in 2.2s
- ○ Compiling / ...
- ✓ Compiled / in 6.1s (674 modules)
- GET / 200 in 7196ms
- GET / 200 in 240ms
- GET / 200 in 259ms
- GET / 200 in 244ms
- GET / 200 in 233ms
- ○ Compiling /profile/andrii-koval ...
- ✓ Compiled /profile/andrii-koval in 598ms (695 modules)
- GET /profile/andrii-koval 200 in 1026ms
- GET / 200 in 189ms
- GET / 200 in 293ms
- GET / 200 in 265ms
- GET / 200 in 233ms
- GET / 200 in 247ms
- GET / 200 in 304ms
- ✓ Compiled /auth/register in 480ms (690 modules)
- GET /auth/register 200 in 630ms
- GET / 200 in 83ms
- ✓ Compiled /feed in 386ms (696 modules)
- GET /feed 200 in 535ms
- GET / 200 in 67ms
- GET /profile/andrii-koval 200 in 83ms
+ GET / 200 in 2.8s (next.js: 1617ms, proxy.ts: 435ms, application-code: 734ms)
+ GET / 200 in 273ms (next.js: 11ms, proxy.ts: 19ms, application-code: 243ms)
+ GET /auth/register 200 in 183ms (next.js: 126ms, proxy.ts: 10ms, application-code: 46ms)
+ GET / 200 in 93ms (next.js: 13ms, proxy.ts: 11ms, application-code: 69ms)
+ GET /auth/register 200 in 64ms (next.js: 11ms, proxy.ts: 8ms, application-code: 46ms)

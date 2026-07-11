@@ -45,6 +45,23 @@ function parseContacts(value: unknown): EditableMasterProfile["contacts"] {
     .filter(Boolean) as NonNullable<EditableMasterProfile["contacts"]>;
 }
 
+function parseServices(value: unknown): EditableMasterProfile["services"] {
+  if (!Array.isArray(value)) return [];
+
+  return normalizeMasterServices(
+    value
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        const name = optionalText(row.name);
+        const price = optionalText(row.price);
+
+        return name && price ? { name, price } : null;
+      })
+      .filter(Boolean) as EditableMasterProfile["services"],
+  );
+}
+
 function validateProfile(value: unknown): EditableMasterProfile {
   if (!value || typeof value !== "object") {
     throw new Error("Некоректні дані профілю.");
@@ -98,7 +115,31 @@ function validateProfile(value: unknown): EditableMasterProfile {
   };
 }
 
-function mapProfileRow(data: Record<string, any>): EditableMasterProfile {
+type ProfileRow = {
+  master_id: string;
+  name: string;
+  profession: string;
+  city: string;
+  district?: string | null;
+  description: string;
+  full_description: string;
+  avatar_url?: string | null;
+  cover_image_url?: string | null;
+  avatar_zoom?: number | string | null;
+  avatar_position_x?: number | string | null;
+  avatar_position_y?: number | string | null;
+  cover_zoom?: number | string | null;
+  cover_position_x?: number | string | null;
+  cover_position_y?: number | string | null;
+  price_from: number | string;
+  experience: string;
+  services: unknown;
+  contacts?: unknown;
+  is_profile_active?: boolean | null;
+  accepts_budpomich_requests?: boolean | null;
+};
+
+function mapProfileRow(data: ProfileRow): EditableMasterProfile {
   return {
     id: data.master_id,
     name: data.name,
@@ -117,7 +158,7 @@ function mapProfileRow(data: Record<string, any>): EditableMasterProfile {
     coverPositionY: Number(data.cover_position_y ?? 50),
     priceFrom: Number(data.price_from),
     experience: data.experience,
-    services: data.services,
+    services: parseServices(data.services),
     contacts: parseContacts(data.contacts),
     isProfileActive: data.is_profile_active !== false,
     acceptsBudPomichRequests: data.accepts_budpomich_requests !== false,
@@ -135,7 +176,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Не вказано майстра." }, { status: 400 });
   }
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ profile: null, persistence: "browser" });
   }
@@ -168,7 +209,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
-    profile: result.data ? mapProfileRow(result.data as Record<string, any>) : null,
+    profile: result.data ? mapProfileRow(result.data as ProfileRow) : null,
     persistence: "supabase",
   });
 }
@@ -176,14 +217,20 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const profile = validateProfile(await request.json());
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     if (!supabase) {
       return NextResponse.json({ profile, persistence: "browser" });
     }
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: "РЈРІС–Р№РґС–С‚СЊ РІ Р°РєР°СѓРЅС‚, С‰РѕР± Р·Р±РµСЂРµРіС‚Рё РїСЂРѕС„С–Р»СЊ." }, { status: 401 });
+    }
+
     const extendedPayload = {
         master_id: profile.id,
+        owner_id: authData.user.id,
         name: profile.name,
         profession: profile.profession,
         city: profile.city,
@@ -207,6 +254,7 @@ export async function POST(request: Request) {
       };
     const basePayload = {
         master_id: profile.id,
+        owner_id: authData.user.id,
         name: profile.name,
         profession: profile.profession,
         city: profile.city,

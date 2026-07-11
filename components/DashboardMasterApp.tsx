@@ -1256,7 +1256,7 @@ function PortfolioPreview({ items }: { items: PortfolioItem[] }) {
 }
 
 export function DashboardMasterApp({ defaultRole = "master", master, masters, portfolioItems }: DashboardMasterAppProps) {
-  const [dashboardRole, setDashboardRole] = useState<DashboardRole>(defaultRole);
+  const dashboardRole = defaultRole;
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests.filter(requestMatchesMaster));
   const [messages, setMessages] = useState<RequestMessage[]>([]);
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>(portfolioItems);
@@ -1266,10 +1266,6 @@ export function DashboardMasterApp({ defaultRole = "master", master, masters, po
     Array.from({ length: 31 }, (_, index) => index + 1).filter((day) => getCalendarStatus(master, day) === "free").length,
   );
   const [activePanel, setActivePanel] = useState<DashboardPanelKey | null>(null);
-
-  useEffect(() => {
-    setDashboardRole(defaultRole);
-  }, [defaultRole]);
 
   useEffect(() => {
     const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];

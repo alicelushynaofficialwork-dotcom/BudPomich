@@ -50,8 +50,16 @@ function hasPhoneContact(master: MasterProfile) {
 }
 
 export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
-  const [profileEdits, setProfileEdits] = useState<Record<string, EditableMasterProfile>>({});
-  const [locationDetails, setLocationDetails] = useState<Record<string, LocationDetails>>({});
+  const [profileEdits, setProfileEdits] = useState<Record<string, EditableMasterProfile>>(() => {
+    if (typeof window === "undefined") return {};
+    return JSON.parse(
+      localStorage.getItem(masterProfileStorageKey) ?? "{}",
+    ) as Record<string, EditableMasterProfile>;
+  });
+  const [locationDetails] = useState<Record<string, LocationDetails>>(() => {
+    if (typeof window === "undefined") return {};
+    return JSON.parse(localStorage.getItem(locationDetailsStorageKey) ?? "{}") as Record<string, LocationDetails>;
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedServiceFilters, setSelectedServiceFilters] = useState<string[]>([]);
   const [cityFilter, setCityFilter] = useState("all");
@@ -78,15 +86,6 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
   );
 
   useEffect(() => {
-    const localProfiles = JSON.parse(
-      localStorage.getItem(masterProfileStorageKey) ?? "{}",
-    ) as Record<string, EditableMasterProfile>;
-
-    setProfileEdits(localProfiles);
-    setLocationDetails(
-      JSON.parse(localStorage.getItem(locationDetailsStorageKey) ?? "{}") as Record<string, LocationDetails>,
-    );
-
     masters.forEach((master) => {
       fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
         .then((response) => response.json())
@@ -110,7 +109,7 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
   }, [masters]);
 
   useEffect(() => {
-    setVisibleCount(pageSize);
+    queueMicrotask(() => setVisibleCount(pageSize));
   }, [searchQuery, selectedServiceFilters, cityFilter, districtFilter, ratingFilter, priceFilter, experienceFilter, onlyAvailable, verifiedOnly, sortMode]);
 
   const filteredMasters = useMemo(() => {

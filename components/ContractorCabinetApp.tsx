@@ -108,7 +108,7 @@ export function ContractorCabinetApp() {
 
         <div className="contractor-side-foot">
           <strong>ТОВ «Укріплення»</strong>
-          <p>12 майстрів · 7 активних об'єктів · Київ</p>
+          <p>12 майстрів · 7 активних об&apos;єктів · Київ</p>
         </div>
       </aside>
 
@@ -117,7 +117,7 @@ export function ContractorCabinetApp() {
           <div>
             <span className="contractor-eyebrow">Підрядник · CRM · фінанси</span>
             <h1>Огляд бізнесу</h1>
-            <p>Контролюйте заявки, об'єкти, команду, кошториси, оплату та ризики в одному робочому просторі.</p>
+            <p>Контролюйте заявки, об&apos;єкти, команду, кошториси, оплату та ризики в одному робочому просторі.</p>
           </div>
           <div className="contractor-user">
             <span>БП</span>
@@ -140,7 +140,7 @@ export function ContractorCabinetApp() {
               </div>
               <div className="contractor-company-stats">
                 <div><strong>12</strong><small>людей</small></div>
-                <div><strong>7</strong><small>об'єктів</small></div>
+                <div><strong>7</strong><small>об&apos;єктів</small></div>
                 <div><strong>94.5к</strong><small>прибуток</small></div>
               </div>
             </section>
@@ -195,7 +195,7 @@ export function ContractorCabinetApp() {
 
               <section className="contractor-panel">
                 <div className="contractor-panel-head">
-                  <h2>Об'єкти з ризиком</h2>
+                  <h2>Об&apos;єкти з ризиком</h2>
                   <span>2</span>
                 </div>
                 <div className="contractor-risk-list">

@@ -23,7 +23,7 @@ function fromSupabase(row: Record<string, unknown>): RequestMessage {
 
 export async function GET(request: Request) {
   const requestId = new URL(request.url).searchParams.get("requestId") ?? "";
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   if (!supabase) {
     return NextResponse.json({
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       isRead: false,
       createdAt: new Date().toISOString(),
     };
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     if (!supabase) {
       return NextResponse.json({ message, persistence: "browser" });

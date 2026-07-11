@@ -1,57 +1,19 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { resetPassword, signInWithEmail, type AuthActionState } from "@/app/auth/actions";
 
-type LoginMode = "email" | "phone";
 type LoginView = "login" | "reset";
 
+const initialState: AuthActionState = {};
+
 export function LoginForm() {
-  const router = useRouter();
-  const [mode, setMode] = useState<LoginMode>("email");
   const [view, setView] = useState<LoginView>("login");
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [resetContact, setResetContact] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
-  function changeMode(nextMode: LoginMode) {
-    setMode(nextMode);
-    setIdentifier("");
-    setError("");
-    setNotice("");
-  }
-
-  function submitLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!identifier.trim() || !password.trim()) {
-      setError("Заповніть email або телефон і пароль, щоб увійти.");
-      setNotice("");
-      return;
-    }
-
-    setError("");
-    setNotice("");
-    router.push("/dashboard");
-  }
-
-  function submitReset(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!resetContact.trim()) {
-      setError("Вкажіть email або телефон для відновлення пароля.");
-      setNotice("");
-      return;
-    }
-
-    setError("");
-    setNotice("Посилання для відновлення надіслано. Перевірте пошту або SMS.");
-  }
+  const [loginState, loginAction, loginPending] = useActionState(signInWithEmail, initialState);
+  const [resetState, resetAction, resetPending] = useActionState(resetPassword, initialState);
 
   if (view === "reset") {
     return (
@@ -67,37 +29,27 @@ export function LoginForm() {
         </div>
         <h2>Забули пароль?</h2>
         <p className="login-sub">
-          Вкажіть email або телефон, прив'язаний до акаунту. Ми надішлемо посилання для відновлення.
+          Вкажіть email, прив&apos;язаний до акаунта. Ми надішлемо посилання для відновлення пароля.
         </p>
 
-        <form className="login-fields" onSubmit={submitReset} noValidate>
+        <form action={resetAction} className="login-fields" noValidate>
           <label className="login-field">
-            Email або телефон
+            Email
             <span className="login-input-wrap">
               <Mail className="login-leading-icon" size={18} />
-              <input
-                autoComplete="username"
-                onChange={(event) => {
-                  setResetContact(event.target.value);
-                  setError("");
-                  setNotice("");
-                }}
-                placeholder="you@example.com або +380 XX XXX XX XX"
-                type="text"
-                value={resetContact}
-              />
+              <input autoComplete="email" name="email" placeholder="you@example.com" type="email" />
             </span>
           </label>
 
           <div className="login-hint-box">
-            Посилання для відновлення прийде протягом кількох хвилин. Перевірте також папку "Спам".
+            Посилання для відновлення прийде протягом кількох хвилин. Перевірте також папку &quot;Спам&quot;.
           </div>
 
-          {error && <p className="login-form-error">{error}</p>}
-          {notice && <p className="login-form-notice">{notice}</p>}
+          {resetState.error && <p className="login-form-error">{resetState.error}</p>}
+          {resetState.notice && <p className="login-form-notice">{resetState.notice}</p>}
 
-          <button className="login-primary-button" type="submit">
-            Надіслати посилання
+          <button className="login-primary-button" disabled={resetPending} type="submit">
+            {resetPending ? "Надсилаємо..." : "Надіслати посилання"}
           </button>
         </form>
       </div>
@@ -111,48 +63,14 @@ export function LoginForm() {
         Вхід
       </div>
       <h2>Увійти в кабінет</h2>
-      <p className="login-sub">Раді бачити вас знову. Введіть дані, щоб продовжити.</p>
+      <p className="login-sub">Введіть email і пароль, щоб продовжити роботу в BudPomich.</p>
 
-      <div className="login-id-tabs" role="tablist" aria-label="Спосіб входу">
-        <button
-          aria-selected={mode === "email"}
-          className={mode === "email" ? "active" : ""}
-          onClick={() => changeMode("email")}
-          role="tab"
-          type="button"
-        >
-          Email
-        </button>
-        <button
-          aria-selected={mode === "phone"}
-          className={mode === "phone" ? "active" : ""}
-          onClick={() => changeMode("phone")}
-          role="tab"
-          type="button"
-        >
-          Телефон
-        </button>
-      </div>
-
-      <form className="login-fields" onSubmit={submitLogin} noValidate>
+      <form action={loginAction} className="login-fields" noValidate>
         <label className="login-field">
-          {mode === "email" ? "Email" : "Телефон"}
+          Email
           <span className="login-input-wrap">
-            {mode === "email" ? (
-              <Mail className="login-leading-icon" size={18} />
-            ) : (
-              <Phone className="login-leading-icon" size={18} />
-            )}
-            <input
-              autoComplete={mode === "email" ? "email" : "tel"}
-              onChange={(event) => {
-                setIdentifier(event.target.value);
-                setError("");
-              }}
-              placeholder={mode === "email" ? "you@example.com" : "+380 XX XXX XX XX"}
-              type={mode === "email" ? "email" : "tel"}
-              value={identifier}
-            />
+            <Mail className="login-leading-icon" size={18} />
+            <input autoComplete="email" name="email" placeholder="you@example.com" type="email" />
           </span>
         </label>
 
@@ -162,13 +80,9 @@ export function LoginForm() {
             <LockKeyhole className="login-leading-icon" size={18} />
             <input
               autoComplete="current-password"
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setError("");
-              }}
+              name="password"
               placeholder="Введіть пароль"
               type={showPassword ? "text" : "password"}
-              value={password}
             />
             <button
               aria-label={showPassword ? "Сховати пароль" : "Показати пароль"}
@@ -184,17 +98,17 @@ export function LoginForm() {
         <div className="login-row-between">
           <label className="login-remember">
             <input type="checkbox" />
-            Запам'ятати мене
+            Запам&apos;ятати мене
           </label>
           <button className="login-link-orange" onClick={() => setView("reset")} type="button">
             Забули пароль?
           </button>
         </div>
 
-        {error && <p className="login-form-error">{error}</p>}
+        {loginState.error && <p className="login-form-error">{loginState.error}</p>}
 
-        <button className="login-primary-button" type="submit">
-          Увійти
+        <button className="login-primary-button" disabled={loginPending} type="submit">
+          {loginPending ? "Входимо..." : "Увійти"}
           <ArrowRight size={17} />
         </button>
       </form>
@@ -206,7 +120,7 @@ export function LoginForm() {
       </div>
 
       <p className="login-bottom-note">
-        Ще немає акаунту? <Link href="/auth/register">Зареєструватися →</Link>
+        Ще немає акаунта? <Link href="/auth/register">Зареєструватися →</Link>
       </p>
     </div>
   );

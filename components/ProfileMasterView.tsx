@@ -1674,16 +1674,20 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
     const localProfiles = JSON.parse(
       localStorage.getItem(masterProfileStorageKey) ?? "{}",
     ) as Record<string, EditableMasterProfile>;
-    if (localProfiles[master.id]) setProfileEdit(localProfiles[master.id]);
+    if (localProfiles[master.id]) queueMicrotask(() => setProfileEdit(localProfiles[master.id]));
 
     const localPortfolioItems = JSON.parse(
       localStorage.getItem(portfolioStorageKey) ?? "[]",
     ) as PortfolioItem[];
-    setSavedPortfolioItems(localPortfolioItems.filter((item) => item.masterId === master.id));
+    queueMicrotask(() =>
+      setSavedPortfolioItems(localPortfolioItems.filter((item) => item.masterId === master.id)),
+    );
     const localQualifications = JSON.parse(
       localStorage.getItem(masterQualificationsStorageKey) ?? "[]",
     ) as MasterQualification[];
-    setQualifications(Array.from(new Map([...localQualifications, ...defaultMasterQualifications].map((item) => [item.id, item])).values()));
+    queueMicrotask(() =>
+      setQualifications(Array.from(new Map([...localQualifications, ...defaultMasterQualifications].map((item) => [item.id, item])).values())),
+    );
 
     fetch(`/api/profile?masterId=${encodeURIComponent(master.id)}`)
       .then((response) => response.json())

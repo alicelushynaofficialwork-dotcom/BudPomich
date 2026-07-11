@@ -207,7 +207,7 @@ function fromSupabase(row: Record<string, unknown>): MasterRequest {
 
 export async function GET(request: Request) {
   const masterId = new URL(request.url).searchParams.get("masterId") ?? "";
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   if (!supabase) {
     return NextResponse.json({
@@ -234,7 +234,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const normalized = normalizeRequest(await request.json());
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     if (!supabase) {
       return NextResponse.json({ request: normalized, persistence: "browser" });
@@ -309,7 +309,7 @@ export async function PATCH(request: Request) {
       throw new Error("Некоректний статус заявки.");
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     if (!supabase) {
       return NextResponse.json({ id, status, persistence: "browser" });
     }

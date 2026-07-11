@@ -52,6 +52,30 @@ type ValidatedLine = {
   total: number;
 };
 
+type SupabaseError = { message: string };
+type QueryResult<T> = { data: T | null; error: SupabaseError | null };
+type PortfolioItemRow = {
+  id: string;
+  master_id: string;
+  title: string;
+  description: string | null;
+  city: string;
+  object_type: string;
+  photo_url: string | null;
+  total_amount: number | string;
+  created_at: string;
+  meta?: Record<string, unknown> | null;
+};
+type PortfolioLineRow = {
+  id: string;
+  portfolio_item_id: string;
+  work_type: string;
+  unit: string;
+  unit_price: number | string;
+  volume: number | string;
+  total: number | string;
+};
+
 const extendedSelect =
   "id, master_id, title, description, city, object_type, photo_url, total_amount, created_at, meta";
 const baseSelect =
@@ -229,7 +253,7 @@ function validatePayload(payload: PortfolioPayload) {
   };
 }
 
-function mapItem(item: any, lines: any[] = [], metaFallback: Record<string, unknown> = {}) {
+function mapItem(item: PortfolioItemRow, lines: PortfolioLineRow[] = [], metaFallback: Record<string, unknown> = {}) {
   return {
     id: item.id,
     masterId: item.master_id,
@@ -267,32 +291,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Не вказано майстра." }, { status: 400 });
   }
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   if (!supabase) {
     return NextResponse.json({ items: [], persistence: "browser" });
   }
 
-  let result: any = await supabase
+  let result = await supabase
     .from("portfolio_items")
     .select(extendedSelect)
     .eq("master_id", masterId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }) as QueryResult<PortfolioItemRow[]>;
 
   if (result.error && /meta|column/i.test(result.error.message)) {
     result = await supabase
       .from("portfolio_items")
       .select(baseSelect)
       .eq("master_id", masterId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as QueryResult<PortfolioItemRow[]>;
   }
 
   if (result.error) {
     return NextResponse.json({ error: result.error.message }, { status: 400 });
   }
 
-  const items: any[] = result.data ?? [];
-  const itemIds = items.map((item: any) => item.id);
+  const items = result.data ?? [];
+  const itemIds = items.map((item) => item.id);
   const { data: lines, error: linesError } = itemIds.length
     ? await supabase
         .from("portfolio_work_lines")
@@ -306,7 +330,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
-    items: items.map((item: any) => mapItem(item, lines ?? [])),
+    items: items.map((item) => mapItem(item, (lines ?? []) as PortfolioLineRow[])),
     persistence: "supabase",
   });
 }
@@ -314,7 +338,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const payload = validatePayload((await request.json()) as PortfolioPayload);
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     if (!supabase) {
       return NextResponse.json({
@@ -332,7 +356,13 @@ export async function POST(request: Request) {
       });
     }
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: "РЈРІС–Р№РґС–С‚СЊ РІ Р°РєР°СѓРЅС‚, С‰РѕР± РґРѕРґР°С‚Рё СЂРѕР±РѕС‚Сѓ." }, { status: 401 });
+    }
+
     const basePayload = {
+      owner_id: authData.user.id,
       master_id: payload.masterId,
       title: payload.title,
       description: payload.description,
@@ -342,27 +372,29 @@ export async function POST(request: Request) {
       total_amount: payload.totalAmount,
     };
 
-    let itemResult: any = await supabase
+    let itemResult = await supabase
       .from("portfolio_items")
       .insert({ ...basePayload, meta: payload.meta })
       .select(extendedSelect)
-      .single();
+      .single() as QueryResult<PortfolioItemRow>;
 
     if (itemResult.error && /meta|column/i.test(itemResult.error.message)) {
       itemResult = await supabase
         .from("portfolio_items")
         .insert(basePayload)
         .select(baseSelect)
-        .single();
+        .single() as QueryResult<PortfolioItemRow>;
     }
 
     if (itemResult.error) throw new Error(itemResult.error.message);
+    if (!itemResult.data) throw new Error("РќРµ РІРґР°Р»РѕСЃСЏ Р·Р±РµСЂРµРіС‚Рё СЂРѕР±РѕС‚Сѓ.");
+    const savedItem = itemResult.data;
 
     const { data: lines, error: linesError } = await supabase
       .from("portfolio_work_lines")
       .insert(
         payload.workLines.map((line, index) => ({
-          portfolio_item_id: itemResult.data.id,
+          portfolio_item_id: savedItem.id,
           work_type: line.workType,
           unit: line.unit,
           unit_price: line.unitPrice,
@@ -373,12 +405,12 @@ export async function POST(request: Request) {
       .select("id, portfolio_item_id, work_type, unit, unit_price, volume, total");
 
     if (linesError) {
-      await supabase.from("portfolio_items").delete().eq("id", itemResult.data.id);
+      await supabase.from("portfolio_items").delete().eq("id", savedItem.id);
       throw new Error(linesError.message);
     }
 
     return NextResponse.json({
-      item: mapItem(itemResult.data, lines ?? [], payload.meta),
+      item: mapItem(savedItem, (lines ?? []) as PortfolioLineRow[], payload.meta),
       persistence: "supabase",
     });
   } catch (error) {
@@ -419,7 +451,7 @@ export async function PUT(request: Request) {
         ...line,
       })),
     };
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     if (!supabase || !isUuid(payload.id)) {
       return NextResponse.json({
@@ -428,7 +460,13 @@ export async function PUT(request: Request) {
       });
     }
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: "РЈРІС–Р№РґС–С‚СЊ РІ Р°РєР°СѓРЅС‚, С‰РѕР± РѕРЅРѕРІРёС‚Рё СЂРѕР±РѕС‚Сѓ." }, { status: 401 });
+    }
+
     const basePayload = {
+      owner_id: authData.user.id,
       title: payload.title,
       description: payload.description,
       city: payload.city,
@@ -437,13 +475,13 @@ export async function PUT(request: Request) {
       total_amount: payload.totalAmount,
     };
 
-    let itemResult: any = await supabase
+    let itemResult = await supabase
       .from("portfolio_items")
       .update({ ...basePayload, meta: payload.meta })
       .eq("id", payload.id)
       .eq("master_id", payload.masterId)
       .select(extendedSelect)
-      .single();
+      .single() as QueryResult<PortfolioItemRow>;
 
     if (itemResult.error && /meta|column/i.test(itemResult.error.message)) {
       itemResult = await supabase
@@ -452,10 +490,12 @@ export async function PUT(request: Request) {
         .eq("id", payload.id)
         .eq("master_id", payload.masterId)
         .select(baseSelect)
-        .single();
+        .single() as QueryResult<PortfolioItemRow>;
     }
 
     if (itemResult.error) throw new Error(itemResult.error.message);
+    if (!itemResult.data) throw new Error("РќРµ РІРґР°Р»РѕСЃСЏ РѕРЅРѕРІРёС‚Рё СЂРѕР±РѕС‚Сѓ.");
+    const savedItem = itemResult.data;
 
     const { error: deleteLinesError } = await supabase
       .from("portfolio_work_lines")
@@ -481,7 +521,7 @@ export async function PUT(request: Request) {
     if (linesError) throw new Error(linesError.message);
 
     return NextResponse.json({
-      item: mapItem(itemResult.data, lines ?? [], payload.meta),
+      item: mapItem(savedItem, (lines ?? []) as PortfolioLineRow[], payload.meta),
       persistence: "supabase",
     });
   } catch (error) {
