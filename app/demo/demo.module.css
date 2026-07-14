@@ -1,0 +1,238 @@
+.page {
+  min-height: 100vh;
+  background: #f3f0e8;
+  color: #1c1b18;
+}
+
+.ruler {
+  width: min(1080px, calc(100% - 40px));
+  height: 22px;
+  margin: 28px auto 0;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(90deg, #ddd6c4 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(90deg, #5b5750 0 1px, transparent 1px 100px);
+  background-position: 0 bottom, 0 bottom;
+  background-repeat: repeat-x;
+  background-size: 20px 10px, 100px 16px;
+}
+
+.shell {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 52px 0 80px;
+}
+
+.intro {
+  max-width: 760px;
+  margin-bottom: 36px;
+}
+
+.eyebrow,
+.resultEyebrow {
+  margin: 0 0 12px;
+  color: #e8530a;
+  font-family: var(--font-app-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin: 0;
+  font-size: clamp(40px, 6vw, 66px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.intro > p:last-child {
+  max-width: 590px;
+  margin: 20px 0 0;
+  color: #5b5750;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.roleButton {
+  min-height: 190px;
+  padding: 24px;
+  display: grid;
+  align-content: space-between;
+  gap: 22px;
+  border: 1px solid #ddd6c4;
+  border-radius: 12px;
+  background: #fff;
+  color: #1c1b18;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.roleButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #e8530a;
+  box-shadow: 0 18px 44px rgba(28, 27, 24, 0.08);
+}
+
+.roleButton:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 3px solid rgba(232, 83, 10, 0.35);
+  outline-offset: 3px;
+}
+
+.roleButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.roleButton span,
+.roleButton small {
+  color: #5b5750;
+  font-family: var(--font-app-mono);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.roleButton strong {
+  font-size: 25px;
+  letter-spacing: -0.025em;
+}
+
+.roleButton small {
+  color: #2f6b4f;
+}
+
+.status,
+.error {
+  margin: 22px 0 0;
+  padding: 16px 18px;
+  border: 1px solid #ddd6c4;
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 800;
+}
+
+.status {
+  color: #22364f;
+}
+
+.error {
+  border-color: #e6b9ad;
+  background: #fff7f4;
+  color: #a33b23;
+}
+
+.result {
+  max-width: 760px;
+  padding: 30px;
+  border: 1px solid #cbdccf;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(28, 27, 24, 0.06);
+}
+
+.result h2 {
+  margin: 0 0 24px;
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.03em;
+}
+
+.details {
+  margin: 0;
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e4dfd2;
+  border-radius: 10px;
+  background: #e4dfd2;
+}
+
+.details div {
+  padding: 15px 17px;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.5fr) minmax(0, 1fr);
+  gap: 18px;
+  background: #fff;
+}
+
+.details dt {
+  color: #5b5750;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-app-mono);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.secondaryButton {
+  min-height: 46px;
+  margin-top: 22px;
+  padding: 0 18px;
+  border: 1px solid #22364f;
+  border-radius: 8px;
+  background: #22364f;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+@media (max-width: 700px) {
+  .ruler,
+  .shell {
+    width: calc(100% - 28px);
+  }
+
+  .shell {
+    padding: 38px 0 54px;
+  }
+
+  .intro {
+    margin-bottom: 28px;
+  }
+
+  .intro h1 {
+    font-size: clamp(36px, 11vw, 48px);
+  }
+
+  .intro > p:last-child {
+    font-size: 16px;
+  }
+
+  .roleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .roleButton {
+    min-height: 154px;
+    padding: 21px;
+    gap: 15px;
+  }
+
+  .result {
+    padding: 22px 18px;
+  }
+
+  .details div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .secondaryButton {
+    width: 100%;
+  }
+}
