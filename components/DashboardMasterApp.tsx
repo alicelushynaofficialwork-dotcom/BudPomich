@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { ClientCabinetApp } from "@/components/ClientCabinetApp";
 import { ContractorCabinetApp } from "@/components/ContractorCabinetApp";
+import { DemoMasterCabinetApp } from "@/components/DemoMasterCabinetApp";
+import type { DemoMasterState } from "@/lib/demo/types";
 import type { MasterProfile } from "@/lib/masters";
 import type { PortfolioItem } from "@/lib/portfolio";
 import {
@@ -45,12 +47,16 @@ import {
   type RequestStatus,
 } from "@/lib/requests";
 
-type DashboardMasterAppProps = {
+type RealDashboardMasterAppProps = {
   defaultRole?: DashboardRole;
   master: MasterProfile;
   masters: MasterProfile[];
   portfolioItems: PortfolioItem[];
 };
+
+type DashboardMasterAppProps =
+  | (RealDashboardMasterAppProps & { mode?: "real" })
+  | { mode: "demo"; initialData: DemoMasterState; stateWarning?: string };
 
 type CalendarStatus = "free" | "busy" | "pending";
 type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "finance";
@@ -1255,7 +1261,7 @@ function PortfolioPreview({ items }: { items: PortfolioItem[] }) {
   );
 }
 
-export function DashboardMasterApp({ defaultRole = "master", master, masters, portfolioItems }: DashboardMasterAppProps) {
+function RealDashboardMasterApp({ defaultRole = "master", master, masters, portfolioItems }: RealDashboardMasterAppProps) {
   const dashboardRole = defaultRole;
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests.filter(requestMatchesMaster));
   const [messages, setMessages] = useState<RequestMessage[]>([]);
@@ -1407,5 +1413,25 @@ export function DashboardMasterApp({ defaultRole = "master", master, masters, po
       />
       </section>
     </section>
+  );
+}
+
+export function DashboardMasterApp(props: DashboardMasterAppProps) {
+  if (props.mode === "demo") {
+    return (
+      <DemoMasterCabinetApp
+        initialData={props.initialData}
+        stateWarning={props.stateWarning}
+      />
+    );
+  }
+
+  return (
+    <RealDashboardMasterApp
+      defaultRole={props.defaultRole}
+      master={props.master}
+      masters={props.masters}
+      portfolioItems={props.portfolioItems}
+    />
   );
 }

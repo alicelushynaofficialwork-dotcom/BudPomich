@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
@@ -22,7 +23,7 @@ import { BookingForm, DirectMessageForm } from "@/components/BookingForm";
 import { FollowMasterButton } from "@/components/FollowMasterButton";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getMasterServices } from "@/lib/master-services";
-import type { MasterProfile } from "@/lib/masters";
+import { masterProfiles, type MasterProfile } from "@/lib/masters";
 import {
   type EditableMasterProfile,
   masterProfileStorageKey,
@@ -77,6 +78,36 @@ type MasterActivityItem = {
   targetUrl?: string;
   workId?: string;
 };
+
+function ProfileNavigation({ masterId }: { masterId: string }) {
+  const router = useRouter();
+  const currentMasterIndex = masterProfiles.findIndex((profile) => profile.id === masterId);
+  const nextMaster =
+    currentMasterIndex >= 0 ? masterProfiles[currentMasterIndex + 1] : undefined;
+
+  function goBack() {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push("/masters");
+  }
+
+  return (
+    <nav className="bp-profile-navigation" aria-label="Навігація між профілями майстрів">
+      <button type="button" onClick={goBack}>
+        <span aria-hidden="true">←</span> Назад
+      </button>
+
+      {nextMaster && (
+        <Link href={`/profile/${nextMaster.id}`}>
+          Далі <span aria-hidden="true">→</span>
+        </Link>
+      )}
+    </nav>
+  );
+}
 
 const fallbackImage = "/images/portfolio-triptych.png";
 
@@ -1748,11 +1779,10 @@ export function ProfileMasterView({ master, ownerSource }: ProfileMasterViewProp
         </div>
       )}
 
-      <div className="bp-profile-breadcrumb">
-        <Link href="/masters">← Каталог майстрів</Link>
+      <div className="bp-profile-top">
+        <ProfileTemplateHero master={visibleMaster} />
+        <ProfileNavigation masterId={visibleMaster.id} />
       </div>
-
-      <ProfileTemplateHero master={visibleMaster} />
 
       <div className="bp-template-ruler" aria-hidden="true" />
 

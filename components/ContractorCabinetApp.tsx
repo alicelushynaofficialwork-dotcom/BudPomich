@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { DemoContractorCabinetApp } from "@/components/DemoContractorCabinetApp";
+import type { DemoContractorState } from "@/lib/demo/types";
 
 type ContractorView = "overview" | "team" | "requests" | "objects" | "finance" | "analytics";
 
@@ -79,8 +81,18 @@ function PlaceholderView({ view }: { view: ContractorView }) {
   );
 }
 
-export function ContractorCabinetApp() {
+type ContractorCabinetAppProps = {
+  mode?: "real" | "demo";
+  initialData?: DemoContractorState;
+  stateWarning?: string;
+};
+
+export function ContractorCabinetApp({ mode = "real", initialData, stateWarning }: ContractorCabinetAppProps = {}) {
   const [activeView, setActiveView] = useState<ContractorView>("overview");
+
+  if (mode === "demo" && initialData) {
+    return <DemoContractorCabinetApp initialData={initialData} stateWarning={stateWarning} />;
+  }
 
   return (
     <section className="contractor-cabinet">

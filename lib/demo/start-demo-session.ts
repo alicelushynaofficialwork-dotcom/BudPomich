@@ -16,13 +16,22 @@ type DemoTemplate = {
 type DemoSession = {
   id: string;
   role: DemoRole;
+  expires_at: string;
 };
 
 export type DemoSessionResult = {
   id: string;
   role: DemoRole;
   templateName: string;
+  route: `/demo/${DemoRole}`;
 };
+
+export function getDemoCabinetRoute(role: DemoRole): `/demo/${DemoRole}` {
+  return `/demo/${role}`;
+}
+
+export class DemoAuthRequiredError extends Error {}
+export class DemoCaptchaRequiredError extends Error {}
 
 async function findExistingSession(
   supabase: SupabaseClient,
@@ -31,13 +40,16 @@ async function findExistingSession(
 ) {
   return supabase
     .from("demo_sessions")
-    .select("id, role")
+    .select("id, role, expires_at")
     .eq("user_id", userId)
     .eq("role", role)
     .maybeSingle<DemoSession>();
 }
 
-export async function startDemoSession(role: DemoRole): Promise<DemoSessionResult> {
+export async function startDemoSession(
+  role: DemoRole,
+  options: { allowAnonymousSignIn?: boolean; captchaToken?: string } = {},
+): Promise<DemoSessionResult> {
   const supabase = createClient();
 
   if (!supabase) {
@@ -48,14 +60,44 @@ export async function startDemoSession(role: DemoRole): Promise<DemoSessionResul
   let user = authData.user;
 
   if (!user) {
+    if (options.allowAnonymousSignIn === false) {
+      throw new DemoAuthRequiredError("An active demo authentication session is required.");
+    }
+    if (!options.captchaToken?.trim()) {
+      throw new DemoCaptchaRequiredError("A CAPTCHA token is required for anonymous sign-in.");
+    }
     const { data: anonymousData, error: anonymousError } =
-      await supabase.auth.signInAnonymously();
+      await supabase.auth.signInAnonymously({
+        options: { captchaToken: options.captchaToken },
+      });
 
     if (anonymousError || !anonymousData.user) {
       throw anonymousError ?? new Error("Anonymous sign-in returned no user.");
     }
 
     user = anonymousData.user;
+  }
+
+  const { data: existingSession, error: existingSessionError } =
+    await findExistingSession(supabase, user.id, role);
+
+  if (existingSessionError) {
+    throw existingSessionError;
+  }
+
+  const existingExpiresAt = existingSession
+    ? new Date(existingSession.expires_at).getTime()
+    : Number.NaN;
+  const existingSessionIsActive =
+    existingSession && Number.isFinite(existingExpiresAt) && existingExpiresAt > Date.now();
+
+  if (existingSessionIsActive) {
+    return {
+      id: existingSession.id,
+      role: existingSession.role,
+      templateName: "Збережена демосесія",
+      route: getDemoCabinetRoute(existingSession.role),
+    };
   }
 
   const { data: template, error: templateError } = await supabase
@@ -70,22 +112,37 @@ export async function startDemoSession(role: DemoRole): Promise<DemoSessionResul
     throw templateError ?? new Error(`No active demo template found for role: ${role}.`);
   }
 
-  const { data: existingSession, error: existingSessionError } =
-    await findExistingSession(supabase, user.id, role);
-
-  if (existingSessionError) {
-    throw existingSessionError;
-  }
-
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   if (existingSession) {
+    const now = new Date().toISOString();
+    const { data: restoredSession, error: restoreError } = await supabase
+      .from("demo_sessions")
+      .update({
+        template_id: template.id,
+        template_version: template.version,
+        state: template.state,
+        expires_at: expiresAt,
+        last_accessed_at: now,
+        updated_at: now,
+      })
+      .eq("id", existingSession.id)
+      .eq("user_id", user.id)
+      .eq("role", role)
+      .select("id, role, expires_at")
+      .single<DemoSession>();
+
+    if (restoreError || !restoredSession) {
+      throw restoreError ?? new Error("Expired demo session restore returned no row.");
+    }
+
     return {
-      id: existingSession.id,
-      role: existingSession.role,
+      id: restoredSession.id,
+      role: restoredSession.role,
       templateName: template.name,
+      route: getDemoCabinetRoute(restoredSession.role),
     };
   }
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const { data: createdSession, error: createError } = await supabase
     .from("demo_sessions")
     .insert({
@@ -96,7 +153,7 @@ export async function startDemoSession(role: DemoRole): Promise<DemoSessionResul
       state: template.state,
       expires_at: expiresAt,
     })
-    .select("id, role")
+    .select("id, role, expires_at")
     .single<DemoSession>();
 
   if (createError || !createdSession) {
@@ -110,6 +167,7 @@ export async function startDemoSession(role: DemoRole): Promise<DemoSessionResul
           id: racedSession.id,
           role: racedSession.role,
           templateName: template.name,
+          route: getDemoCabinetRoute(racedSession.role),
         };
       }
     }
@@ -121,5 +179,6 @@ export async function startDemoSession(role: DemoRole): Promise<DemoSessionResul
     id: createdSession.id,
     role: createdSession.role,
     templateName: template.name,
+    route: getDemoCabinetRoute(createdSession.role),
   };
 }

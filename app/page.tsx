@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import "./home.css";
+import { DemoPreviewSection } from "@/components/home/DemoPreviewSection";
 import { SiteHeader } from "@/components/SiteHeader";
 import { masterProfiles } from "@/lib/masters";
 
@@ -82,6 +83,11 @@ export default function HomePage() {
             <button type="submit">Знайти майстра</button>
           </form>
 
+          <div className="home-hero-demo">
+            <Link href="/demo">Переглянути демоверсію</Link>
+            <small>Без реєстрації · Заповнені кабінети · Реальні сценарії роботи</small>
+          </div>
+
           <div className="home-hero-stats" aria-label="Показники БудПоміч">
             <span>
               <strong>{masterProfiles.length}+</strong>
@@ -100,6 +106,8 @@ export default function HomePage() {
       </section>
 
       <div className="home-ruler" aria-hidden="true" />
+
+      <DemoPreviewSection />
 
       <section className="home-section" id="categories">
         <div className="home-section-head">
