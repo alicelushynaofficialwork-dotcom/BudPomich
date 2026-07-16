@@ -1265,6 +1265,26 @@ body:has(.client-cabinet) {
   color: var(--client-muted);
 }
 
+.client-logout {
+  min-height: 40px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--client-line);
+  border-radius: 12px;
+  background: var(--client-paper-strong);
+  color: var(--client-blue);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.client-logout:focus-visible {
+  outline: 3px solid rgba(241, 89, 26, 0.38);
+  outline-offset: 2px;
+}
+
 .client-search-panel {
   padding: 18px;
   display: grid;

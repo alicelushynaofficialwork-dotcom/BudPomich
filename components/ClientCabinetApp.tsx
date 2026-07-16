@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell, Heart, Search } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { DemoCabinetSwitcher } from "@/components/demo/DemoCabinetSwitcher";
+import { LogoutButton } from "@/components/LogoutButton";
 import {
   DemoClientApiError,
   markDemoClientNotificationRead,
@@ -438,6 +439,7 @@ export function ClientCabinetApp({
               <strong>{isDemo ? profileName : "Олена К."}</strong>
               <small>{isDemo ? profileCity : "Київ"}</small>
             </div>
+            {!isDemo && <LogoutButton className="client-logout" />}
           </div>
         </header>
 

@@ -141,10 +141,17 @@ export async function resetPassword(
   return { notice: "Посилання для відновлення пароля надіслано на email." };
 }
 
-export async function signOut() {
+export async function signOut(_state: AuthActionState): Promise<AuthActionState> {
+  void _state;
+
   const supabase = await createServerSupabaseClient();
-  if (supabase) {
-    await supabase.auth.signOut();
+  if (!supabase) {
+    return { error: "Supabase не налаштований. Спробуйте пізніше." };
+  }
+
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    return { error: "Не вдалося вийти з акаунта. Спробуйте ще раз." };
   }
 
   revalidatePath("/", "layout");

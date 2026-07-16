@@ -46,6 +46,17 @@ a {
   scroll-margin-top: 24px;
 }
 
+.auth-logout-form {
+  display: contents;
+}
+
+.auth-logout-error {
+  margin: 4px 0;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .app-header {
   width: 100%;
   margin: 0;

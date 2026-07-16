@@ -20,7 +20,6 @@ import {
   History,
   ImagePlus,
   ListChecks,
-  LogOut,
   MessageSquare,
   Plus,
   ReceiptText,
@@ -33,6 +32,7 @@ import {
 import { ClientCabinetApp } from "@/components/ClientCabinetApp";
 import { ContractorCabinetApp } from "@/components/ContractorCabinetApp";
 import { DemoMasterCabinetApp } from "@/components/DemoMasterCabinetApp";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { DemoMasterState } from "@/lib/demo/types";
 import type { MasterProfile } from "@/lib/masters";
 import type { PortfolioItem } from "@/lib/portfolio";
@@ -251,10 +251,7 @@ function DashboardSidebar({
           <Eye size={16} />
           Публічний профіль
         </Link>
-        <button className="dash-side-link danger" type="button">
-          <LogOut size={16} />
-          Вийти
-        </button>
+        <LogoutButton className="dash-side-link danger" />
         <div className="dash-mini-master">
           {master.avatarUrl ? (
             <Image src={master.avatarUrl} alt={master.name} width={42} height={42} />

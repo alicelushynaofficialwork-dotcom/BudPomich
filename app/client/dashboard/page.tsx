@@ -1,11 +1,13 @@
-import { ClientCabinetApp } from "@/components/ClientCabinetApp";
-import { masterProfiles } from "@/lib/masters";
+import { redirect } from "next/navigation";
+import { requireAuthenticatedUserRole } from "@/lib/auth-server";
+import { getDashboardPath } from "@/lib/auth";
 import "./client-dashboard.css";
 
 export const metadata = {
   title: "Кабінет клієнта | БудПоміч",
 };
 
-export default function ClientDashboardPage() {
-  return <ClientCabinetApp masters={masterProfiles.slice(0, 6)} />;
+export default async function ClientDashboardPage() {
+  const role = await requireAuthenticatedUserRole();
+  redirect(getDashboardPath(role));
 }

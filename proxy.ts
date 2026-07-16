@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { getDashboardPath, isUserRole } from "@/lib/auth";
+import { getDashboardRedirect, isUserRole } from "@/lib/auth";
 
 function createMiddlewareClient(request: NextRequest, response: NextResponse) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,7 +23,13 @@ function createMiddlewareClient(request: NextRequest, response: NextResponse) {
 }
 
 function isProtectedPath(pathname: string) {
-  return pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/admin");
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname === "/client/dashboard" || pathname.startsWith("/admin");
+}
+
+function redirectWithRefreshedCookies(url: URL, response: NextResponse) {
+  const redirectResponse = NextResponse.redirect(url);
+  response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+  return redirectResponse;
 }
 
 export async function proxy(request: NextRequest) {
@@ -31,21 +37,25 @@ export async function proxy(request: NextRequest) {
   const supabase = createMiddlewareClient(request, response);
   const pathname = request.nextUrl.pathname;
 
-  if (!supabase) return response;
+  if (!isProtectedPath(pathname)) return response;
+
+  if (!supabase) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/auth/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("error", "auth_unavailable");
+    return NextResponse.redirect(loginUrl);
+  }
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!isProtectedPath(pathname)) {
-    return response;
-  }
-
   if (!user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/auth/login";
     loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    return NextResponse.redirect(loginUrl);
+    return redirectWithRefreshedCookies(loginUrl, response);
   }
 
   const { data: profile } = await supabase
@@ -54,18 +64,23 @@ export async function proxy(request: NextRequest) {
     .eq("id", user.id)
     .maybeSingle();
 
-  const role = isUserRole(profile?.role) ? profile.role : "client";
-  const targetPath = getDashboardPath(role);
-
-  if (pathname.startsWith("/admin") && role !== "admin") {
-    return NextResponse.redirect(new URL(targetPath, request.url));
+  if (!isUserRole(profile?.role)) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/auth/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("error", "missing_profile");
+    return redirectWithRefreshedCookies(loginUrl, response);
   }
 
-  if (pathname === "/dashboard") {
-    const requestedRole = request.nextUrl.searchParams.get("role");
-    if ((requestedRole === "client" && role !== "client") || (requestedRole === "contractor" && role !== "contractor")) {
-      return NextResponse.redirect(new URL(targetPath, request.url));
-    }
+  const role = profile.role;
+  const dashboardRedirect = getDashboardRedirect(
+    role,
+    pathname,
+    request.nextUrl.searchParams.get("role"),
+  );
+
+  if (dashboardRedirect) {
+    return redirectWithRefreshedCookies(new URL(dashboardRedirect, request.url), response);
   }
 
   return response;

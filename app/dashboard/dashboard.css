@@ -3049,6 +3049,26 @@ a.dash-stat-card:hover {
   font-weight: 900;
 }
 
+.contractor-logout {
+  min-height: 40px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d9cda9;
+  border-radius: 3px;
+  background: #fffdf7;
+  color: #1d2f4b;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+}
+
+.contractor-logout:focus-visible {
+  outline: 3px solid rgba(241, 89, 26, 0.4);
+  outline-offset: 2px;
+}
+
 .contractor-user strong,
 .contractor-user small {
   display: block;

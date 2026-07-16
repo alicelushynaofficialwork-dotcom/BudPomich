@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { DemoContractorCabinetApp } from "@/components/DemoContractorCabinetApp";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { DemoContractorState } from "@/lib/demo/types";
 
 type ContractorView = "overview" | "team" | "requests" | "objects" | "finance" | "analytics";
@@ -137,6 +138,7 @@ export function ContractorCabinetApp({ mode = "real", initialData, stateWarning 
               <strong>Керівник компанії</strong>
               <small>Укріплення · Київ</small>
             </div>
+            <LogoutButton className="contractor-logout" />
           </div>
         </header>
 
