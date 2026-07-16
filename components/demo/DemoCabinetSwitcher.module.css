@@ -1,5 +1,5 @@
-.wrapper { width:min(100%,520px); margin:20px auto; padding:9px; border:1px solid #ded1bd; border-radius:14px; background:#fffaf1; box-shadow:0 8px 24px rgba(24,34,54,.08); }
-.switcher { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.wrapper { width:min(100%,520px); max-width:100%; min-width:0; margin:20px auto; padding:9px; border:1px solid #ded1bd; border-radius:14px; background:#fffaf1; box-shadow:0 8px 24px rgba(24,34,54,.08); overflow-wrap:anywhere; word-break:break-word; }
+.switcher { width:min(100%,520px); max-width:100%; min-width:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
 .switcher button { min-width:0; min-height:44px; padding:7px 10px; border:1px solid #d9cdb9; border-radius:9px; background:#fff; color:#172238; cursor:pointer; font:inherit; font-size:13px; font-weight:800; text-align:center; }
 .switcher button:hover:not(:disabled) { border-color:#e8530a; background:#fff1e7; }
 .switcher button.current { border-color:#e8530a; background:#e8530a; color:#fff; }

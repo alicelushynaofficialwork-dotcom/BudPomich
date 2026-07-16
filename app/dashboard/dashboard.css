@@ -35,6 +35,9 @@
   --demo-line: #ddd6c4;
   --demo-navy: #22364f;
   --demo-orange: #e8530a;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
@@ -104,6 +107,8 @@
 }
 
 .demo-master-main {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   padding: 32px clamp(20px, 4vw, 58px) 60px;
 }
@@ -340,7 +345,7 @@
 .demo-master-empty { margin: 0; padding: 28px; border: 1px dashed var(--demo-line); border-radius: 12px; color: var(--demo-muted); text-align: center; }
 
 .demo-master-modal { position: fixed; inset: 0; z-index: 100; padding: 16px; display: grid; place-items: center; background: rgba(28, 27, 24, 0.58); }
-.demo-master-modal > section { width: min(480px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 26px; border-radius: 18px; background: var(--demo-card); }
+.demo-master-modal > section { width: min(calc(100vw - 32px), 560px); max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; padding: 26px; border-radius: 18px; background: var(--demo-card); }
 .demo-master-modal h2 { margin: 7px 0 10px; font-size: 28px; }
 .demo-master-modal p { color: var(--demo-muted); line-height: 1.55; }
 .demo-master-modal > section > div { margin-top: 20px; display: flex; justify-content: flex-end; gap: 9px; }
@@ -361,9 +366,16 @@
 }
 
 @media (max-width: 620px) {
+  .demo-master-cabinet :is(section, article, header, aside, nav, form, div),
+  .demo-contractor-cabinet :is(section, article, header, aside, nav, form, div) { max-width: 100%; min-width: 0; }
+  .demo-master-cabinet :is(h1,h2,h3,p,span,strong,small,a,button,label,time),
+  .demo-contractor-cabinet :is(h1,h2,h3,p,span,strong,small,a,button,label,time) { overflow-wrap: anywhere; word-break: break-word; }
+  .demo-master-cabinet :is(img,svg),
+  .demo-contractor-cabinet :is(img,svg) { max-width: 100%; height: auto; }
   .demo-master-main { padding: 18px 14px 40px; }
   .demo-master-banner { align-items: stretch; flex-direction: column; }
   .demo-master-banner nav { justify-content: flex-start; }
+  .demo-master-banner nav > * { min-width: 0; flex: 1 1 140px; white-space: normal; }
   .demo-master-header { flex-direction: column; }
   .demo-master-stats,
   .demo-master-request-list article,
@@ -1963,7 +1975,7 @@ a.dash-stat-card:hover {
   }
 
   .dash-panel-drawer {
-    width: 100vw;
+    width: 100%;
     height: 100vh;
     margin: 0;
     border-left: 0;
@@ -2817,7 +2829,7 @@ a.dash-stat-card:hover {
 }
 
 /* Contractor cabinet */
-.demo-contractor-cabinet { --dc-ink:#172238; --dc-orange:#ee5718; --dc-line:#dccfb8; min-height:100vh; display:grid; grid-template-columns:240px minmax(0,1fr); background:#f4eddf; color:var(--dc-ink); }
+.demo-contractor-cabinet { --dc-ink:#172238; --dc-orange:#ee5718; --dc-line:#dccfb8; width:100%; max-width:100%; min-width:0; min-height:100vh; display:grid; grid-template-columns:240px minmax(0,1fr); background:#f4eddf; color:var(--dc-ink); }
 .demo-contractor-side { padding:26px 18px; display:flex; flex-direction:column; gap:24px; background:var(--dc-ink); color:#fff; }
 .demo-contractor-side > a { color:#fff; font-size:22px; font-weight:900; text-decoration:none; }
 .demo-contractor-side > a span { display:block; margin-top:4px; color:#ffb493; font-size:11px; text-transform:uppercase; }
@@ -2826,7 +2838,7 @@ a.dash-stat-card:hover {
 .demo-contractor-side nav button.active,.demo-contractor-side nav button:hover { border-color:var(--dc-orange); background:var(--dc-orange); }
 .demo-contractor-side nav button span { color:#ffb493; font-size:11px; }
 .demo-contractor-side > small { margin-top:auto; line-height:1.6; color:#d7dcea; }
-.demo-contractor-main { min-width:0; padding:30px clamp(18px,4vw,54px) 60px; }
+.demo-contractor-main { width:100%; max-width:100%; min-width:0; padding:30px clamp(18px,4vw,54px) 60px; }
 .demo-contractor-banner { padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px; border:1px solid #f0c3a6; border-radius:16px; background:#fff8ee; }
 .demo-contractor-banner strong { color:var(--dc-orange); font-size:12px; text-transform:uppercase; }
 .demo-contractor-banner p { max-width:680px; margin:7px 0 0; line-height:1.5; }
@@ -2842,10 +2854,10 @@ a.dash-stat-card:hover {
 .demo-contractor-team-grid,.demo-contractor-project-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }.demo-contractor-team-grid h3,.demo-contractor-project-grid h3,.demo-contractor-list h3 { margin:0 0 7px; }.demo-contractor-team-grid label,.demo-contractor-project-grid label,.demo-contractor-composer label { display:grid; gap:6px; margin-top:12px; font-size:12px; font-weight:700; }.demo-contractor-cabinet select,.demo-contractor-cabinet textarea { width:100%; min-height:44px; padding:9px 10px; border:1px solid var(--dc-line); border-radius:8px; background:#fff; color:var(--dc-ink); font:inherit; }.demo-contractor-cabinet progress { width:100%; accent-color:var(--dc-orange); }
 .demo-contractor-list { display:grid; gap:10px; }.demo-contractor-list article { display:flex; align-items:center; justify-content:space-between; gap:15px; }.demo-contractor-list p { margin:0; color:#75716a; }.demo-contractor-list select { max-width:180px; }
 .demo-contractor-messages { display:grid; gap:9px; }.demo-contractor-messages article { max-width:75%; padding:12px 14px; border-radius:12px; background:#fff; }.demo-contractor-messages article.own { margin-left:auto; background:#ffe4d5; }.demo-contractor-messages p { margin:5px 0; }.demo-contractor-messages time { color:#777; font-size:11px; }.demo-contractor-composer { margin-top:18px; display:grid; grid-template-columns:220px minmax(0,1fr) auto; align-items:end; gap:12px; }
-.demo-contractor-modal { position:fixed; inset:0; z-index:100; padding:18px; display:grid; place-items:center; background:#142038aa; }.demo-contractor-modal section { width:min(460px,100%); padding:24px; border-radius:16px; background:#fff; }.demo-contractor-modal section div { display:flex; justify-content:flex-end; gap:9px; }
+.demo-contractor-modal { position:fixed; inset:0; z-index:100; padding:16px; display:grid; place-items:center; background:#142038aa; }.demo-contractor-modal section { width:min(calc(100vw - 32px),560px); max-width:calc(100vw - 32px); padding:24px; border-radius:16px; background:#fff; }.demo-contractor-modal section div { display:flex; justify-content:flex-end; gap:9px; }
 .demo-contractor-page-state { min-height:100vh; display:grid; place-items:center; padding:20px; background:#f4eddf; }.demo-contractor-page-state section { max-width:560px; padding:28px; border-radius:16px; background:#fff; }.demo-contractor-page-state a { display:inline-block; margin-top:18px; color:#cf4812; font-weight:800; }
 @media(max-width:900px){.demo-contractor-cabinet{grid-template-columns:1fr}.demo-contractor-side{position:static;padding:16px}.demo-contractor-side nav{display:flex;overflow-x:auto}.demo-contractor-side nav button{flex:0 0 auto}.demo-contractor-side>small{display:none}.demo-contractor-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.demo-contractor-team-grid,.demo-contractor-project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:620px){.demo-contractor-main{padding:18px 14px 40px}.demo-contractor-banner,.demo-contractor-head{align-items:stretch;flex-direction:column}.demo-contractor-banner nav{justify-content:flex-start}.demo-contractor-banner nav>*{flex:1 1 140px}.demo-contractor-team-grid,.demo-contractor-project-grid,.demo-contractor-composer{grid-template-columns:1fr}.demo-contractor-list article{align-items:stretch;flex-direction:column}.demo-contractor-list select{max-width:none}.demo-contractor-messages article{max-width:92%}}
+@media(max-width:620px){.demo-contractor-main{padding:18px 14px 40px}.demo-contractor-banner,.demo-contractor-head{align-items:stretch;flex-direction:column}.demo-contractor-banner nav{justify-content:flex-start}.demo-contractor-banner nav>*{min-width:0;flex:1 1 140px;white-space:normal}.demo-contractor-stats,.demo-contractor-team-grid,.demo-contractor-project-grid,.demo-contractor-composer{grid-template-columns:1fr}.demo-contractor-list article{align-items:stretch;flex-direction:column}.demo-contractor-list select{max-width:none}.demo-contractor-messages article{max-width:92%}.demo-contractor-modal section div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.demo-contractor-modal button{min-width:0;padding-inline:8px}}
 
 .contractor-cabinet {
   min-height: calc(100vh - 68px);
