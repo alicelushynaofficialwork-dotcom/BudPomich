@@ -1163,6 +1163,15 @@ body:has(.client-cabinet) {
   gap: 8px;
 }
 
+.client-tabs-scroll {
+  display: grid;
+  gap: 8px;
+}
+
+.client-tabs-track {
+  display: none;
+}
+
 .client-side nav button {
   width: 100%;
   min-height: 48px;
@@ -1498,13 +1507,110 @@ body:has(.client-cabinet) {
 }
 
 @media (max-width: 1180px) {
-  .client-side nav {
+  .client-tabs-scroll {
     grid-template-columns: repeat(5, minmax(150px, 1fr));
     overflow-x: auto;
   }
 }
 
 @media (max-width: 760px) {
+  .client-side {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    padding: 8px 0 7px;
+    gap: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--client-line);
+    background: var(--page-background, #fff);
+    box-shadow: 0 5px 14px rgba(29, 47, 75, 0.12);
+  }
+
+  .client-brand,
+  .client-side-hint {
+    display: none;
+  }
+
+  .client-tabs {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 5px;
+  }
+
+  .client-tabs-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0 12px;
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .client-tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .client-side nav .client-tabs-scroll button {
+    width: auto;
+    min-width: max-content;
+    min-height: 44px;
+    padding: 8px 13px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    grid-template-columns: none;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+
+  .client-side nav button.active {
+    border-color: var(--client-orange);
+    background: var(--client-orange);
+    color: #fff;
+    box-shadow: inset 0 -3px 0 var(--client-blue);
+  }
+
+  .client-side nav button.active span {
+    background: #fff;
+  }
+
+  .client-side nav button:focus-visible {
+    outline: 3px solid rgba(241, 89, 26, 0.42);
+    outline-offset: -3px;
+  }
+
+  .client-tabs-track {
+    position: relative;
+    height: 3px;
+    margin: 0 12px;
+    display: block;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e7dfd1;
+    visibility: hidden;
+  }
+
+  .client-tabs-track.is-visible {
+    visibility: visible;
+  }
+
+  .client-tabs-track i {
+    position: absolute;
+    inset-block: 0;
+    border-radius: inherit;
+    background: var(--client-orange);
+    transition: left 80ms linear, width 120ms ease;
+  }
+
   .client-search-panel,
   .client-composer,
   .client-chat header {

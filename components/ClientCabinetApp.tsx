@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Bell, Heart, Search } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { DemoCabinetSwitcher } from "@/components/demo/DemoCabinetSwitcher";
 import {
   DemoClientApiError,
@@ -42,6 +42,67 @@ const demoNavItems: { id: ClientView; label: string }[] = [
   { id: "messages", label: "Повідомлення" },
   { id: "notifications", label: "Сповіщення" },
 ];
+
+type ClientTabsProps = {
+  activeView: ClientView;
+  isDemo: boolean;
+  items: { id: ClientView; label: string }[];
+  onChange: (view: ClientView) => void;
+  unreadNotifications: number;
+};
+
+function ClientTabs({ activeView, isDemo, items, onChange, unreadNotifications }: ClientTabsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [indicator, setIndicator] = useState({ visible: false, size: 100, offset: 0 });
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+
+    const updateIndicator = () => {
+      const overflow = scroller.scrollWidth - scroller.clientWidth;
+      const visible = overflow > 1;
+      const size = visible ? Math.max(18, (scroller.clientWidth / scroller.scrollWidth) * 100) : 100;
+      const offset = visible ? (scroller.scrollLeft / overflow) * (100 - size) : 0;
+      setIndicator({ visible, size, offset });
+    };
+
+    updateIndicator();
+    scroller.addEventListener("scroll", updateIndicator, { passive: true });
+    const resizeObserver = new ResizeObserver(updateIndicator);
+    resizeObserver.observe(scroller);
+
+    return () => {
+      scroller.removeEventListener("scroll", updateIndicator);
+      resizeObserver.disconnect();
+    };
+  }, [items]);
+
+  useEffect(() => {
+    const activeTab = scrollRef.current?.querySelector<HTMLElement>("[aria-current='page']");
+    activeTab?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [activeView]);
+
+  return (
+    <nav className="client-tabs" aria-label="Навігація кабінету клієнта">
+      <div className="client-tabs-scroll" ref={scrollRef}>
+        {items.map((item, index) => {
+          const active = activeView === item.id;
+          return (
+            <button aria-current={active ? "page" : undefined} className={active ? "active" : ""} onClick={() => onChange(item.id)} type="button" key={item.id}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              {item.label}
+              {isDemo && item.id === "notifications" && unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
+            </button>
+          );
+        })}
+      </div>
+      <div className={`client-tabs-track${indicator.visible ? " is-visible" : ""}`} aria-hidden="true">
+        <i style={{ left: `${indicator.offset}%`, width: `${indicator.size}%` }} />
+      </div>
+    </nav>
+  );
+}
 
 const clientRequests = [
   {
@@ -316,22 +377,13 @@ export function ClientCabinetApp({
           <Image src="/logo/budpomich-logo-v4.svg" alt="БудПоміч" width={790} height={420} priority />
           <span>Кабінет клієнта</span>
         </Link>
-        <nav aria-label="Навігація кабінету клієнта">
-          {navItems.map((item, index) => (
-            <button
-              className={activeView === item.id ? "active" : ""}
-              onClick={() => setActiveView(item.id)}
-              type="button"
-              key={item.id}
-            >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {item.label}
-              {isDemo && item.id === "notifications" && unreadNotifications > 0
-                ? ` (${unreadNotifications})`
-                : ""}
-            </button>
-          ))}
-        </nav>
+        <ClientTabs
+          activeView={activeView}
+          isDemo={isDemo}
+          items={navItems}
+          onChange={setActiveView}
+          unreadNotifications={unreadNotifications}
+        />
         <div className="client-side-hint">
           <span>Підказка</span>
           <p>Усі заявки, домовленості, календар і чат залишаються в БудПоміч.</p>
