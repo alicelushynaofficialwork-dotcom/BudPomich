@@ -9,7 +9,7 @@ export function isUserRole(value: unknown): value is UserRole {
 export function getDashboardPath(role: UserRole) {
   switch (role) {
     case "client":
-      return "/dashboard?role=client";
+      return "/client/dashboard";
     case "contractor":
       return "/dashboard?role=contractor";
     case "admin":
@@ -25,15 +25,13 @@ export function isCanonicalDashboardRequest(
   pathname: string,
   requestedRole: string | null,
 ) {
-  if (pathname !== "/dashboard") return false;
-
   switch (role) {
     case "client":
-      return requestedRole === "client";
+      return pathname === "/client/dashboard" && requestedRole === null;
     case "contractor":
-      return requestedRole === "contractor";
+      return pathname === "/dashboard" && requestedRole === "contractor";
     case "master":
-      return requestedRole === null;
+      return pathname === "/dashboard" && requestedRole === null;
     case "admin":
       return false;
   }
@@ -47,7 +45,12 @@ export function getDashboardRedirect(
   const targetPath = getDashboardPath(role);
 
   if (role === "admin") return targetPath;
-  if (pathname === "/client/dashboard") return targetPath;
+  if (
+    pathname === "/client/dashboard" &&
+    (role !== "client" || !isCanonicalDashboardRequest(role, pathname, requestedRole))
+  ) {
+    return targetPath;
+  }
   if (pathname.startsWith("/dashboard/") && role !== "master") return targetPath;
   if (pathname === "/dashboard" && !isCanonicalDashboardRequest(role, pathname, requestedRole)) {
     return targetPath;

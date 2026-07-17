@@ -2,7 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getDashboardRedirect, isUserRole } from "@/lib/auth";
 
-function createMiddlewareClient(request: NextRequest, response: NextResponse) {
+function createMiddlewareClient(
+  request: NextRequest,
+  responseRef: { current: NextResponse },
+) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -13,9 +16,17 @@ function createMiddlewareClient(request: NextRequest, response: NextResponse) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headersToSet) {
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value);
+        });
+
+        responseRef.current = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
+          responseRef.current.cookies.set(name, value, options);
+        });
+        Object.entries(headersToSet).forEach(([name, value]) => {
+          responseRef.current.headers.set(name, value);
         });
       },
     },
@@ -29,15 +40,19 @@ function isProtectedPath(pathname: string) {
 function redirectWithRefreshedCookies(url: URL, response: NextResponse) {
   const redirectResponse = NextResponse.redirect(url);
   response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+  for (const header of ["cache-control", "expires", "pragma"]) {
+    const value = response.headers.get(header);
+    if (value) redirectResponse.headers.set(header, value);
+  }
   return redirectResponse;
 }
 
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({ request });
-  const supabase = createMiddlewareClient(request, response);
+  const responseRef = { current: NextResponse.next({ request }) };
+  const supabase = createMiddlewareClient(request, responseRef);
   const pathname = request.nextUrl.pathname;
 
-  if (!isProtectedPath(pathname)) return response;
+  if (!isProtectedPath(pathname)) return responseRef.current;
 
   if (!supabase) {
     const loginUrl = request.nextUrl.clone();
@@ -55,7 +70,7 @@ export async function proxy(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/auth/login";
     loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    return redirectWithRefreshedCookies(loginUrl, response);
+    return redirectWithRefreshedCookies(loginUrl, responseRef.current);
   }
 
   const { data: profile } = await supabase
@@ -69,7 +84,7 @@ export async function proxy(request: NextRequest) {
     loginUrl.pathname = "/auth/login";
     loginUrl.search = "";
     loginUrl.searchParams.set("error", "missing_profile");
-    return redirectWithRefreshedCookies(loginUrl, response);
+    return redirectWithRefreshedCookies(loginUrl, responseRef.current);
   }
 
   const role = profile.role;
@@ -80,10 +95,10 @@ export async function proxy(request: NextRequest) {
   );
 
   if (dashboardRedirect) {
-    return redirectWithRefreshedCookies(new URL(dashboardRedirect, request.url), response);
+    return redirectWithRefreshedCookies(new URL(dashboardRedirect, request.url), responseRef.current);
   }
 
-  return response;
+  return responseRef.current;
 }
 
 export const config = {

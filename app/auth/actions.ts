@@ -38,7 +38,7 @@ export async function signInWithEmail(
     return { error: "Supabase не налаштований. Перевірте .env.local." };
   }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     return { error: error.message };
   }
@@ -46,10 +46,15 @@ export async function signInWithEmail(
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("email", email)
+    .eq("id", authData.user.id)
     .maybeSingle();
 
-  const role = isUserRole(profile?.role) ? profile.role : "client";
+  if (!isUserRole(profile?.role)) {
+    await supabase.auth.signOut();
+    return { error: "Профіль користувача не знайдено. Зверніться до підтримки." };
+  }
+
+  const role = profile.role;
   revalidatePath("/", "layout");
   redirect(getDashboardPath(role));
 }

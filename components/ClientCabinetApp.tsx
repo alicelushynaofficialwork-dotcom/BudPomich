@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Bell, Heart, Search } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DemoCabinetSwitcher } from "@/components/demo/DemoCabinetSwitcher";
 import { LogoutButton } from "@/components/LogoutButton";
 import {
@@ -19,11 +19,19 @@ import {
   type DemoRequestStatus,
 } from "@/lib/demo/types";
 import type { MasterProfile } from "@/lib/masters";
+import { getProfileInitials } from "@/lib/profile";
+
+type ClientProfile = {
+  fullName: string | null;
+  city: string | null;
+  email: string | null;
+};
 
 type ClientCabinetAppProps = {
   masters?: MasterProfile[];
   mode?: "real" | "demo";
   initialData?: DemoClientState;
+  profile?: ClientProfile;
   stateWarning?: string;
 };
 
@@ -105,73 +113,6 @@ function ClientTabs({ activeView, isDemo, items, onChange, unreadNotifications }
   );
 }
 
-const clientRequests = [
-  {
-    id: "req-1",
-    master: "Андрей Пономаренко",
-    service: "Укладка плитки",
-    address: "Київ, Печерський район",
-    status: "Очікує кошторис",
-    date: "23 липня 2026",
-    text: "Плитка у ванній кімнаті, потрібна порада щодо гідроізоляції.",
-  },
-  {
-    id: "req-2",
-    master: "Андрій Коваль",
-    service: "Електрика",
-    address: "Київ, Оболонь",
-    status: "Дату запропоновано",
-    date: "20 липня 2026",
-    text: "Заміна проводки у двокімнатній квартирі.",
-  },
-];
-
-const clientProjects = [
-  {
-    id: "project-1",
-    title: "Ванна кімната",
-    performer: "Андрей Пономаренко",
-    address: "Київ, Печерський район",
-    status: "В роботі",
-    stage: "Плиткові роботи",
-    progress: 62,
-    next: "Наступний візит: 23 липня",
-    cost: "22 000 грн",
-    paid: "8 000 грн",
-  },
-  {
-    id: "project-2",
-    title: "Електрика у квартирі",
-    performer: "Андрій Коваль",
-    address: "Київ, Оболонь",
-    status: "Очікує погодження",
-    stage: "Кошторис на розгляді",
-    progress: 18,
-    next: "Потрібно погодити кошторис",
-    cost: "25 000 грн",
-    paid: "0 грн",
-  },
-];
-
-const dialogRows = [
-  {
-    id: "chat-1",
-    name: "Андрей Пономаренко",
-    project: "Ванна кімната",
-    status: "Потрібна відповідь",
-    last: "Можу почати з демонтажу у вівторок. Підтверджуєте?",
-    time: "10:42",
-  },
-  {
-    id: "chat-2",
-    name: "Андрій Коваль",
-    project: "Електрика",
-    status: "Кошторис надіслано",
-    last: "Надіслав попередній кошторис по матеріалах і роботах.",
-    time: "09:15",
-  },
-];
-
 const statusLabels: Record<string, string> = {
   new: "Нова",
   viewed: "Переглянута",
@@ -214,12 +155,13 @@ export function ClientCabinetApp({
   masters = [],
   mode = "real",
   initialData,
+  profile,
   stateWarning,
 }: ClientCabinetAppProps) {
   const isDemo = mode === "demo";
   const navItems = isDemo ? demoNavItems : realNavItems;
   const [activeView, setActiveView] = useState<ClientView>(isDemo ? "requests" : "messages");
-  const [activeDialog, setActiveDialog] = useState(dialogRows[0]?.id ?? "");
+  const [activeDialog, setActiveDialog] = useState(initialData?.messages[0]?.id ?? "");
   const [demoState, setDemoState] = useState(initialData);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [demoError, setDemoError] = useState<string | null>(null);
@@ -229,8 +171,12 @@ export function ClientCabinetApp({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const currentDemoState = demoState ?? initialData;
-  const profileName = currentDemoState?.profile.name ?? "Олена К.";
-  const profileCity = currentDemoState?.profile.city ?? "Київ";
+  const profileName = isDemo
+    ? currentDemoState?.profile.name ?? "Демо клієнт"
+    : profile?.fullName?.trim() || profile?.email?.split("@")[0] || "Клієнт";
+  const profileCity = isDemo
+    ? currentDemoState?.profile.city ?? "Місто не вказано"
+    : profile?.city?.trim() || "Місто не вказано";
   const requestRows = isDemo
     ? (currentDemoState?.requests ?? []).map((request) => ({
         id: request.id,
@@ -243,17 +189,7 @@ export function ClientCabinetApp({
         budget: formatDemoBudget(request.budget),
         description: "Дані заявки завантажено з демонстраційної сесії.",
       }))
-    : clientRequests.map((request) => ({
-        id: request.id,
-        title: request.service,
-        masterName: request.master,
-        address: request.address,
-        status: request.status,
-        statusValue: "new",
-        date: request.date,
-        budget: "Бюджет узгоджується",
-        description: request.text,
-      }));
+    : [];
   const projectRows = isDemo
     ? (currentDemoState?.projects ?? []).map((project) => ({
         id: project.id,
@@ -267,31 +203,22 @@ export function ClientCabinetApp({
         cost: "Кошторис у заявці",
         paid: "Не вказано",
       }))
-    : clientProjects;
-  const messageRows = useMemo(
-    () =>
-      isDemo
-        ? (currentDemoState?.messages ?? []).map((message) => ({
-            id: message.id,
-            name: message.sender,
-            project: requestRows.find((request) => request.id === message.requestId)?.title ?? "Демопроєкт",
-            status: "Демонстраційне повідомлення",
-            last: message.body,
-            time: formatDemoTime(message.createdAt),
-            requestId: message.requestId,
-          }))
-        : dialogRows.map((dialog) => ({ ...dialog, requestId: "" })),
-    [currentDemoState?.messages, isDemo, requestRows],
-  );
+    : [];
+  const messageRows = isDemo
+    ? (currentDemoState?.messages ?? []).map((message) => ({
+        id: message.id,
+        name: message.sender,
+        project: requestRows.find((request) => request.id === message.requestId)?.title ?? "Демопроєкт",
+        status: "Демонстраційне повідомлення",
+        last: message.body,
+        time: formatDemoTime(message.createdAt),
+        requestId: message.requestId,
+      }))
+    : [];
   const activeDialogRow = messageRows.find((dialog) => dialog.id === activeDialog) ?? messageRows[0];
-  const favoriteMasters = useMemo(() => (isDemo ? [] : masters.slice(0, 3)), [isDemo, masters]);
+  const favoriteMasters: MasterProfile[] = [];
   const visibleMasters = isDemo ? [] : masters;
-  const profileInitials = profileName
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const profileInitials = getProfileInitials(profileName);
   const unreadNotifications = currentDemoState?.notifications.filter(
     (notification) => !notification.isRead,
   ).length ?? 0;
@@ -434,10 +361,10 @@ export function ClientCabinetApp({
             <p>Шукайте майстрів, ведіть заявки, погоджуйте кошториси і приймайте роботи в одному місці.</p>
           </div>
           <div className="client-user">
-            <span>{isDemo ? profileInitials : "ОК"}</span>
+            <span>{profileInitials}</span>
             <div>
-              <strong>{isDemo ? profileName : "Олена К."}</strong>
-              <small>{isDemo ? profileCity : "Київ"}</small>
+              <strong>{profileName}</strong>
+              <small>{profileCity}</small>
             </div>
             {!isDemo && <LogoutButton className="client-logout" />}
           </div>
@@ -483,7 +410,11 @@ export function ClientCabinetApp({
                 </article>
               ))}
               {visibleMasters.length === 0 && (
-                <p className="client-empty">У демоверсії каталог майстрів у цьому розділі не завантажується.</p>
+                <p className="client-empty">
+                  {isDemo
+                    ? "У демоверсії каталог майстрів у цьому розділі не завантажується."
+                    : "Каталог виконавців поки недоступний."}
+                </p>
               )}
             </div>
           </section>
@@ -518,7 +449,9 @@ export function ClientCabinetApp({
                 </button>
               ))}
               {messageRows.length === 0 && (
-                <p className="client-empty">Повідомлень поки немає.</p>
+                <p className="client-empty">
+                  {isDemo ? "Повідомлень поки немає." : "У вас поки немає повідомлень"}
+                </p>
               )}
             </aside>
             {activeDialogRow ? (
@@ -535,30 +468,7 @@ export function ClientCabinetApp({
                   <p>{activeDialogRow.last}</p>
                   <time>{activeDialogRow.time}</time>
                 </article>
-                {!isDemo && (
-                  <>
-                    <article className="client">
-                      <p>Так, підходить. Давайте зафіксуємо дату і суму в проєкті.</p>
-                      <time>10:48</time>
-                    </article>
-                    <article className="client-agreement">
-                      <span>Картка погодження</span>
-                      <strong>Дата і кошторис</strong>
-                      <p>23 липня 2026 · орієнтовно 22 000 грн</p>
-                      <div>
-                        <button type="button">Погодити</button>
-                        <button type="button">Обговорити</button>
-                      </div>
-                    </article>
-                  </>
-                )}
               </div>
-              {!isDemo && (
-                <form className="client-composer">
-                  <input placeholder="Напишіть повідомлення..." />
-                  <button type="button">Надіслати</button>
-                </form>
-              )}
               {isDemo && (
                 <form className="client-demo-composer" onSubmit={submitDemoMessage}>
                   <label>
@@ -595,7 +505,9 @@ export function ClientCabinetApp({
             </div>
             ) : (
               <div className="client-chat">
-                <p className="client-empty">Повідомлень поки немає.</p>
+                <p className="client-empty">
+                  {isDemo ? "Повідомлень поки немає." : "У вас поки немає повідомлень"}
+                </p>
                 {isDemo && (
                   <form className="client-demo-composer" onSubmit={submitDemoMessage}>
                     <label>
@@ -631,18 +543,6 @@ export function ClientCabinetApp({
                 )}
               </div>
             )}
-            {!isDemo && <aside className="client-project-summary">
-              <span className="client-eyebrow">Проєкт</span>
-              <h2>Ванна кімната</h2>
-              <p>Усі домовленості з майстром зберігаються тут: дата, чат, кошторис, фото і приймання роботи.</p>
-              <dl>
-                <div><dt>Статус</dt><dd>В роботі</dd></div>
-                <div><dt>Вартість</dt><dd>22 000 грн</dd></div>
-                <div><dt>Оплачено</dt><dd>8 000 грн</dd></div>
-                <div><dt>Наступний крок</dt><dd>Плиткові роботи</dd></div>
-              </dl>
-              <button onClick={() => setActiveView("projects")} type="button">Деталі проєкту</button>
-            </aside>}
           </section>
         )}
 
@@ -697,7 +597,9 @@ export function ClientCabinetApp({
                 </article>
               ))}
               {requestRows.length === 0 && (
-                <p className="client-empty">У демоверсії поки немає заявок.</p>
+                <p className="client-empty">
+                  {isDemo ? "У демоверсії поки немає заявок." : "У вас поки немає заявок"}
+                </p>
               )}
             </div>
           </section>
@@ -737,7 +639,11 @@ export function ClientCabinetApp({
                 </article>
               ))}
               {projectRows.length === 0 && (
-                <p className="client-empty">Активних проєктів поки немає.</p>
+                <p className="client-empty">
+                  {isDemo
+                    ? "Активних проєктів поки немає."
+                    : "У вас поки немає активних проєктів"}
+                </p>
               )}
             </div>
           </section>
@@ -798,6 +704,9 @@ export function ClientCabinetApp({
                   <Link href={`/profile/${master.id}`}>Профіль</Link>
                 </article>
               ))}
+              {favoriteMasters.length === 0 && (
+                <p className="client-empty">У вас поки немає збережених майстрів</p>
+              )}
             </div>
           </section>
         )}
