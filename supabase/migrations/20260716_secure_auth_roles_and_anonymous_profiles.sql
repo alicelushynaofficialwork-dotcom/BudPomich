@@ -67,6 +67,9 @@ revoke update on table public.profiles from authenticated;
 grant update (full_name, phone, city, avatar_url) on table public.profiles to authenticated;
 
 drop policy if exists "Users can insert own profile" on public.profiles;
+
+drop policy if exists "Permanent users can insert own profile" on public.profiles;
+
 create policy "Permanent users can insert own profile"
 on public.profiles
 for insert
