@@ -3,7 +3,6 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
   createLocalId,
   emptyHeightWork,
-  mockRequests,
   requestStatusOptions,
   type MasterRequest,
   type RequestHeightWork,
@@ -135,8 +134,8 @@ function normalizeRequest(payload: unknown): MasterRequest {
     selectedServiceTitle: text(row.selectedServiceTitle, "назва послуги"),
     selectedServiceType: text(row.selectedServiceType, "тип послуги"),
     isTurnkey: Boolean(row.isTurnkey),
-    clientName: text(row.clientName, "імʼя клієнта"),
-    clientPhone: text(row.clientPhone, "телефон"),
+    clientName: optionalText(row.clientName),
+    clientPhone: optionalText(row.clientPhone),
     workType: text(row.workType, "тип роботи"),
     workSubtype: optionalText(row.workSubtype),
     description: text(row.description, "опис задачі"),
@@ -162,6 +161,7 @@ function fromSupabase(row: Record<string, unknown>): MasterRequest {
     id: String(row.id),
     masterId: String(row.master_id),
     masterName: String(row.master_name ?? ""),
+    clientId: String(row.client_id ?? ""),
     selectedServiceId: String(row.selected_service_id ?? ""),
     selectedServiceTitle: String(row.selected_service_title ?? ""),
     selectedServiceType: String(row.selected_service_type ?? ""),
@@ -210,25 +210,42 @@ export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
 
   if (!supabase) {
-    return NextResponse.json({
-      requests: mockRequests.filter((item) => !masterId || item.masterId === masterId),
-      persistence: "browser",
-    });
+    return NextResponse.json({ error: "Сервіс автентифікації недоступний." }, { status: 503 });
   }
 
-  let query = supabase.from("requests").select("*").order("created_at", { ascending: false });
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user) {
+    return NextResponse.json({ error: "Увійдіть у систему." }, { status: 401 });
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", authData.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 });
+  }
+
+  if (!profile || profile.role !== "client") {
+    return NextResponse.json({ error: "Доступ дозволено тільки для клієнтів." }, { status: 403 });
+  }
+
+  let query = supabase
+    .from("requests")
+    .select("*")
+    .eq("client_id", authData.user.id)
+    .order("created_at", { ascending: false });
+
   if (masterId) query = query.eq("master_id", masterId);
 
   const { data, error } = await query;
   if (error) {
-    return NextResponse.json({
-      requests: mockRequests.filter((item) => !masterId || item.masterId === masterId),
-      persistence: "browser",
-      warning: error.message,
-    });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ requests: (data ?? []).map(fromSupabase), persistence: "supabase" });
+  return NextResponse.json({ requests: (data ?? []).map(fromSupabase) });
 }
 
 export async function POST(request: Request) {
@@ -237,20 +254,40 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
 
     if (!supabase) {
-      return NextResponse.json({ request: normalized, persistence: "browser" });
+      return NextResponse.json({ error: "Сервіс автентифікації недоступний." }, { status: 503 });
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: "Увійдіть у систему." }, { status: 401 });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, phone, role")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    if (!profile || profile.role !== "client") {
+      return NextResponse.json({ error: "Тільки клієнти можуть створювати заявки." }, { status: 403 });
     }
 
     const { data, error } = await supabase
       .from("requests")
       .insert({
+        client_id: authData.user.id,
         master_id: normalized.masterId,
         master_name: normalized.masterName,
         selected_service_id: normalized.selectedServiceId,
         selected_service_title: normalized.selectedServiceTitle,
         selected_service_type: normalized.selectedServiceType,
         is_turnkey: normalized.isTurnkey,
-        client_name: normalized.clientName,
-        client_phone: normalized.clientPhone,
+        client_name: profile.full_name ?? "",
+        client_phone: profile.phone ?? "",
         work_type: normalized.workType,
         work_subtype: normalized.workSubtype,
         description: normalized.description,
@@ -277,20 +314,15 @@ export async function POST(request: Request) {
         height_comment: normalized.heightWork.heightComment,
         status: normalized.status,
         is_read: normalized.isRead,
-        created_at: normalized.createdAt,
       })
       .select("*")
       .single();
 
     if (error) {
-      return NextResponse.json({
-        request: normalized,
-        persistence: "browser",
-        warning: error.message,
-      });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ request: fromSupabase(data), persistence: "supabase" });
+    return NextResponse.json({ request: fromSupabase(data) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Не вдалося створити заявку." },
@@ -311,15 +343,38 @@ export async function PATCH(request: Request) {
 
     const supabase = await createServerSupabaseClient();
     if (!supabase) {
-      return NextResponse.json({ id, status, persistence: "browser" });
+      return NextResponse.json({ error: "Сервіс автентифікації недоступний." }, { status: 503 });
     }
 
-    const { error } = await supabase.from("requests").update({ status, is_read: true }).eq("id", id);
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: "Увійдіть у систему." }, { status: 401 });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    if (!profile || profile.role !== "client") {
+      return NextResponse.json({ error: "Доступ дозволено тільки для клієнтів." }, { status: 403 });
+    }
+
+    const { error } = await supabase
+      .from("requests")
+      .update({ status, is_read: true })
+      .eq("id", id)
+      .eq("client_id", authData.user.id);
     if (error) {
-      return NextResponse.json({ id, status, persistence: "browser", warning: error.message });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ id, status, persistence: "supabase" });
+    return NextResponse.json({ id, status });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Не вдалося оновити заявку." },

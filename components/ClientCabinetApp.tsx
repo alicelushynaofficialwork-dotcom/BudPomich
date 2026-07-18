@@ -19,6 +19,7 @@ import {
   type DemoRequestStatus,
 } from "@/lib/demo/types";
 import type { MasterProfile } from "@/lib/masters";
+import type { MasterRequest, RequestMessage } from "@/lib/requests";
 import { getProfileInitials } from "@/lib/profile";
 
 type ClientProfile = {
@@ -168,8 +169,15 @@ export function ClientCabinetApp({
   const [demoNotice, setDemoNotice] = useState<string | null>(null);
   const [messageBody, setMessageBody] = useState("");
   const [messageRequestId, setMessageRequestId] = useState(initialData?.requests[0]?.id ?? "");
+  const [activeRequestId, setActiveRequestId] = useState<string>(initialData?.requests[0]?.id ?? "");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [realRequests, setRealRequests] = useState<MasterRequest[]>([]);
+  const [realMessages, setRealMessages] = useState<RequestMessage[]>([]);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const currentDemoState = demoState ?? initialData;
   const profileName = isDemo
     ? currentDemoState?.profile.name ?? "Демо клієнт"
@@ -189,7 +197,42 @@ export function ClientCabinetApp({
         budget: formatDemoBudget(request.budget),
         description: "Дані заявки завантажено з демонстраційної сесії.",
       }))
-    : [];
+    : realRequests.map((request) => ({
+        id: request.id,
+        title: request.selectedServiceTitle || request.workType || "Заявка",
+        masterName: request.masterName,
+        address: request.cityArea || profileCity,
+        status: formatDemoStatus(request.status),
+        statusValue: request.status,
+        date: formatDemoDate(request.desiredDate),
+        budget: request.budget ? request.budget : "Бюджет не вказано",
+        description: request.description || request.workType || "Деталі заявки",
+      }));
+  const messageRows = isDemo
+    ? (currentDemoState?.messages ?? []).map((message) => ({
+        id: message.id,
+        requestId: message.requestId,
+        name: message.sender,
+        project: requestRows.find((request) => request.id === message.requestId)?.title ?? "Демопроєкт",
+        status: "Демонстраційне повідомлення",
+        last: message.body,
+        time: formatDemoTime(message.createdAt),
+      }))
+    : realRequests.map((request) => ({
+        id: request.id,
+        requestId: request.id,
+        name: request.masterName,
+        project: request.selectedServiceTitle || request.workType,
+        status: request.status ? formatDemoStatus(request.status) : "",
+        last: request.description || request.selectedServiceTitle || "Нова заявка",
+        time: formatDemoDate(request.desiredDate),
+      }));
+  const activeDialogRow = messageRows.find((dialog) => dialog.id === activeDialog) ?? messageRows[0];
+  const currentRequest = isDemo
+    ? null
+    : realRequests.find((request) => request.id === activeRequestId || request.id === activeDialog);
+  const currentMessages = isDemo ? [] : realMessages;
+
   const projectRows = isDemo
     ? (currentDemoState?.projects ?? []).map((project) => ({
         id: project.id,
@@ -204,21 +247,119 @@ export function ClientCabinetApp({
         paid: "Не вказано",
       }))
     : [];
-  const messageRows = isDemo
-    ? (currentDemoState?.messages ?? []).map((message) => ({
-        id: message.id,
-        name: message.sender,
-        project: requestRows.find((request) => request.id === message.requestId)?.title ?? "Демопроєкт",
-        status: "Демонстраційне повідомлення",
-        last: message.body,
-        time: formatDemoTime(message.createdAt),
-        requestId: message.requestId,
-      }))
-    : [];
-  const activeDialogRow = messageRows.find((dialog) => dialog.id === activeDialog) ?? messageRows[0];
   const favoriteMasters: MasterProfile[] = [];
   const visibleMasters = isDemo ? [] : masters;
   const profileInitials = getProfileInitials(profileName);
+
+  useEffect(() => {
+    if (isDemo) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const load = async () => {
+      setRequestsLoading(true);
+      setRequestsError(null);
+
+      try {
+        const response = await fetch("/api/requests", { signal: controller.signal });
+        const result = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(result?.error ?? "Не вдалося завантажити заявки.");
+        }
+
+        const requests = (result as { requests?: MasterRequest[] }).requests ?? [];
+        setRealRequests(requests);
+
+        if (!activeRequestId && requests.length) {
+          setActiveDialog(requests[0].id);
+          setActiveRequestId(requests[0].id);
+          setMessageRequestId(requests[0].id);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        setRequestsError(error instanceof Error ? error.message : "Не вдалося завантажити заявки.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setRequestsLoading(false);
+        }
+      }
+    };
+
+    Promise.resolve().then(() => void load());
+    return () => controller.abort();
+  }, [isDemo, activeRequestId]);
+
+  useEffect(() => {
+    if (isDemo || !activeRequestId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const load = async () => {
+      setMessagesLoading(true);
+      setMessagesError(null);
+
+      try {
+        const response = await fetch(
+          `/api/messages?requestId=${encodeURIComponent(activeRequestId)}`,
+          { signal: controller.signal },
+        );
+        const result = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(result?.error ?? "Не вдалося завантажити повідомлення.");
+        }
+
+        setRealMessages((result as { messages?: RequestMessage[] }).messages ?? []);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        setMessagesError(error instanceof Error ? error.message : "Не вдалося завантажити повідомлення.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setMessagesLoading(false);
+        }
+      }
+    };
+
+    Promise.resolve().then(() => void load());
+    return () => controller.abort();
+  }, [isDemo, activeRequestId]);
+
+  async function submitMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isDemo || pendingAction || !activeRequestId || !messageBody.trim()) return;
+
+    setPendingAction("message");
+    setMessagesError(null);
+
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: activeRequestId, body: messageBody.trim() }),
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error ?? "Не вдалося надіслати повідомлення.");
+      }
+
+      const nextMessage = result.message as RequestMessage;
+      setRealMessages((current) => [...current, nextMessage]);
+      setMessageBody("");
+    } catch (error) {
+      setMessagesError(error instanceof Error ? error.message : "Не вдалося надіслати повідомлення.");
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
   const unreadNotifications = currentDemoState?.notifications.filter(
     (notification) => !notification.isRead,
   ).length ?? 0;
@@ -434,7 +575,10 @@ export function ClientCabinetApp({
                   className={activeDialog === dialog.id ? "active" : ""}
                   onClick={() => {
                     setActiveDialog(dialog.id);
-                    if (dialog.requestId) setMessageRequestId(dialog.requestId);
+                    if (dialog.requestId) {
+                      setActiveRequestId(dialog.requestId);
+                      setMessageRequestId(dialog.requestId);
+                    }
                   }}
                   type="button"
                   key={dialog.id}
@@ -463,13 +607,36 @@ export function ClientCabinetApp({
                 </div>
                 <button onClick={() => setActiveView("projects")} type="button">Відкрити проєкт</button>
               </header>
-              <div className="client-chat-feed">
-                <article className="master">
-                  <p>{activeDialogRow.last}</p>
-                  <time>{activeDialogRow.time}</time>
-                </article>
+              <div className="client-chat-summary">
+                {currentRequest ? (
+                  <dl>
+                    <div><dt>Заявка</dt><dd>{currentRequest.selectedServiceTitle || currentRequest.workType}</dd></div>
+                    <div><dt>Майстер</dt><dd>{currentRequest.masterName}</dd></div>
+                    <div><dt>Дата</dt><dd>{formatDemoDate(currentRequest.desiredDate)}</dd></div>
+                    <div><dt>Адреса</dt><dd>{currentRequest.cityArea || profileCity}</dd></div>
+                  </dl>
+                ) : null}
               </div>
-              {isDemo && (
+              <div className="client-chat-feed">
+                {messagesLoading ? (
+                  <p className="client-chat-loading">Завантаження повідомлень…</p>
+                ) : messagesError ? (
+                  <p className="client-chat-error">{messagesError}</p>
+                ) : currentMessages.length > 0 ? (
+                  currentMessages.map((message) => (
+                    <article
+                      key={message.id}
+                      className={message.senderRole === "client" ? "client" : "master"}
+                    >
+                      <p>{message.body}</p>
+                      <time>{formatDemoTime(message.createdAt)}</time>
+                    </article>
+                  ))
+                ) : (
+                  <p className="client-empty">Почніть чат, надіславши перше повідомлення.</p>
+                )}
+              </div>
+              {isDemo ? (
                 <form className="client-demo-composer" onSubmit={submitDemoMessage}>
                   <label>
                     Заявка
@@ -496,6 +663,26 @@ export function ClientCabinetApp({
                   </label>
                   <button
                     disabled={Boolean(pendingAction) || !messageRequestId || !messageBody.trim()}
+                    type="submit"
+                  >
+                    {pendingAction === "message" ? "Надсилаємо…" : "Надіслати"}
+                  </button>
+                </form>
+              ) : (
+                <form className="client-chat-composer" onSubmit={submitMessage}>
+                  <label>
+                    Повідомлення
+                    <textarea
+                      disabled={Boolean(pendingAction)}
+                      maxLength={2000}
+                      onChange={(event) => setMessageBody(event.target.value)}
+                      placeholder="Напишіть повідомлення майстру…"
+                      rows={3}
+                      value={messageBody}
+                    />
+                  </label>
+                  <button
+                    disabled={Boolean(pendingAction) || !activeRequestId || !messageBody.trim()}
                     type="submit"
                   >
                     {pendingAction === "message" ? "Надсилаємо…" : "Надіслати"}

@@ -45,6 +45,7 @@ export type MasterRequest = {
   id: string;
   masterId: string;
   masterName: string;
+  clientId?: string;
   selectedServiceId: string;
   selectedServiceTitle: string;
   selectedServiceType: string;
@@ -117,6 +118,7 @@ export const mockRequests: MasterRequest[] = [
     id: "mock-request-1",
     masterId: "andrii-koval",
     masterName: "Андрій Коваль",
+    clientId: "mock-client-1",
     selectedServiceId: "andrii-electric",
     selectedServiceTitle: "Електрика",
     selectedServiceType: "electric",
