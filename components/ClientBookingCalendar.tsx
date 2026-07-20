@@ -1,10 +1,9 @@
 "use client";
 
-import { Camera, ChevronLeft, ChevronRight, MessageSquare, Send, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Camera, ChevronLeft, ChevronRight, FileText, MessageSquare, Send, X } from "lucide-react";
+import { type ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AvailabilitySlots,
-  bookingStorageKey,
   formatBookingDate,
   formatDateKey,
   getAvailabilityStorageKey,
@@ -18,7 +17,6 @@ import {
   legacyAvailabilityStorageKey,
   masterMessageStorageKey,
   monthLabels,
-  type BookingRequest,
   type MasterMessage,
 } from "@/lib/availability";
 
@@ -97,6 +95,10 @@ export function ClientBookingCalendar({ masterId, masterName }: { masterId: stri
   const [dateOptions, setDateOptions] = useState<string[]>([]);
   const [workType, setWorkType] = useState("");
   const [bookingStatus, setBookingStatus] = useState("");
+  const [bookingError, setBookingError] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState("");
   const [messageStatus, setMessageStatus] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -139,21 +141,53 @@ export function ClientBookingCalendar({ masterId, masterName }: { masterId: stri
     setBookingStatus("");
   }
 
-  function submitBooking(event: FormEvent<HTMLFormElement>) {
+  function chooseFiles(event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files ?? []);
+    const next = [...files, ...selected].slice(0, 10);
+    const invalid = next.find((file) => !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type) || file.size > 10 * 1024 * 1024);
+    if (invalid || next.reduce((sum, file) => sum + file.size, 0) > 50 * 1024 * 1024) {
+      setBookingError("Дозволено до 10 JPEG, PNG, WebP або PDF, до 10 МБ кожен і 50 МБ разом.");
+      event.target.value = "";
+      return;
+    }
+    setFiles(next); setBookingError(""); event.target.value = "";
+  }
+
+  async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dateOptions.length || !workType.trim() || dateOptions.some((date) => slots[date] !== "free")) return;
+    setSubmitting(true); setBookingError(""); setBookingStatus("");
     const formData = new FormData(event.currentTarget);
-    const request: BookingRequest = {
-      id: crypto.randomUUID(), masterId, date: dateOptions[0], datePeriods,
+    let bookingId = pendingBookingId;
+    if (!bookingId) {
+    const response = await fetch("/api/requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      masterId, masterName, source: "profile_calendar",
+      periods: datePeriods.map((period) => ({ dateFrom: period.startDate, dateTo: period.endDate, period: `${period.startDate} — ${period.endDate}` })),
       workType: String(formData.get("workType") ?? ""),
       description: String(formData.get("description") ?? ""),
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem(bookingStorageKey, JSON.stringify([request, ...readStoredArray<BookingRequest>(bookingStorageKey)]));
+    }) });
+    const result = await response.json().catch(() => null) as { request?: { id: string }; error?: string } | null;
+    if (!response.ok || !result?.request) {
+      if (response.status === 401) { window.location.assign(`/auth/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); return; }
+      setBookingError(result?.error || "Не вдалося надіслати заявку."); setSubmitting(false); return;
+    }
+    bookingId = result.request.id;
+    setPendingBookingId(bookingId);
+    }
+    if (files.length) {
+      const uploadData = new FormData(); uploadData.set("bookingId", bookingId); files.forEach((file) => uploadData.append("files", file));
+      const uploadResponse = await fetch("/api/requests/attachments", { method: "POST", body: uploadData });
+      const uploadResult = await uploadResponse.json().catch(() => null) as { uploaded?: string[]; failed?: { name: string }[]; error?: string } | null;
+      if (!uploadResponse.ok || uploadResult?.failed?.length) {
+        const failedNames = new Set(uploadResult?.failed?.map((item) => item.name) ?? files.map((file) => file.name));
+        setFiles((current) => current.filter((file) => failedNames.has(file.name)));
+        setBookingError(`Заявку створено, але не всі файли завантажено: ${uploadResult?.failed?.map((item) => item.name).join(", ") || uploadResult?.error || "помилка сховища"}. Повторна відправка заявки не потрібна.`);
+        setSubmitting(false); return;
+      }
+    }
     setBookingStatus(`Заявку надіслано майстру. Ви запропонували ${datePeriods.length} варіанти періоду. Майстер підтвердить один із них або запропонує інші дати. Точний час ви зможете узгодити в чаті.`);
     event.currentTarget.reset();
-    setWorkType("");
+    setWorkType(""); setFiles([]); setPendingBookingId(""); setSubmitting(false);
   }
 
   function submitMessage(event: FormEvent<HTMLFormElement>) {
@@ -218,8 +252,9 @@ export function ClientBookingCalendar({ masterId, masterName }: { masterId: stri
             {datePeriods.length > 0 && <div className="client-selected-dates">{datePeriods.map((period, index) => <div key={`${period.startDate}-${period.endDate}`}><span><b>{index + 1} період</b><small>{formatPeriod(period.startDate, period.endDate)}</small><em>{formatDayCount(getPeriodDayCount(period))}</em></span><button type="button" onClick={() => { const keys = new Set(getPeriodDateKeys(period)); setDateOptions((current) => current.filter((date) => !keys.has(date))); setBookingStatus(""); }} aria-label={`Видалити період з ${formatBookingDate(period.startDate)} до ${formatBookingDate(period.endDate)}`}><X size={16} /> <span>Видалити період</span></button></div>)}<div className="client-period-summary"><strong>Обрано періодів: {datePeriods.length}</strong><span>Загальна кількість обраних дат: {dateOptions.length}</span></div><p>Точний час ви зможете узгодити з майстром у чаті.</p></div>}
             {dateOptions.length > 0 && <label>Тип роботи<input name="workType" value={workType} onChange={(event) => setWorkType(event.target.value)} placeholder="Наприклад, монтаж розеток" required /></label>}
             {dateOptions.length > 0 && <label>Короткий опис<textarea name="description" rows={4} placeholder="Опишіть завдання та об’єкт" required /></label>}
-            {dateOptions.length > 0 && <div className="client-photo-placeholder" aria-label="Фотографії до заявки"><Camera size={18} aria-hidden="true" /><div><strong>Фото об’єкта</strong><span>Додавання фото стане доступним після підключення безпечного сховища.</span></div><button type="button" disabled>Додати фото</button></div>}
-            <button type="submit" disabled={!dateOptions.length || !workType.trim()}><Send size={17} /> Надіслати заявку</button>
+            {dateOptions.length > 0 && <div className="client-photo-placeholder" aria-label="Вкладення до заявки"><Camera size={18} aria-hidden="true" /><div><strong>Фото та PDF</strong><span>До 10 файлів, 10 МБ кожен, 50 МБ разом.</span></div><label className="client-attachment-picker">Додати файли<input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" onChange={chooseFiles} /></label>{files.length ? <ul>{files.map((file, index) => <li key={`${file.name}-${index}`}><FileText size={15} /><span>{file.name}</span><button type="button" aria-label={`Видалити ${file.name}`} onClick={() => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))}><X size={14} /></button></li>)}</ul> : null}</div>}
+            <button type="submit" disabled={!dateOptions.length || !workType.trim() || submitting}><Send size={17} /> {submitting ? "Надсилаємо…" : "Надіслати заявку"}</button>
+            {bookingError && <p role="alert">{bookingError}</p>}
             {bookingStatus && <p role="status">{bookingStatus}</p>}
           </form>
         </div>

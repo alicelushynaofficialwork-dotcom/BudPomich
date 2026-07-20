@@ -3261,6 +3261,14 @@ button.profile-portfolio-edit {
 .client-photo-placeholder div { display: grid; gap: 3px; }
 .client-photo-placeholder span { font-size: 9px; line-height: 1.35; }
 .client-photo-placeholder button { min-height: 44px; border: 0; border-radius: 9px; background: #e8ece9; color: #77817b; font: inherit; font-size: 10px; }
+.client-attachment-picker { min-height: 44px; padding: 0 14px; border-radius: 9px; background: #153f31; color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; font-weight: 700; }
+.client-attachment-picker input { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.client-photo-placeholder ul { grid-column: 1 / -1; display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+.client-photo-placeholder li { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 7px 9px; border-radius: 8px; background: #fff; }
+.client-photo-placeholder li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.client-photo-placeholder li button { min-height: 32px; min-width: 32px; padding: 0; color: #9b3326; }
+.client-request-periods, .client-request-attachments, .dash-booking-attachments { display: grid; gap: 6px; margin-top: 12px; }
+.client-request-attachments a, .dash-booking-attachments a { color: #164d3b; text-decoration: underline; overflow-wrap: anywhere; }
 
 .client-message-details {
   grid-column: 1 / -1;

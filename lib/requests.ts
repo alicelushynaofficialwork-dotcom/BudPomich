@@ -23,6 +23,16 @@ export type RequestFile = {
   fileUrl?: string;
 };
 
+export type BookingAttachment = {
+  id: string;
+  bookingId: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: "image" | "document";
+  url?: string;
+};
+
 export type HeightWorkPresence = "no" | "yes" | "unknown";
 
 export type HeightCoefficientType = "unknown" | "selected" | "custom";
@@ -65,6 +75,9 @@ export type MasterRequest = {
   serviceDetails: Record<string, string>;
   additionalWorks: RequestAdditionalWork[];
   files: RequestFile[];
+  attachments?: BookingAttachment[];
+  confirmedPeriod?: RequestPeriod;
+  source?: string;
   heightWork: RequestHeightWork;
   status: RequestStatus;
   isRead: boolean;

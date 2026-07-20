@@ -200,6 +200,8 @@ export function ClientCabinetApp({
         date: formatDemoDate(request.desiredDate),
         budget: formatDemoBudget(request.budget),
         description: "Дані заявки завантажено з демонстраційної сесії.",
+        periods: [],
+        attachments: [],
       }))
     : realRequests.map((request) => ({
         id: request.id,
@@ -211,6 +213,8 @@ export function ClientCabinetApp({
         date: formatDemoDate(request.desiredDate),
         budget: request.budget ? request.budget : "Бюджет не вказано",
         description: request.description || request.workType || "Деталі заявки",
+        periods: request.periods,
+        attachments: request.attachments ?? [],
       }));
   const messageRows = isDemo
     ? (currentDemoState?.messages ?? []).map((message) => ({
@@ -788,7 +792,9 @@ export function ClientCabinetApp({
                     <div><dt>Бюджет</dt><dd>{request.budget}</dd></div>
                   </dl>
                   {!isDemo && (
+                    <>{request.periods.length ? <div className="client-request-periods"><strong>Запропоновані періоди</strong>{request.periods.map((period, index) => <span key={`${period.dateFrom}-${period.dateTo}`}>{index + 1}. {period.dateFrom === period.dateTo ? period.dateFrom : `${period.dateFrom} — ${period.dateTo}`}</span>)}</div> : null}{request.attachments.length ? <div className="client-request-attachments"><strong>Вкладення</strong>{request.attachments.map((file) => <a href={file.url} target="_blank" rel="noreferrer" key={file.id}>{file.originalName} · {Math.ceil(file.sizeBytes / 1024)} КБ</a>)}</div> : null}
                     <div className="client-request-actions"><button onClick={() => setActiveView("messages")} type="button">Відкрити чат</button>{request.statusValue === "completed" && !clientReviews.some((review) => review.bookingId === request.id) ? <button type="button" onClick={() => setReviewBookingId((current) => current === request.id ? "" : request.id)}>Залишити відгук</button> : null}{clientReviews.some((review) => review.bookingId === request.id) ? <span>Відгук опубліковано</span> : null}</div>
+                    </>
                   )}
                   {!isDemo && reviewBookingId === request.id ? <ReviewForm bookingId={request.id} onCreated={(review) => { setClientReviews((current) => [review, ...current]); setReviewBookingId(""); }} /> : null}
                 </article>

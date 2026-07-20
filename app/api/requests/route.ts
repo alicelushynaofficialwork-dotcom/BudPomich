@@ -10,6 +10,7 @@ import {
   type RequestFile,
   type RequestPeriod,
   type RequestStatus,
+  type BookingAttachment,
 } from "@/lib/requests";
 
 function text(value: unknown, field: string) {
@@ -126,13 +127,14 @@ function normalizeRequest(payload: unknown): MasterRequest {
     throw new Error("Оберіть бажану дату або період.");
   }
 
+  const isCalendar = optionalText(row.source) === "profile_calendar";
   return {
     id: optionalText(row.id) || createLocalId("request"),
     masterId: text(row.masterId, "майстер"),
-    masterName: text(row.masterName, "імʼя майстра"),
-    selectedServiceId: text(row.selectedServiceId, "послуга"),
-    selectedServiceTitle: text(row.selectedServiceTitle, "назва послуги"),
-    selectedServiceType: text(row.selectedServiceType, "тип послуги"),
+    masterName: optionalText(row.masterName),
+    selectedServiceId: optionalText(row.selectedServiceId) || (isCalendar ? "profile-calendar" : text(row.selectedServiceId, "послуга")),
+    selectedServiceTitle: optionalText(row.selectedServiceTitle) || text(row.workType, "тип роботи"),
+    selectedServiceType: optionalText(row.selectedServiceType) || "custom",
     isTurnkey: Boolean(row.isTurnkey),
     clientName: optionalText(row.clientName),
     clientPhone: optionalText(row.clientPhone),
@@ -140,11 +142,11 @@ function normalizeRequest(payload: unknown): MasterRequest {
     workSubtype: optionalText(row.workSubtype),
     description: text(row.description, "опис задачі"),
     desiredDate,
-    cityArea: text(row.cityArea, "місто або район"),
+    cityArea: optionalText(row.cityArea),
     budget: optionalText(row.budget),
     mainVolume: optionalText(row.mainVolume),
     additionalInfo: optionalText(row.additionalInfo),
-    message: text(row.message, "повідомлення майстру"),
+    message: optionalText(row.message) || text(row.description, "опис задачі"),
     periods,
     serviceDetails: parseRecord(row.serviceDetails),
     additionalWorks: parseAdditionalWorks(row.additionalWorks),
@@ -153,6 +155,7 @@ function normalizeRequest(payload: unknown): MasterRequest {
     status: "new",
     isRead: false,
     createdAt: optionalText(row.createdAt) || new Date().toISOString(),
+    source: optionalText(row.source) || "request_form",
   };
 }
 
@@ -181,6 +184,8 @@ function fromSupabase(row: Record<string, unknown>): MasterRequest {
     serviceDetails: parseRecord(row.service_details),
     additionalWorks: parseAdditionalWorks(row.additional_works),
     files: parseFiles(row.files),
+    confirmedPeriod: row.confirmed_period && typeof row.confirmed_period === "object" ? parsePeriods([row.confirmed_period])[0] : undefined,
+    source: String(row.source ?? "request_form"),
     heightWork: parseHeightWork({
       hasHeightWork:
         row.has_height_work === true
@@ -203,6 +208,16 @@ function fromSupabase(row: Record<string, unknown>): MasterRequest {
     isRead: Boolean(row.is_read),
     createdAt: String(row.created_at ?? new Date().toISOString()),
   };
+}
+
+async function attachFiles(supabase: NonNullable<Awaited<ReturnType<typeof createServerSupabaseClient>>>, requests: MasterRequest[]) {
+  if (!requests.length) return requests;
+  const { data } = await supabase.from("booking_attachments").select("*").in("booking_id", requests.map((item) => item.id));
+  const attachments = await Promise.all((data ?? []).map(async (row): Promise<BookingAttachment> => {
+    const { data: signed } = await supabase.storage.from("booking-attachments").createSignedUrl(String(row.storage_path), 300);
+    return { id: String(row.id), bookingId: String(row.booking_id), originalName: String(row.original_name), mimeType: String(row.mime_type), sizeBytes: Number(row.size_bytes), kind: row.kind === "image" ? "image" : "document", url: signed?.signedUrl };
+  }));
+  return requests.map((item) => ({ ...item, attachments: attachments.filter((file) => file.bookingId === item.id) }));
 }
 
 export async function GET(request: Request) {
@@ -228,24 +243,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
-  if (!profile || profile.role !== "client") {
-    return NextResponse.json({ error: "Доступ дозволено тільки для клієнтів." }, { status: 403 });
+  let query = supabase.from("requests").select("*").order("created_at", { ascending: false });
+  if (profile?.role === "client") {
+    query = query.eq("client_id", authData.user.id);
+    if (masterId) query = query.eq("master_id", masterId);
+  } else if (profile?.role === "master") {
+    const { data: owned } = await supabase.from("master_profile_edits").select("master_id").eq("owner_id", authData.user.id);
+    const ids = (owned ?? []).map((item) => String(item.master_id));
+    if (!ids.length || (masterId && !ids.includes(masterId))) return NextResponse.json({ requests: [] });
+    query = masterId ? query.eq("master_id", masterId) : query.in("master_id", ids);
+  } else {
+    return NextResponse.json({ error: "Недостатньо прав." }, { status: 403 });
   }
-
-  let query = supabase
-    .from("requests")
-    .select("*")
-    .eq("client_id", authData.user.id)
-    .order("created_at", { ascending: false });
-
-  if (masterId) query = query.eq("master_id", masterId);
 
   const { data, error } = await query;
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ requests: (data ?? []).map(fromSupabase) });
+  return NextResponse.json({ requests: await attachFiles(supabase, (data ?? []).map(fromSupabase)) });
 }
 
 export async function POST(request: Request) {
@@ -276,12 +292,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Тільки клієнти можуть створювати заявки." }, { status: 403 });
     }
 
+    const { data: masterProfile } = await supabase.from("master_profile_edits").select("master_id, name").eq("master_id", normalized.masterId).maybeSingle();
+    if (!masterProfile) return NextResponse.json({ error: "Профіль майстра не знайдено." }, { status: 404 });
+
     const { data, error } = await supabase
       .from("requests")
       .insert({
         client_id: authData.user.id,
         master_id: normalized.masterId,
-        master_name: normalized.masterName,
+        master_name: normalized.masterName || masterProfile.name,
         selected_service_id: normalized.selectedServiceId,
         selected_service_title: normalized.selectedServiceTitle,
         selected_service_type: normalized.selectedServiceType,
@@ -314,6 +333,7 @@ export async function POST(request: Request) {
         height_comment: normalized.heightWork.heightComment,
         status: normalized.status,
         is_read: normalized.isRead,
+        source: normalized.source,
       })
       .select("*")
       .single();
@@ -361,20 +381,20 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
 
-    if (!profile || profile.role !== "client") {
-      return NextResponse.json({ error: "Доступ дозволено тільки для клієнтів." }, { status: 403 });
-    }
-
-    const { error } = await supabase
-      .from("requests")
-      .update({ status, is_read: true })
-      .eq("id", id)
-      .eq("client_id", authData.user.id);
+    if (!profile || profile.role !== "master") return NextResponse.json({ error: "Статус заявки змінює відповідний майстер." }, { status: 403 });
+    const confirmedPeriod = parsePeriods(payload.confirmedPeriod ? [payload.confirmedPeriod] : [])[0];
+    const { data: owned } = await supabase.from("master_profile_edits").select("master_id").eq("owner_id", authData.user.id);
+    const masterIds = (owned ?? []).map((item) => String(item.master_id));
+    if (!masterIds.length) return NextResponse.json({ error: "Профіль майстра не прив’язаний до цього акаунта." }, { status: 403 });
+    const updates: Record<string, unknown> = { status, is_read: true, updated_at: new Date().toISOString() };
+    if (confirmedPeriod) updates.confirmed_period = confirmedPeriod;
+    const { data, error } = await supabase.from("requests").update(updates).eq("id", id).in("master_id", masterIds).select("id").maybeSingle();
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ id, status });
+    if (!data) return NextResponse.json({ error: "Заявку не знайдено або доступ заборонено." }, { status: 404 });
+    return NextResponse.json({ id, status, confirmedPeriod });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Не вдалося оновити заявку." },

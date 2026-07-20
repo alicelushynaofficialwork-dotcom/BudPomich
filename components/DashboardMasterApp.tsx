@@ -39,21 +39,11 @@ import type { MasterProfile } from "@/lib/masters";
 import type { PortfolioItem } from "@/lib/portfolio";
 import { MasterReviewInbox } from "@/components/MasterReviewInbox";
 import {
-  bookingStorageKey,
   formatBookingDate,
-  getAvailabilityStorageKey,
-  getPeriodDateKeys,
-  getPeriodDayCount,
-  normalizeBookingRequest,
-  type AvailabilitySlots,
-  type BookingDatePeriod,
-  type BookingRequest,
 } from "@/lib/availability";
 import {
   mockRequestMessages,
-  mockRequests,
   requestMessagesStorageKey,
-  requestsStorageKey,
   requestStatusLabels,
   type MasterRequest,
   type RequestMessage,
@@ -697,57 +687,7 @@ function MasterMessagesWorkspace({
   );
 }
 
-function BookingDateRequests() {
-  const [bookings, setBookings] = useState<BookingRequest[]>([]);
-
-  useEffect(() => {
-    const loadBookings = window.setTimeout(() => {
-      try {
-        const parsed: unknown = JSON.parse(localStorage.getItem(bookingStorageKey) ?? "[]");
-        if (Array.isArray(parsed)) {
-          setBookings((parsed as BookingRequest[]).map(normalizeBookingRequest).filter((item) => item.masterId === currentMasterId));
-        }
-      } catch {
-        setBookings([]);
-      }
-    }, 0);
-    return () => window.clearTimeout(loadBookings);
-  }, []);
-
-  function save(next: BookingRequest[]) {
-    let all: BookingRequest[] = [];
-    try {
-      const parsed: unknown = JSON.parse(localStorage.getItem(bookingStorageKey) ?? "[]");
-      all = Array.isArray(parsed) ? (parsed as BookingRequest[]).map(normalizeBookingRequest) : [];
-    } catch {
-      all = [];
-    }
-    localStorage.setItem(bookingStorageKey, JSON.stringify([
-      ...next,
-      ...all.filter((item) => item.masterId !== currentMasterId),
-    ]));
-    setBookings(next);
-  }
-
-  function updateStatus(id: string, status: BookingRequest["status"], confirmedPeriod?: BookingDatePeriod) {
-    const next = bookings.map((item) => item.id === id ? { ...item, status, confirmedPeriod } : item);
-    save(next);
-    if (status !== "confirmed" || !confirmedPeriod) return;
-
-    const key = getAvailabilityStorageKey(currentMasterId);
-    let slots: AvailabilitySlots = {};
-    try {
-      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) slots = parsed as AvailabilitySlots;
-    } catch {
-      slots = {};
-    }
-    const confirmedSlots = getPeriodDateKeys(confirmedPeriod).reduce<AvailabilitySlots>((result, dateKey) => {
-      result[dateKey] = "busy";
-      return result;
-    }, {});
-    localStorage.setItem(key, JSON.stringify({ ...slots, ...confirmedSlots }));
-  }
+function BookingDateRequests({ bookings, onUpdate }: { bookings: MasterRequest[]; onUpdate: (id: string, status: RequestStatus, confirmedPeriod?: MasterRequest["confirmedPeriod"]) => void }) {
 
   if (!bookings.length) return null;
 
@@ -757,13 +697,14 @@ function BookingDateRequests() {
       <div className="dash-booking-date-list">
         {bookings.map((booking) => (
           <article key={booking.id}>
-            <header><div><strong>{booking.workType}</strong><p>{booking.description}</p></div><span>{booking.status === "confirmed" ? "Підтверджено" : booking.status === "declined" ? "Відхилено" : booking.status === "alternative_proposed" ? "Запропоновано іншу" : "Очікує рішення"}</span></header>
+            <header><div><strong>{booking.workType}</strong><p>{booking.description}</p><small>{booking.clientName || "Клієнт"}</small></div><span>{requestStatusLabels[booking.status]}</span></header>
             <h3>Бажані періоди клієнта</h3>
             <div className="dash-booking-date-options">
-              {booking.datePeriods.map((period, index) => <div key={`${period.startDate}-${period.endDate}`}><span><strong>{index + 1} період</strong>{period.startDate === period.endDate ? formatBookingDate(period.startDate) : `${formatBookingDate(period.startDate)} — ${formatBookingDate(period.endDate)}`}<small>{getPeriodDayCount(period)} дн.</small></span><button type="button" disabled={booking.status === "confirmed"} onClick={() => updateStatus(booking.id, "confirmed", period)}>{period.startDate === period.endDate ? "Підтвердити цю дату" : "Підтвердити цей період"}</button></div>)}
+              {booking.periods.map((period, index) => <div key={`${period.dateFrom}-${period.dateTo}`}><span><strong>{index + 1} період</strong>{period.dateFrom === period.dateTo ? formatBookingDate(period.dateFrom) : `${formatBookingDate(period.dateFrom)} — ${formatBookingDate(period.dateTo)}`}</span><button type="button" disabled={booking.status !== "new"} onClick={() => onUpdate(booking.id, "accepted", period)}>{period.dateFrom === period.dateTo ? "Підтвердити цю дату" : "Підтвердити цей період"}</button></div>)}
             </div>
-            {booking.confirmedPeriod && <p className="dash-confirmed-date">Підтверджений період: <strong>{booking.confirmedPeriod.startDate === booking.confirmedPeriod.endDate ? formatBookingDate(booking.confirmedPeriod.startDate) : `${formatBookingDate(booking.confirmedPeriod.startDate)} — ${formatBookingDate(booking.confirmedPeriod.endDate)}`}</strong>. Узгодьте точний час у чаті.</p>}
-            <footer><button type="button" onClick={() => updateStatus(booking.id, "alternative_proposed")}>Запропонувати іншу дату</button><a href="#messages">Написати клієнту</a><button className="danger" type="button" onClick={() => updateStatus(booking.id, "declined")}>Відхилити заявку</button></footer>
+            {booking.confirmedPeriod && <p className="dash-confirmed-date">Підтверджений період: <strong>{booking.confirmedPeriod.dateFrom === booking.confirmedPeriod.dateTo ? formatBookingDate(booking.confirmedPeriod.dateFrom) : `${formatBookingDate(booking.confirmedPeriod.dateFrom)} — ${formatBookingDate(booking.confirmedPeriod.dateTo)}`}</strong>. Узгодьте точний час у чаті.</p>}
+            {booking.attachments?.length ? <div className="dash-booking-attachments">{booking.attachments.map((file) => <a href={file.url} target="_blank" rel="noreferrer" key={file.id}><FileText size={15} /> {file.originalName} <small>{Math.ceil(file.sizeBytes / 1024)} КБ</small></a>)}</div> : null}
+            <footer><button type="button" onClick={() => onUpdate(booking.id, "accepted")}>Прийняти</button><a href="#messages">Написати клієнту</a><button className="danger" type="button" onClick={() => onUpdate(booking.id, "declined")}>Відхилити заявку</button></footer>
           </article>
         ))}
       </div>
@@ -1350,7 +1291,7 @@ function PortfolioPreview({ items }: { items: PortfolioItem[] }) {
 
 function RealDashboardMasterApp({ defaultRole = "master", master, masters, portfolioItems }: RealDashboardMasterAppProps) {
   const dashboardRole = defaultRole;
-  const [requests, setRequests] = useState<MasterRequest[]>(mockRequests.filter(requestMatchesMaster));
+  const [requests, setRequests] = useState<MasterRequest[]>([]);
   const [messages, setMessages] = useState<RequestMessage[]>([]);
   const [savedPortfolioItems, setSavedPortfolioItems] = useState<PortfolioItem[]>(portfolioItems);
   const [workspaceContext, setWorkspaceContext] = useState<MasterWorkspaceContext>("personal");
@@ -1361,19 +1302,18 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
   const [activePanel, setActivePanel] = useState<DashboardPanelKey | null>(null);
 
   useEffect(() => {
-    const localRequests = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
     const localMessages = JSON.parse(localStorage.getItem(requestMessagesStorageKey) ?? "[]") as RequestMessage[];
 
     fetch(`/api/requests?masterId=${currentMasterId}`)
       .then((response) => response.json())
       .then((result: { requests?: MasterRequest[] }) => {
         setRequests(
-          mergeById([...(result.requests ?? []), ...localRequests, ...mockRequests])
+          mergeById(result.requests ?? [])
             .filter(requestMatchesMaster)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
         );
       })
-      .catch(() => setRequests(mergeById([...localRequests, ...mockRequests]).filter(requestMatchesMaster)));
+      .catch(() => setRequests([]));
 
     fetch("/api/messages")
       .then((response) => response.json())
@@ -1392,20 +1332,12 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
       .catch(() => undefined);
   }, [portfolioItems]);
 
-  function updateRequestStatus(id: string, status: RequestStatus) {
-    setRequests((current) => {
-      const next = current.map((request) => (request.id === id ? { ...request, status, isRead: true } : request));
-      const stored = JSON.parse(localStorage.getItem(requestsStorageKey) ?? "[]") as MasterRequest[];
-      const storedOtherMasters = stored.filter((request) => request.masterId !== currentMasterId);
-      localStorage.setItem(requestsStorageKey, JSON.stringify([...storedOtherMasters, ...next]));
-      return next;
-    });
-
+  function updateRequestStatus(id: string, status: RequestStatus, confirmedPeriod?: MasterRequest["confirmedPeriod"]) {
     fetch("/api/requests", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    }).catch(() => undefined);
+      body: JSON.stringify({ id, status, confirmedPeriod }),
+    }).then((response) => { if (!response.ok) throw new Error("Не вдалося оновити заявку"); setRequests((current) => current.map((item) => item.id === id ? { ...item, status, confirmedPeriod: confirmedPeriod ?? item.confirmedPeriod, isRead: true } : item)); }).catch(() => undefined);
   }
 
   const requestIds = useMemo(() => new Set(requests.map((request) => request.id)), [requests]);
@@ -1471,7 +1403,7 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
           requests={requests}
         />
         <ProfileNotice percent={profilePercent} />
-        <BookingDateRequests />
+        <BookingDateRequests bookings={requests.filter((request) => request.source === "profile_calendar" || request.periods.length > 0)} onUpdate={updateRequestStatus} />
 
         <div className="dash-clean-workspace">
           <DashboardModuleGrid
