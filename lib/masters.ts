@@ -26,6 +26,14 @@ export type MasterProfile = {
   contacts?: { label: string; value: string; href: string }[];
   isProfileActive?: boolean;
   acceptsBudPomichRequests?: boolean;
+  verification?: {
+    identity?: boolean;
+    phone?: boolean;
+    email?: boolean;
+    documents?: boolean;
+    business?: boolean;
+  };
+  workConditions?: Array<"contract" | "estimate" | "warranty" | "material_advice" | "material_purchase" | "own_tools" | "cleanup" | "business_clients" | "site_visit">;
   works: {
     title: string;
     location: string;

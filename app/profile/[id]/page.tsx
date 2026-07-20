@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ProfileMasterView } from "@/components/ProfileMasterView";
+import { Suspense } from "react";
+import { PublicMasterProfile } from "@/components/PublicMasterProfile";
 import { getMasterById, masterProfiles } from "@/lib/masters";
 
 type ProfilePageProps = {
@@ -37,9 +38,11 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   }
 
   return (
-    <ProfileMasterView
-      master={master}
+    <Suspense fallback={null}>
+    <PublicMasterProfile
+      masterId={master.id}
       ownerSource={query?.from === "profile" ? "profile" : undefined}
     />
+    </Suspense>
   );
 }

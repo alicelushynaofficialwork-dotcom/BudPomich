@@ -2,14 +2,89 @@ export type AvailabilityStatus = "free" | "busy";
 
 export type AvailabilitySlots = Record<string, AvailabilityStatus>;
 
+export type BookingDatePeriod = {
+  startDate: string;
+  endDate: string;
+};
+
 export type BookingRequest = {
   id: string;
   masterId: string;
-  date: string;
+  datePeriods: BookingDatePeriod[];
+  confirmedPeriod?: BookingDatePeriod;
+  date?: string;
+  dateOptions?: string[];
+  confirmedDate?: string;
+  status?: "pending" | "confirmed" | "alternative_proposed" | "declined" | "cancelled";
   workType: string;
   description: string;
   createdAt: string;
 };
+
+export function normalizeBookingRequest(request: BookingRequest): BookingRequest {
+  const datePeriods = Array.isArray(request.datePeriods) && request.datePeriods.length
+    ? request.datePeriods
+    : Array.isArray(request.dateOptions) && request.dateOptions.length
+      ? groupConsecutiveDates(request.dateOptions)
+      : request.date ? [{ startDate: request.date, endDate: request.date }] : [];
+  const confirmedPeriod = request.confirmedPeriod ?? (request.confirmedDate
+    ? { startDate: request.confirmedDate, endDate: request.confirmedDate }
+    : undefined);
+  return { ...request, datePeriods, confirmedPeriod, status: request.status ?? "pending" };
+}
+
+function parseDateKey(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const timestamp = Date.UTC(year, month - 1, day);
+  const date = new Date(timestamp);
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return { timestamp, year, month, day };
+}
+
+export function groupConsecutiveDates(selectedDates: string[]): BookingDatePeriod[] {
+  const dates = Array.from(new Set(selectedDates))
+    .map((dateKey) => ({ dateKey, parsed: parseDateKey(dateKey) }))
+    .filter((item): item is { dateKey: string; parsed: NonNullable<ReturnType<typeof parseDateKey>> } => item.parsed !== null)
+    .sort((a, b) => a.parsed.timestamp - b.parsed.timestamp);
+  if (!dates.length) return [];
+
+  const periods: BookingDatePeriod[] = [];
+  let startDate = dates[0].dateKey;
+  let endDate = dates[0].dateKey;
+  let previousTimestamp = dates[0].parsed.timestamp;
+  for (const item of dates.slice(1)) {
+    if (item.parsed.timestamp - previousTimestamp === 86_400_000) {
+      endDate = item.dateKey;
+    } else {
+      periods.push({ startDate, endDate });
+      startDate = item.dateKey;
+      endDate = item.dateKey;
+    }
+    previousTimestamp = item.parsed.timestamp;
+  }
+  periods.push({ startDate, endDate });
+  return periods;
+}
+
+export function getPeriodDateKeys(period: BookingDatePeriod) {
+  const start = parseDateKey(period.startDate);
+  const end = parseDateKey(period.endDate);
+  if (!start || !end || start.timestamp > end.timestamp) return [];
+  const dates: string[] = [];
+  for (let timestamp = start.timestamp; timestamp <= end.timestamp; timestamp += 86_400_000) {
+    const date = new Date(timestamp);
+    dates.push(formatDateKey(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+  return dates;
+}
+
+export function getPeriodDayCount(period: BookingDatePeriod) {
+  return getPeriodDateKeys(period).length;
+}
 
 export type MasterMessage = {
   id: string;
@@ -47,26 +122,32 @@ const andriiAvailabilitySlots: AvailabilitySlots = {
 };
 
 export function getDefaultAvailabilitySlots(masterId: string): AvailabilitySlots {
-  if (masterId === "andrii-koval") return { ...andriiAvailabilitySlots };
-
   const seed = Array.from(masterId).reduce(
     (total, character) => total + character.charCodeAt(0),
     0,
   );
   const slots: AvailabilitySlots = {};
 
-  for (let day = 13; day <= 30; day += 1) {
-    const dateKey = formatDateKey(2026, 5, day);
-    const pattern = (day + seed) % 6;
+  const today = new Date();
+  for (let monthOffset = 0; monthOffset < 3; monthOffset += 1) {
+    const target = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+    const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
 
-    if (pattern === 0 || pattern === 1) {
-      slots[dateKey] = "busy";
-    } else if (pattern === 2 || pattern === 4 || day % 5 === 0) {
-      slots[dateKey] = "free";
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const dateKey = formatDateKey(target.getFullYear(), target.getMonth(), day);
+      const pattern = (day + target.getMonth() + seed) % 6;
+
+      if (pattern === 0 || pattern === 1) {
+        slots[dateKey] = "busy";
+      } else if (pattern === 2 || pattern === 4 || day % 5 === 0) {
+        slots[dateKey] = "free";
+      }
     }
   }
 
-  return slots;
+  return masterId === "andrii-koval"
+    ? { ...andriiAvailabilitySlots, ...slots }
+    : slots;
 }
 
 export const monthLabels = [
@@ -91,6 +172,23 @@ export function formatDateKey(year: number, month: number, day: number) {
 export function formatBookingDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   return `${day} ${monthLabels[month - 1].toLowerCase()} ${year}`;
+}
+
+export function getLocalDateKey(date: Date) {
+  return formatDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export function getNearestFreeDates(
+  slots: AvailabilitySlots,
+  from = new Date(),
+  limit = 4,
+) {
+  const fromKey = getLocalDateKey(from);
+  return Object.entries(slots)
+    .filter(([dateKey, status]) => status === "free" && dateKey >= fromKey)
+    .map(([dateKey]) => dateKey)
+    .sort()
+    .slice(0, limit);
 }
 
 export function getMonthGrid(year: number, month: number) {

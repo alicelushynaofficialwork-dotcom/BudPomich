@@ -21,6 +21,8 @@ export type EditableMasterProfile = Pick<
   | "experience"
   | "services"
   | "contacts"
+  | "verification"
+  | "workConditions"
 > & {
   isProfileActive?: boolean;
   acceptsBudPomichRequests?: boolean;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell, Heart, Search } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DemoCabinetSwitcher } from "@/components/demo/DemoCabinetSwitcher";
+import { ReviewForm } from "@/components/ReviewForm";
 import { LogoutButton } from "@/components/LogoutButton";
 import {
   DemoClientApiError,
@@ -21,6 +22,7 @@ import {
 import type { MasterProfile } from "@/lib/masters";
 import type { MasterRequest, RequestMessage } from "@/lib/requests";
 import { getProfileInitials } from "@/lib/profile";
+import type { MasterReview } from "@/lib/reviews";
 
 type ClientProfile = {
   fullName: string | null;
@@ -174,6 +176,8 @@ export function ClientCabinetApp({
   const [sessionExpired, setSessionExpired] = useState(false);
   const [realRequests, setRealRequests] = useState<MasterRequest[]>([]);
   const [realMessages, setRealMessages] = useState<RequestMessage[]>([]);
+  const [clientReviews, setClientReviews] = useState<MasterReview[]>([]);
+  const [reviewBookingId, setReviewBookingId] = useState("");
   const [requestsError, setRequestsError] = useState<string | null>(null);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [requestsLoading, setRequestsLoading] = useState(true);
@@ -271,6 +275,11 @@ export function ClientCabinetApp({
 
         const requests = (result as { requests?: MasterRequest[] }).requests ?? [];
         setRealRequests(requests);
+        const reviewsResponse = await fetch("/api/reviews?mine=1", { signal: controller.signal });
+        if (reviewsResponse.ok) {
+          const reviewsResult = await reviewsResponse.json() as { reviews?: MasterReview[] };
+          setClientReviews(reviewsResult.reviews ?? []);
+        }
 
         if (!activeRequestId && requests.length) {
           setActiveDialog(requests[0].id);
@@ -779,8 +788,9 @@ export function ClientCabinetApp({
                     <div><dt>Бюджет</dt><dd>{request.budget}</dd></div>
                   </dl>
                   {!isDemo && (
-                    <button onClick={() => setActiveView("messages")} type="button">Відкрити чат</button>
+                    <div className="client-request-actions"><button onClick={() => setActiveView("messages")} type="button">Відкрити чат</button>{request.statusValue === "completed" && !clientReviews.some((review) => review.bookingId === request.id) ? <button type="button" onClick={() => setReviewBookingId((current) => current === request.id ? "" : request.id)}>Залишити відгук</button> : null}{clientReviews.some((review) => review.bookingId === request.id) ? <span>Відгук опубліковано</span> : null}</div>
                   )}
+                  {!isDemo && reviewBookingId === request.id ? <ReviewForm bookingId={request.id} onCreated={(review) => { setClientReviews((current) => [review, ...current]); setReviewBookingId(""); }} /> : null}
                 </article>
               ))}
               {requestRows.length === 0 && (

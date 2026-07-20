@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "test:auth": "node --test tests/auth-*.test.mjs",
+    "test:availability": "node --experimental-strip-types --test tests/availability-periods.test.mjs",
     "start": "next start",
     "lint": "eslint"
   },

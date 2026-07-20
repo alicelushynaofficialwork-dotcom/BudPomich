@@ -1,11 +1,12 @@
 .public-profile-page {
+  --site-header-height: 82px;
   --profile-ink: #17231d;
   --profile-muted: #69746d;
   --profile-line: #dfe5e0;
   --profile-accent: #ff6b2c;
   min-height: 100vh;
   padding-bottom: 80px;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: #f5f7f4;
   color: var(--profile-ink);
   font-family: var(--font-geist-sans), Arial, sans-serif;
@@ -2097,7 +2098,8 @@ button.profile-portfolio-edit {
 
 .public-profile-action span,
 .public-profile-action strong,
-.public-profile-action a {
+.public-profile-action a,
+.public-profile-action button {
   display: block;
 }
 
@@ -2112,6 +2114,7 @@ button.profile-portfolio-edit {
 }
 
 .public-profile-action a,
+.public-profile-action > button,
 .public-services-panel > a {
   padding: 13px;
   border-radius: 11px;
@@ -2126,6 +2129,23 @@ button.profile-portfolio-edit {
   margin-top: 9px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: transparent;
+}
+
+.public-profile-action > button {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.public-profile-nearest {
+  margin-top: 10px;
+  display: block;
+  color: #d9e7df;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .public-follow-button {
@@ -2157,13 +2177,74 @@ button.profile-portfolio-edit {
   margin: 28px auto 0;
   padding: 30px;
   display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1fr) minmax(260px, 0.85fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 28px;
   align-items: start;
   border: 1px solid #dfe5e0;
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 12px 38px rgba(24, 42, 32, 0.06);
+}
+
+.client-booking-workflow {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.client-booking-columns {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(280px, 0.8fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.client-nearest-dates h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.client-nearest-dates > div {
+  display: flex;
+  gap: 8px;
+}
+
+.client-nearest-dates button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #b8d8c3;
+  border-radius: 999px;
+  background: #edf8f1;
+  color: #225f38;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.client-nearest-dates button[aria-pressed="true"] {
+  border-color: #173b2d;
+  box-shadow: 0 0 0 2px #173b2d;
+}
+
+.client-nearest-dates > p {
+  margin: 0;
+  color: #68746d;
+  font-size: 12px;
+}
+
+.client-date-counter {
+  margin-top: 10px;
+  display: block;
+  color: #31483b;
+  font-size: 12px;
+}
+
+.client-nearest-dates .client-selection-error {
+  margin-top: 8px;
+  color: #a33a20;
+  font-weight: 800;
 }
 
 .client-booking-copy h2 {
@@ -2183,6 +2264,7 @@ button.profile-portfolio-edit {
 .client-booking-legend {
   margin-top: 22px;
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
 }
 
@@ -2227,6 +2309,11 @@ button.profile-portfolio-edit {
   cursor: pointer;
 }
 
+.client-calendar-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .client-calendar-weekdays {
   margin-top: 14px;
 }
@@ -2247,7 +2334,12 @@ button.profile-portfolio-edit {
 }
 
 .client-calendar-grid button {
-  aspect-ratio: 1;
+  position: relative;
+  min-height: 62px;
+  padding: 5px 2px;
+  display: grid;
+  place-content: center;
+  gap: 3px;
   border: 1px solid #e0e6e2;
   border-radius: 7px;
   background: #f4f6f4;
@@ -2256,6 +2348,51 @@ button.profile-portfolio-edit {
   font: inherit;
   font-size: 11px;
   font-weight: 850;
+}
+
+.client-date-order {
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #173b2d;
+  color: #fff;
+  font-size: 9px;
+}
+
+.client-calendar-grid button small {
+  display: block;
+  font-size: 7px;
+  line-height: 1.05;
+  font-weight: 750;
+}
+
+.client-booking-legend i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: inline-block;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+.client-booking-legend i.free {
+  border-color: #4cb875;
+  background: #dff4e6;
+}
+
+.client-booking-legend i.busy {
+  border-color: #df6a55;
+  background: #fde6e1;
+}
+
+.client-booking-legend i.unset {
+  border-color: #dfe3e0;
+  background: #f0f2f0;
 }
 
 .client-calendar-grid button.free {
@@ -2275,12 +2412,24 @@ button.profile-portfolio-edit {
 }
 
 .client-calendar-grid button.unset {
-  opacity: 0.45;
+  border-color: #dfe3e0;
+  background: #f0f2f0;
+  color: #6f7973;
 }
 
 .client-calendar-grid button.selected {
-  outline: 3px solid rgba(255, 107, 44, 0.25);
-  border-color: #ff6b2c;
+  outline: 3px solid rgba(23, 59, 45, 0.2);
+  border-color: #173b2d;
+  box-shadow: inset 0 0 0 2px #173b2d;
+}
+
+.client-calendar-grid button.past {
+  opacity: 0.42;
+}
+
+.client-calendar-grid button.today small {
+  color: #173b2d;
+  font-weight: 950;
 }
 
 .client-booking-form {
@@ -2292,6 +2441,144 @@ button.profile-portfolio-edit {
   margin: 0 0 3px;
   font-size: 17px;
   line-height: 1.35;
+}
+
+.client-time-options {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border: 0;
+}
+
+.client-time-options legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.client-time-options label {
+  min-height: 48px;
+  padding: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8dfda;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.client-time-options label.selected {
+  border-color: #173b2d;
+  background: #edf5f0;
+}
+
+.client-time-options input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.client-time-options span,
+.client-time-options small {
+  display: block;
+}
+
+.client-time-options small {
+  margin-top: 2px;
+  color: #68746d;
+  font-size: 9px;
+}
+
+.client-booking-summary {
+  padding: 11px;
+  display: grid;
+  gap: 4px;
+  border-radius: 10px;
+  background: #f1f5f2;
+  color: #31483b;
+  font-size: 11px;
+}
+
+.client-selected-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.client-selected-dates > div {
+  min-height: 44px;
+  padding: 7px 8px 7px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #c8d7cd;
+  border-radius: 10px;
+  background: #edf5f0;
+  color: #244333;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.client-selected-dates button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 9px;
+  background: #fff;
+  color: #963b2b;
+  cursor: pointer;
+}
+
+.client-selected-dates > div > span {
+  display: grid;
+  gap: 2px;
+}
+
+.client-selected-dates > div > span small,
+.client-selected-dates > div > span em {
+  display: block;
+  font-style: normal;
+}
+
+.client-selected-dates > div > span em {
+  color: #68746d;
+  font-size: 10px;
+}
+
+.client-selected-dates button span {
+  font-size: 9px;
+}
+
+.client-selected-dates .client-period-summary {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-content: stretch;
+  background: #f1f5f2;
+}
+
+.client-period-summary span {
+  color: #526158;
+}
+
+.client-selected-dates > p {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: #68746d;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .client-booking-form label {
@@ -2636,13 +2923,431 @@ button.profile-portfolio-edit {
   text-align: center;
 }
 
+/* Professional public portfolio */
+.public-pro-hero {
+  max-width: 1240px;
+  padding: 0 24px 24px;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 20px;
+  align-items: start;
+  overflow: hidden;
+}
+
+.public-pro-cover {
+  grid-column: 1 / -1;
+  height: 112px;
+  margin: 0 -24px;
+  background: linear-gradient(120deg, #173b2d, #315d49 56%, #dce9e1);
+}
+
+.public-pro-hero.has-cover-image .public-pro-cover {
+  background: transparent;
+}
+
+.public-pro-person {
+  min-width: 0;
+  margin-top: -62px;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 20px;
+  align-items: end;
+}
+
+.public-pro-avatar {
+  position: relative;
+  overflow: hidden;
+  border: 5px solid #fff;
+  box-shadow: 0 8px 24px rgba(18, 39, 29, .14);
+}
+
+.public-pro-avatar img {
+  z-index: 0;
+}
+
+.public-pro-person .public-profile-intro {
+  padding-top: 64px;
+}
+
+.public-pro-person .public-profile-intro h1 {
+  font-size: clamp(30px, 4vw, 46px);
+}
+
+.public-pro-location {
+  margin-top: 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #657068;
+  font-size: 13px;
+}
+
+.public-pro-badges {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.public-pro-badges span {
+  min-height: 30px;
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: #e8f7ed;
+  color: #286340;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.public-pro-badges span.active::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2f9c5b;
+}
+
+.public-pro-stats {
+  grid-column: 1;
+  margin: 4px 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.public-pro-stats > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e7e3;
+  border-radius: 13px;
+  background: #fafcfb;
+}
+
+.public-pro-stats dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #768079;
+  font-size: 10px;
+}
+
+.public-pro-stats dt svg:first-child {
+  color: #db8614;
+}
+
+.public-pro-stats dd {
+  margin: 6px 0 0;
+  color: #173025;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.public-pro-stats dd small {
+  display: block;
+  color: #68746d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.public-pro-action {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  margin-top: -120px;
+  position: sticky;
+  top: 84px;
+  transform: translateY(-60px);
+}
+
+.public-pro-action .public-profile-nearest {
+  margin: -10px 0 14px;
+}
+
+.public-profile-tabs {
+  width: min(1240px, calc(100% - 40px));
+  min-height: 58px;
+  margin: 14px auto 0;
+  padding: 7px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #dfe5e0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 5px 20px rgba(24, 42, 32, .05);
+  backdrop-filter: blur(12px);
+}
+
+.public-profile-tabs button {
+  min-height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 11px;
+  color: #405048;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.public-profile-tabs button:hover,
+.public-profile-tabs button:focus-visible,
+.public-profile-tabs button[aria-selected="true"] {
+  background: #edf5f0;
+  color: #173b2d;
+}
+
+.public-profile-tabs button[aria-selected="true"] {
+  box-shadow: inset 0 0 0 1px #b8d0c1;
+}
+
+.public-profile-page [hidden] { display: none !important; }
+
+.public-profile-content {
+  width: min(1240px, calc(100% - 40px));
+  margin: 20px auto 0;
+  display: grid;
+  gap: 20px;
+}
+
+.public-profile-content > section,
+#booking-calendar {
+  scroll-margin-top: 76px;
+}
+
+.public-section-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: #66736c;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.public-portfolio-grid,
+.public-services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.public-project-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dfe5e0;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.public-project-image {
+  height: 290px;
+  position: relative;
+  overflow: hidden;
+  background: #e9eeea;
+}
+
+.public-project-image img {
+  object-fit: cover;
+}
+
+.public-project-image > span,
+.public-project-image > small {
+  padding: 7px 10px;
+  position: absolute;
+  bottom: 14px;
+  border-radius: 999px;
+  background: rgba(18, 39, 29, .86);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.public-project-image > span { left: 14px; }
+.public-project-image > small { right: 14px; display: flex; align-items: center; gap: 5px; }
+
+.public-project-body {
+  padding: 20px;
+}
+
+.public-project-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.public-project-heading span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #758078;
+  font-size: 11px;
+}
+
+.public-project-heading h3 {
+  margin: 6px 0 0;
+  font-size: 20px;
+}
+
+.public-project-heading > strong { flex: 0 0 auto; font-size: 16px; }
+.public-project-body > p { min-height: 42px; margin: 13px 0; color: #5f6b64; font-size: 12px; line-height: 1.55; }
+.public-project-meta { display: flex; flex-wrap: wrap; gap: 7px; }
+.public-project-meta span { padding: 6px 9px; border-radius: 999px; background: #f0f4f1; color: #506057; font-size: 10px; font-weight: 800; }
+.public-project-body > a { min-height: 44px; margin-top: 16px; display: inline-flex; align-items: center; gap: 7px; color: #d7551c; font-size: 12px; font-weight: 900; }
+
+.public-about-section dl {
+  margin: 22px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.public-about-section dl div { padding: 14px; border-radius: 13px; background: #f4f7f5; }
+.public-about-section dt { color: #768079; font-size: 10px; }
+.public-about-section dd { margin: 5px 0 0; color: #243a2f; font-size: 13px; font-weight: 850; }
+
+.public-services-grid article {
+  padding: 20px;
+  border: 1px solid #e1e6e2;
+  border-radius: 17px;
+  background: #fbfcfb;
+}
+
+.public-services-grid h3 { margin: 0 0 14px; font-size: 17px; }
+.public-services-grid strong { font-size: 18px; }
+.public-services-grid > article > span { margin-left: 5px; color: #748078; font-size: 11px; }
+.public-services-grid p { color: #647068; font-size: 11px; line-height: 1.5; }
+.public-services-grid button { min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; border: 1px solid #e0612a; border-radius: 10px; background: transparent; color: #c74e1b; cursor: pointer; font: inherit; font-size: 11px; font-weight: 850; }
+
+.public-review-rating { display: inline-flex; align-items: center; gap: 6px; color: #d88716; }
+.public-review-rating small { color: #758078; font-size: 10px; font-weight: 700; }
+.public-rating-summary { height: 8px; margin-bottom: 18px; overflow: hidden; border-radius: 999px; background: #ecefeb; }
+.public-rating-summary span { height: 100%; display: block; border-radius: inherit; background: #e09a28; }
+.public-booking-tab-panel > .client-booking-section { margin-top: 20px; }
+
+.public-empty-state {
+  min-height: 130px;
+  padding: 24px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  border: 1px dashed #cfd8d2;
+  border-radius: 16px;
+  color: #66736c;
+  text-align: center;
+}
+
+.public-empty-state p { margin: 0; }
+.public-mobile-actions { display: none; }
+
+.client-photo-placeholder {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed #cbd5ce;
+  border-radius: 11px;
+  color: #526158;
+}
+
+.client-photo-placeholder div { display: grid; gap: 3px; }
+.client-photo-placeholder span { font-size: 9px; line-height: 1.35; }
+.client-photo-placeholder button { min-height: 44px; border: 0; border-radius: 9px; background: #e8ece9; color: #77817b; font: inherit; font-size: 10px; }
+
+.client-message-details {
+  grid-column: 1 / -1;
+  padding-top: 20px;
+  border-top: 1px solid #e5eae6;
+}
+
+.client-message-details summary {
+  min-height: 68px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dfe5e0;
+  border-radius: 15px;
+  background: #f8faf8;
+  cursor: pointer;
+  list-style: none;
+}
+
+.client-message-details summary::-webkit-details-marker { display: none; }
+.client-message-details summary > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 11px; background: #fff0e9; color: #f25f25; }
+.client-message-details summary div { display: grid; gap: 3px; }
+.client-message-details summary small { color: #748078; font-size: 10px; }
+.client-message-details summary > b { min-height: 44px; padding: 0 15px; display: inline-flex; align-items: center; border-radius: 10px; background: #173b2d; color: #fff; font-size: 11px; }
+.client-message-details .client-message-form { margin-top: 12px; padding-top: 0; border-top: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+.public-profile-page a:focus-visible,
+.public-profile-page button:focus-visible,
+.public-profile-page summary:focus-visible,
+.public-profile-page input:focus-visible,
+.public-profile-page textarea:focus-visible {
+  outline: 3px solid rgba(232, 83, 10, .32);
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .public-pro-hero { grid-template-columns: minmax(0, 1fr); }
+  .public-pro-action { grid-column: 1; grid-row: auto; margin-top: 0; position: static; transform: none; }
+  .public-pro-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .public-pro-hero { width: calc(100% - 24px); padding: 0 16px 18px; }
+  .public-pro-cover { height: 82px; margin-inline: -16px; }
+  .public-pro-person { margin-top: -48px; grid-template-columns: 82px minmax(0, 1fr); gap: 13px; align-items: start; }
+  .public-pro-person .public-profile-intro { min-width: 0; padding-top: 51px; }
+  .public-pro-person .public-profile-intro h1 { font-size: 27px; overflow-wrap: anywhere; }
+  .public-pro-person .public-profile-intro > p { font-size: 9px; letter-spacing: .06em; }
+  .public-pro-location { grid-column: 1 / -1; }
+  .public-pro-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .public-profile-tabs { width: 100%; margin-top: 10px; overflow-x: auto; border-radius: 0; scrollbar-width: none; }
+  .public-profile-content { width: calc(100% - 24px); }
+  .public-portfolio-grid, .public-services-grid, .public-about-section dl { grid-template-columns: minmax(0, 1fr); }
+  .public-project-image { height: 220px; }
+  .public-project-heading { flex-direction: column; gap: 8px; }
+  .client-photo-placeholder { grid-template-columns: auto minmax(0, 1fr); }
+  .client-photo-placeholder button { grid-column: 1 / -1; width: 100%; }
+  .client-message-details summary { grid-template-columns: auto minmax(0, 1fr); }
+  .client-message-details summary > b { grid-column: 1 / -1; justify-content: center; }
+  .public-mobile-actions { padding: 10px 12px; position: sticky; bottom: 0; z-index: 40; display: grid; grid-template-columns: minmax(0, 1fr) 48px; gap: 8px; border-top: 1px solid #dfe5e0; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+  .public-mobile-actions button { min-height: 48px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 12px; background: #f15f24; color: #fff; cursor: pointer; font: inherit; font-size: 12px; font-weight: 900; }
+  .public-mobile-actions button:last-child { background: #173b2d; }
+}
+
+@media (max-width: 360px) {
+  .public-pro-person { grid-template-columns: 72px minmax(0, 1fr); }
+  .public-pro-avatar { width: 72px; height: 72px; }
+  .public-pro-stats { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 900px) {
   .client-booking-section {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .client-booking-copy {
-    grid-column: 1 / -1;
+    grid-column: auto;
+  }
+
+  .client-booking-columns {
+    grid-template-columns: 1fr 1fr;
   }
 
   .client-message-form {
@@ -2692,6 +3397,49 @@ button.profile-portfolio-edit {
   }
 
   .client-booking-copy {
+    grid-column: auto;
+  }
+
+  .client-booking-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .client-nearest-dates {
+    min-width: 0;
+  }
+
+  .client-nearest-dates > div {
+    margin-inline: -2px;
+    padding: 2px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .client-calendar-card {
+    padding: 12px;
+  }
+
+  .client-calendar-grid button {
+    min-height: 48px;
+    border-radius: 6px;
+    font-size: 10px;
+  }
+
+  .client-calendar-grid button small {
+    font-size: 6px;
+  }
+
+  .client-time-options {
+    grid-template-columns: 1fr;
+  }
+
+  .client-selected-dates {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 320px;
+  }
+
+  .client-selected-dates .client-period-summary,
+  .client-selected-dates > p {
     grid-column: auto;
   }
 

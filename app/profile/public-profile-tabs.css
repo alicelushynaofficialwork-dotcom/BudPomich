@@ -1,0 +1,112 @@
+.public-profile-tabs {
+  top: 0;
+  z-index: 30;
+  border-bottom-color: #d6ded8;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 5px 16px rgba(24, 42, 32, 0.07);
+}
+
+.public-profile-tabs button {
+  position: relative;
+}
+
+.public-profile-tabs button[aria-selected="true"] {
+  box-shadow: none;
+}
+
+.public-profile-tabs button[aria-selected="true"]::after {
+  content: "";
+  height: 3px;
+  position: absolute;
+  right: 12px;
+  bottom: 2px;
+  left: 12px;
+  border-radius: 999px;
+  background: var(--profile-accent);
+}
+
+.public-pro-person {
+  grid-template-columns: clamp(160px, 13vw, 176px) minmax(0, 1fr);
+  margin-top: -96px;
+}
+
+.public-pro-avatar,
+.public-profile-avatar.public-pro-avatar {
+  width: clamp(160px, 13vw, 176px);
+  height: clamp(160px, 13vw, 176px);
+  aspect-ratio: 1 / 1;
+  border-radius: 30px;
+  font-size: clamp(36px, 5vw, 52px);
+}
+
+.public-pro-avatar img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.public-pro-person .public-profile-intro {
+  padding-top: 92px;
+}
+
+@media (max-width: 900px) {
+  .public-pro-person {
+    grid-template-columns: 148px minmax(0, 1fr);
+    margin-top: -78px;
+  }
+
+  .public-pro-avatar,
+  .public-profile-avatar.public-pro-avatar {
+    width: 148px;
+    height: 148px;
+  }
+
+  .public-pro-person .public-profile-intro {
+    padding-top: 74px;
+  }
+}
+
+@media (max-width: 640px) {
+  .public-profile-page {
+    --site-header-height: 64px;
+  }
+
+  .public-profile-header {
+    min-height: 64px;
+  }
+
+  .public-profile-tabs {
+    top: 0;
+    max-height: 58px;
+    padding-block: 5px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+  }
+
+  .public-profile-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .public-profile-tabs button {
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .public-pro-person {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: -58px;
+  }
+
+  .public-pro-avatar,
+  .public-profile-avatar.public-pro-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 26px;
+    font-size: 36px;
+  }
+
+  .public-pro-person .public-profile-intro {
+    padding-top: 0;
+  }
+}

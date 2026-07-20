@@ -62,6 +62,20 @@ function parseServices(value: unknown): EditableMasterProfile["services"] {
   );
 }
 
+const workConditionValues = ["contract", "estimate", "warranty", "material_advice", "material_purchase", "own_tools", "cleanup", "business_clients", "site_visit"] as const;
+type WorkCondition = typeof workConditionValues[number];
+
+function parseWorkConditions(value: unknown): WorkCondition[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.filter((item): item is WorkCondition => typeof item === "string" && workConditionValues.includes(item as WorkCondition))));
+}
+
+function parseVerification(value: unknown): NonNullable<EditableMasterProfile["verification"]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const row = value as Record<string, unknown>;
+  return { identity: row.identity === true, phone: row.phone === true, email: row.email === true, documents: row.documents === true, business: row.business === true };
+}
+
 function validateProfile(value: unknown): EditableMasterProfile {
   if (!value || typeof value !== "object") {
     throw new Error("Некоректні дані профілю.");
@@ -112,6 +126,8 @@ function validateProfile(value: unknown): EditableMasterProfile {
     contacts: parseContacts(profile.contacts),
     isProfileActive: profile.isProfileActive !== false,
     acceptsBudPomichRequests: profile.acceptsBudPomichRequests !== false,
+    verification: parseVerification(profile.verification),
+    workConditions: parseWorkConditions(profile.workConditions),
   };
 }
 
@@ -137,6 +153,8 @@ type ProfileRow = {
   contacts?: unknown;
   is_profile_active?: boolean | null;
   accepts_budpomich_requests?: boolean | null;
+  verification?: unknown;
+  work_conditions?: unknown;
 };
 
 function mapProfileRow(data: ProfileRow): EditableMasterProfile {
@@ -162,6 +180,8 @@ function mapProfileRow(data: ProfileRow): EditableMasterProfile {
     contacts: parseContacts(data.contacts),
     isProfileActive: data.is_profile_active !== false,
     acceptsBudPomichRequests: data.accepts_budpomich_requests !== false,
+    verification: parseVerification(data.verification),
+    workConditions: parseWorkConditions(data.work_conditions),
   };
 }
 
@@ -182,7 +202,7 @@ export async function GET(request: Request) {
   }
 
   const extendedSelect =
-    "master_id, name, profession, city, district, description, full_description, avatar_url, cover_image_url, avatar_zoom, avatar_position_x, avatar_position_y, cover_zoom, cover_position_x, cover_position_y, price_from, experience, services, is_profile_active, accepts_budpomich_requests";
+    "master_id, name, profession, city, district, description, full_description, avatar_url, cover_image_url, avatar_zoom, avatar_position_x, avatar_position_y, cover_zoom, cover_position_x, cover_position_y, price_from, experience, services, is_profile_active, accepts_budpomich_requests, verification, work_conditions";
   const baseSelect =
     "master_id, name, profession, city, description, full_description, price_from, experience, services";
 
@@ -250,6 +270,7 @@ export async function POST(request: Request) {
         services: profile.services,
         is_profile_active: profile.isProfileActive,
         accepts_budpomich_requests: profile.acceptsBudPomichRequests,
+        work_conditions: profile.workConditions,
         updated_at: new Date().toISOString(),
       };
     const basePayload = {

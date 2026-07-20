@@ -24,6 +24,7 @@ import {
   Plus,
   ReceiptText,
   Settings,
+  Star,
   UserRound,
   UsersRound,
   WalletCards,
@@ -36,6 +37,18 @@ import { LogoutButton } from "@/components/LogoutButton";
 import type { DemoMasterState } from "@/lib/demo/types";
 import type { MasterProfile } from "@/lib/masters";
 import type { PortfolioItem } from "@/lib/portfolio";
+import { MasterReviewInbox } from "@/components/MasterReviewInbox";
+import {
+  bookingStorageKey,
+  formatBookingDate,
+  getAvailabilityStorageKey,
+  getPeriodDateKeys,
+  getPeriodDayCount,
+  normalizeBookingRequest,
+  type AvailabilitySlots,
+  type BookingDatePeriod,
+  type BookingRequest,
+} from "@/lib/availability";
 import {
   mockRequestMessages,
   mockRequests,
@@ -59,7 +72,7 @@ type DashboardMasterAppProps =
   | { mode: "demo"; initialData: DemoMasterState; stateWarning?: string };
 
 type CalendarStatus = "free" | "busy" | "pending";
-type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "finance";
+type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "reviews" | "finance";
 type DashboardRole = "master" | "client" | "contractor";
 type MasterWorkspaceContext = "personal" | "team";
 
@@ -72,6 +85,7 @@ const navItems = [
   { label: "Календар", panel: "calendar" as const, icon: CalendarDays },
   { label: "Кошториси та оплати", panel: "finance" as const, icon: WalletCards },
   { label: "Портфоліо", panel: "portfolio" as const, icon: ImagePlus },
+  { label: "Відгуки", panel: "reviews" as const, icon: Star },
   { label: "Публічний профіль", href: "/dashboard/profile", icon: UserRound },
   { label: "Налаштування", href: "/dashboard/profile#profile-contacts", icon: Settings },
 ];
@@ -683,6 +697,80 @@ function MasterMessagesWorkspace({
   );
 }
 
+function BookingDateRequests() {
+  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+
+  useEffect(() => {
+    const loadBookings = window.setTimeout(() => {
+      try {
+        const parsed: unknown = JSON.parse(localStorage.getItem(bookingStorageKey) ?? "[]");
+        if (Array.isArray(parsed)) {
+          setBookings((parsed as BookingRequest[]).map(normalizeBookingRequest).filter((item) => item.masterId === currentMasterId));
+        }
+      } catch {
+        setBookings([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(loadBookings);
+  }, []);
+
+  function save(next: BookingRequest[]) {
+    let all: BookingRequest[] = [];
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(bookingStorageKey) ?? "[]");
+      all = Array.isArray(parsed) ? (parsed as BookingRequest[]).map(normalizeBookingRequest) : [];
+    } catch {
+      all = [];
+    }
+    localStorage.setItem(bookingStorageKey, JSON.stringify([
+      ...next,
+      ...all.filter((item) => item.masterId !== currentMasterId),
+    ]));
+    setBookings(next);
+  }
+
+  function updateStatus(id: string, status: BookingRequest["status"], confirmedPeriod?: BookingDatePeriod) {
+    const next = bookings.map((item) => item.id === id ? { ...item, status, confirmedPeriod } : item);
+    save(next);
+    if (status !== "confirmed" || !confirmedPeriod) return;
+
+    const key = getAvailabilityStorageKey(currentMasterId);
+    let slots: AvailabilitySlots = {};
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) slots = parsed as AvailabilitySlots;
+    } catch {
+      slots = {};
+    }
+    const confirmedSlots = getPeriodDateKeys(confirmedPeriod).reduce<AvailabilitySlots>((result, dateKey) => {
+      result[dateKey] = "busy";
+      return result;
+    }, {});
+    localStorage.setItem(key, JSON.stringify({ ...slots, ...confirmedSlots }));
+  }
+
+  if (!bookings.length) return null;
+
+  return (
+    <section className="dash-panel dash-booking-date-requests" aria-label="Заявки з варіантами дат">
+      <div className="dash-panel-head"><div><h2>Заявки на вільні дати</h2><p>Підтвердіть один із запропонованих клієнтом варіантів</p></div></div>
+      <div className="dash-booking-date-list">
+        {bookings.map((booking) => (
+          <article key={booking.id}>
+            <header><div><strong>{booking.workType}</strong><p>{booking.description}</p></div><span>{booking.status === "confirmed" ? "Підтверджено" : booking.status === "declined" ? "Відхилено" : booking.status === "alternative_proposed" ? "Запропоновано іншу" : "Очікує рішення"}</span></header>
+            <h3>Бажані періоди клієнта</h3>
+            <div className="dash-booking-date-options">
+              {booking.datePeriods.map((period, index) => <div key={`${period.startDate}-${period.endDate}`}><span><strong>{index + 1} період</strong>{period.startDate === period.endDate ? formatBookingDate(period.startDate) : `${formatBookingDate(period.startDate)} — ${formatBookingDate(period.endDate)}`}<small>{getPeriodDayCount(period)} дн.</small></span><button type="button" disabled={booking.status === "confirmed"} onClick={() => updateStatus(booking.id, "confirmed", period)}>{period.startDate === period.endDate ? "Підтвердити цю дату" : "Підтвердити цей період"}</button></div>)}
+            </div>
+            {booking.confirmedPeriod && <p className="dash-confirmed-date">Підтверджений період: <strong>{booking.confirmedPeriod.startDate === booking.confirmedPeriod.endDate ? formatBookingDate(booking.confirmedPeriod.startDate) : `${formatBookingDate(booking.confirmedPeriod.startDate)} — ${formatBookingDate(booking.confirmedPeriod.endDate)}`}</strong>. Узгодьте точний час у чаті.</p>}
+            <footer><button type="button" onClick={() => updateStatus(booking.id, "alternative_proposed")}>Запропонувати іншу дату</button><a href="#messages">Написати клієнту</a><button className="danger" type="button" onClick={() => updateStatus(booking.id, "declined")}>Відхилити заявку</button></footer>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RequestsPanel({
   requests,
   onStatusChange,
@@ -1074,6 +1162,7 @@ function DashboardPanelModal({
     messages: { title: "Чат з клієнтами", eyebrow: "Повідомлення" },
     clients: { title: "Клієнти", eyebrow: "CRM" },
     portfolio: { title: "Портфоліо", eyebrow: "Публічний профіль" },
+    reviews: { title: "Відгуки", eyebrow: "Довіра клієнтів" },
     finance: { title: "Фінанси і документи", eyebrow: "Облік" },
   };
 
@@ -1108,6 +1197,7 @@ function DashboardPanelModal({
           {panel === "messages" && <MessagesPanel messages={messages} requests={requests} />}
           {panel === "clients" && <ClientsPanel requests={requests} />}
           {panel === "portfolio" && <PortfolioPreview items={portfolioItems} />}
+          {panel === "reviews" && <MasterReviewInbox masterId={master.id} />}
           {panel === "finance" && <FinanceDocumentsPanel portfolioItems={portfolioItems} requests={requests} />}
         </div>
       </div>
@@ -1381,6 +1471,7 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
           requests={requests}
         />
         <ProfileNotice percent={profilePercent} />
+        <BookingDateRequests />
 
         <div className="dash-clean-workspace">
           <DashboardModuleGrid
