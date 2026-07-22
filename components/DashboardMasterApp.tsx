@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
@@ -42,8 +42,6 @@ import {
   formatBookingDate,
 } from "@/lib/availability";
 import {
-  mockRequestMessages,
-  requestMessagesStorageKey,
   requestStatusLabels,
   type MasterRequest,
   type RequestMessage,
@@ -65,8 +63,6 @@ type CalendarStatus = "free" | "busy" | "pending";
 type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "reviews" | "finance";
 type DashboardRole = "master" | "client" | "contractor";
 type MasterWorkspaceContext = "personal" | "team";
-
-const currentMasterId = "andrey-ponomarenko";
 
 const navItems = [
   { label: "Повідомлення", panel: "messages" as const, icon: MessageSquare, active: true },
@@ -90,10 +86,6 @@ const statusClass: Record<RequestStatus, string> = {
 
 function mergeById<T extends { id: string }>(items: T[]) {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
-}
-
-function requestMatchesMaster(request: MasterRequest) {
-  return request.masterId === currentMasterId;
 }
 
 function getProfileCompletion(master: MasterProfile, portfolioCount: number) {
@@ -471,6 +463,7 @@ function MasterMessagesWorkspace({
   selectedRequestId,
   onSelectRequest,
   onOpenPanel,
+  onMessageSent,
 }: {
   master: MasterProfile;
   requests: MasterRequest[];
@@ -478,7 +471,11 @@ function MasterMessagesWorkspace({
   selectedRequestId: string | null;
   onSelectRequest: (id: string) => void;
   onOpenPanel: (panel: DashboardPanelKey) => void;
+  onMessageSent: (message: RequestMessage) => void;
 }) {
+  const [messageBody, setMessageBody] = useState("");
+  const [messagePending, setMessagePending] = useState(false);
+  const [messageError, setMessageError] = useState("");
   const requestById = new Map(requests.map((request) => [request.id, request]));
   const conversations = requests.map((request) => {
     const requestMessages = messages
@@ -509,6 +506,28 @@ function MasterMessagesWorkspace({
         selectedMessages.filter((message) => !message.isRead && message.senderRole === "client").length,
       )
     : "Нова заявка";
+
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRequest || !messageBody.trim() || messagePending) return;
+    setMessagePending(true);
+    setMessageError("");
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: selectedRequest.id, body: messageBody.trim() }),
+      });
+      const result = (await response.json()) as { message?: RequestMessage; error?: string };
+      if (!response.ok || !result.message) throw new Error(result.error || "Не вдалося надіслати повідомлення.");
+      onMessageSent(result.message);
+      setMessageBody("");
+    } catch (error) {
+      setMessageError(error instanceof Error ? error.message : "Не вдалося надіслати повідомлення.");
+    } finally {
+      setMessagePending(false);
+    }
+  }
 
   return (
     <section className="dash-inbox-shell" id="messages" aria-label="Повідомлення майстра">
@@ -640,13 +659,14 @@ function MasterMessagesWorkspace({
           </article>
         </div>
 
-        <form className="dash-chat-composer">
+        <form className="dash-chat-composer" onSubmit={sendMessage}>
           <button type="button" aria-label="Додати файл">
             <FileText size={18} />
           </button>
-          <input placeholder="Напишіть повідомлення клієнту..." />
-          <button type="button">Надіслати</button>
+          <input onChange={(event) => setMessageBody(event.target.value)} placeholder="Напишіть повідомлення клієнту..." value={messageBody} />
+          <button disabled={messagePending || !selectedRequest || !messageBody.trim()} type="submit">{messagePending ? "Надсилаємо…" : "Надіслати"}</button>
         </form>
+        {messageError && <p className="register-error" role="alert">{messageError}</p>}
       </main>
 
       <aside className="dash-project-column">
@@ -1302,14 +1322,12 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
   const [activePanel, setActivePanel] = useState<DashboardPanelKey | null>(null);
 
   useEffect(() => {
-    const localMessages = JSON.parse(localStorage.getItem(requestMessagesStorageKey) ?? "[]") as RequestMessage[];
-
-    fetch(`/api/requests?masterId=${currentMasterId}`)
+    fetch("/api/requests")
       .then((response) => response.json())
       .then((result: { requests?: MasterRequest[] }) => {
         setRequests(
           mergeById(result.requests ?? [])
-            .filter(requestMatchesMaster)
+            .filter((request) => request.masterId === master.id)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
         );
       })
@@ -1318,11 +1336,11 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
     fetch("/api/messages")
       .then((response) => response.json())
       .then((result: { messages?: RequestMessage[] }) => {
-        setMessages(mergeById([...(result.messages ?? []), ...localMessages, ...mockRequestMessages]));
+        setMessages(mergeById(result.messages ?? []));
       })
-      .catch(() => setMessages(mergeById([...localMessages, ...mockRequestMessages])));
+      .catch(() => setMessages([]));
 
-    fetch(`/api/portfolio?masterId=${currentMasterId}`)
+    fetch(`/api/portfolio?masterId=${encodeURIComponent(master.id)}`)
       .then((response) => response.json())
       .then((result: { items?: PortfolioItem[] }) => {
         if (result.items?.length) {
@@ -1330,7 +1348,7 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
         }
       })
       .catch(() => undefined);
-  }, [portfolioItems]);
+  }, [master.id, portfolioItems]);
 
   function updateRequestStatus(id: string, status: RequestStatus, confirmedPeriod?: MasterRequest["confirmedPeriod"]) {
     fetch("/api/requests", {
@@ -1389,6 +1407,7 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
           <MasterMessagesWorkspace
             master={master}
             messages={masterMessages}
+            onMessageSent={(message) => setMessages((current) => mergeById([...current, message]))}
             onOpenPanel={setActivePanel}
             onSelectRequest={setSelectedRequestId}
             requests={requests}

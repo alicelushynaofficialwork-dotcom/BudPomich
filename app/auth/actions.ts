@@ -22,6 +22,11 @@ function validatePassword(password: string) {
   return password.length >= 8;
 }
 
+function getSiteUrl() {
+  const productionUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://bud-pomich.vercel.app";
+  return (process.env.NODE_ENV === "production" ? productionUrl : "http://localhost:3000").replace(/\/$/, "");
+}
+
 export async function signInWithEmail(
   _state: AuthActionState,
   formData: FormData,
@@ -77,7 +82,7 @@ export async function signUpWithEmail(
   }
 
   if (!hasAgreement) {
-    return { error: "Потрібна згода з умовами та політикою конфіденційності." };
+    return { error: "Підтвердьте згоду з умовами використання та політикою конфіденційності." };
   }
 
   const supabase = await createServerSupabaseClient();
@@ -89,6 +94,7 @@ export async function signUpWithEmail(
     email,
     password,
     options: {
+      emailRedirectTo: `${getSiteUrl()}/auth/confirm`,
       data: {
         full_name: fullName,
         phone,
@@ -116,10 +122,7 @@ export async function signUpWithEmail(
 
   revalidatePath("/", "layout");
   return {
-    notice:
-      data.session
-        ? "Акаунт створено. Можна переходити в кабінет."
-        : "Акаунт створено. Перевірте пошту для підтвердження реєстрації.",
+    notice: "Ми надіслали лист на вказану електронну адресу. Підтвердьте email, щоб активувати акаунт.",
   };
 }
 

@@ -10,8 +10,6 @@ import {
 } from "@/lib/availability";
 import { getMasterById } from "@/lib/masters";
 
-const currentMasterId = "andrey-ponomarenko";
-
 function formatMessageTime(value: string) {
   return new Intl.DateTimeFormat("uk-UA", {
     day: "2-digit",
@@ -21,7 +19,7 @@ function formatMessageTime(value: string) {
   }).format(new Date(value));
 }
 
-export function DashboardMessages() {
+export function DashboardMessages({ masterId: currentMasterId = "" }: { masterId?: string }) {
   const [messages, setMessages] = useState<MasterMessage[]>([]);
   const [followedMasters, setFollowedMasters] = useState<string[]>([]);
   const [activeMasterId, setActiveMasterId] = useState("");
@@ -78,7 +76,7 @@ export function DashboardMessages() {
         const rightTime = new Date(right.thread.at(-1)?.createdAt ?? 0).getTime();
         return rightTime - leftTime;
       });
-  }, [messages]);
+  }, [currentMasterId, messages]);
 
   const selectedMasterId = activeMasterId || conversations[0]?.masterId || "";
   const activeConversation =

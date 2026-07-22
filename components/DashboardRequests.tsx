@@ -15,7 +15,6 @@ import {
   type RequestStatus,
 } from "@/lib/requests";
 
-const currentMasterId = "andrey-ponomarenko";
 type DashboardRequestView = "new" | "messages" | "files" | "multi" | "incomplete" | "in_progress";
 
 const dashboardRequestViewLabels: Record<DashboardRequestView | "all", string> = {
@@ -44,7 +43,7 @@ function formatCoefficientType(value: string) {
   return "Не знає / потрібно уточнити";
 }
 
-export function DashboardRequestShortcuts() {
+export function DashboardRequestShortcuts({ masterId: currentMasterId = "" }: { masterId?: string }) {
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests);
   const [messages, setMessages] = useState<RequestMessage[]>(mockRequestMessages);
 
@@ -71,7 +70,7 @@ export function DashboardRequestShortcuts() {
         setMessages(mergeById([...(result.messages ?? mockRequestMessages), ...localMessages]));
       })
       .catch(() => setMessages(mergeById([...mockRequestMessages, ...localMessages])));
-  }, []);
+  }, [currentMasterId]);
 
   const newRequests = requests.filter((request) => request.status === "new").length;
   const unreadMessages = messages.filter((message) => !message.isRead && message.senderRole === "client").length;
@@ -130,7 +129,7 @@ export function DashboardRequestShortcuts() {
   );
 }
 
-export function DashboardRequests() {
+export function DashboardRequests({ masterId: currentMasterId = "" }: { masterId?: string }) {
   const [requests, setRequests] = useState<MasterRequest[]>(mockRequests);
   const [messages, setMessages] = useState<RequestMessage[]>(mockRequestMessages);
   const [activeRequestId, setActiveRequestId] = useState("");
@@ -168,7 +167,7 @@ export function DashboardRequests() {
         setMessages(mergeById([...(result.messages ?? mockRequestMessages), ...localMessages]));
       })
       .catch(() => setMessages(mergeById([...mockRequestMessages, ...localMessages])));
-  }, []);
+  }, [currentMasterId]);
 
   useEffect(() => {
     function handleRequestView(event: Event) {

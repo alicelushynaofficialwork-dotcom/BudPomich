@@ -4,6 +4,7 @@ import {
   normalizeMasterServices,
 } from "@/lib/master-profile-edit";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 
 const heroDescriptionMaxLength = 250;
 
@@ -243,14 +244,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ profile, persistence: "browser" });
     }
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
+    const resolved = await resolveAuthenticatedMasterIdentity(supabase);
+    if (!resolved.ok) {
       return NextResponse.json({ error: "РЈРІС–Р№РґС–С‚СЊ РІ Р°РєР°СѓРЅС‚, С‰РѕР± Р·Р±РµСЂРµРіС‚Рё РїСЂРѕС„С–Р»СЊ." }, { status: 401 });
     }
 
     const extendedPayload = {
-        master_id: profile.id,
-        owner_id: authData.user.id,
+        master_id: resolved.identity.masterSlug,
+        owner_id: resolved.identity.authUserId,
         name: profile.name,
         profession: profile.profession,
         city: profile.city,
@@ -274,8 +275,8 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       };
     const basePayload = {
-        master_id: profile.id,
-        owner_id: authData.user.id,
+        master_id: resolved.identity.masterSlug,
+        owner_id: resolved.identity.authUserId,
         name: profile.name,
         profession: profile.profession,
         city: profile.city,

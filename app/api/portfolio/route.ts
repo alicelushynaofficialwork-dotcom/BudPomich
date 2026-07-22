@@ -5,6 +5,7 @@ import {
   slugifyPortfolioTitle,
 } from "@/lib/portfolio";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 
 type PortfolioPayload = {
   id?: unknown;
@@ -356,14 +357,14 @@ export async function POST(request: Request) {
       });
     }
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
+    const resolved = await resolveAuthenticatedMasterIdentity(supabase);
+    if (!resolved.ok) {
       return NextResponse.json({ error: "РЈРІС–Р№РґС–С‚СЊ РІ Р°РєР°СѓРЅС‚, С‰РѕР± РґРѕРґР°С‚Рё СЂРѕР±РѕС‚Сѓ." }, { status: 401 });
     }
 
     const basePayload = {
-      owner_id: authData.user.id,
-      master_id: payload.masterId,
+      owner_id: resolved.identity.authUserId,
+      master_id: resolved.identity.masterSlug,
       title: payload.title,
       description: payload.description,
       city: payload.city,
@@ -460,13 +461,13 @@ export async function PUT(request: Request) {
       });
     }
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
+    const resolved = await resolveAuthenticatedMasterIdentity(supabase);
+    if (!resolved.ok) {
       return NextResponse.json({ error: "РЈРІС–Р№РґС–С‚СЊ РІ Р°РєР°СѓРЅС‚, С‰РѕР± РѕРЅРѕРІРёС‚Рё СЂРѕР±РѕС‚Сѓ." }, { status: 401 });
     }
 
     const basePayload = {
-      owner_id: authData.user.id,
+      owner_id: resolved.identity.authUserId,
       title: payload.title,
       description: payload.description,
       city: payload.city,
@@ -479,7 +480,7 @@ export async function PUT(request: Request) {
       .from("portfolio_items")
       .update({ ...basePayload, meta: payload.meta })
       .eq("id", payload.id)
-      .eq("master_id", payload.masterId)
+      .eq("master_id", resolved.identity.masterSlug)
       .select(extendedSelect)
       .single() as QueryResult<PortfolioItemRow>;
 
@@ -488,7 +489,7 @@ export async function PUT(request: Request) {
         .from("portfolio_items")
         .update(basePayload)
         .eq("id", payload.id)
-        .eq("master_id", payload.masterId)
+        .eq("master_id", resolved.identity.masterSlug)
         .select(baseSelect)
         .single() as QueryResult<PortfolioItemRow>;
     }

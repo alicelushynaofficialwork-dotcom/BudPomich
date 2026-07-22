@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { PortfolioEditLoader } from "@/components/PortfolioEditLoader";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 
 export const metadata: Metadata = {
   title: "Редагувати роботу | Кабінет БудПоміч",
@@ -17,6 +19,9 @@ export default async function EditPortfolioPage({
   params,
 }: EditPortfolioPageProps) {
   const { id } = await params;
+  const supabase = await createServerSupabaseClient();
+  const resolved = supabase ? await resolveAuthenticatedMasterIdentity(supabase) : null;
+  if (!resolved?.ok) return <main className="portfolio-page"><div className="dash-empty">Публічний профіль майстра ще не підключено до акаунта.</div></main>;
 
   return (
     <main className="portfolio-page">
@@ -45,7 +50,7 @@ export default async function EditPortfolioPage({
         <span>Зміни з&apos;являться у публічному профілі</span>
       </section>
 
-      <PortfolioEditLoader itemId={id} />
+      <PortfolioEditLoader itemId={id} masterId={resolved.identity.masterSlug} />
     </main>
   );
 }

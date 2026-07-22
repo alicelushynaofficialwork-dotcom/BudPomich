@@ -3,13 +3,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft, Plus } from "lucide-react";
 import { PortfolioManager } from "@/components/PortfolioManager";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 
 export const metadata: Metadata = {
   title: "Портфоліо | Кабінет БудПоміч",
   description: "Керування роботами у портфоліо майстра.",
 };
 
-export default function PortfolioPage() {
+export default async function PortfolioPage() {
+  const supabase = await createServerSupabaseClient();
+  const resolved = supabase ? await resolveAuthenticatedMasterIdentity(supabase) : null;
+  if (!resolved?.ok) return <main className="portfolio-page"><div className="dash-empty">Публічний профіль майстра ще не підключено до акаунта.</div></main>;
   return (
     <main className="portfolio-page">
       <header className="portfolio-header">
@@ -43,7 +48,7 @@ export default function PortfolioPage() {
       </section>
 
       <div className="portfolio-list">
-        <PortfolioManager />
+        <PortfolioManager masterId={resolved.identity.masterSlug} />
       </div>
     </main>
   );

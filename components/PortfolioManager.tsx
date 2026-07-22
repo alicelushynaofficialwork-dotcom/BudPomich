@@ -25,7 +25,6 @@ import {
   portfolioStorageKey,
 } from "@/lib/portfolio";
 
-const masterId = "andrey-ponomarenko";
 const monthNames = [
   "січень",
   "лютий",
@@ -41,7 +40,7 @@ const monthNames = [
   "грудень",
 ];
 
-export function PortfolioManager() {
+export function PortfolioManager({ masterId = "" }: { masterId?: string }) {
   const [savedItems, setSavedItems] = useState<PortfolioItem[]>([]);
   const [yearFilter, setYearFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
@@ -71,7 +70,7 @@ export function PortfolioManager() {
       .catch(() => undefined);
 
     return () => window.clearTimeout(readItems);
-  }, []);
+  }, [masterId]);
 
   const items = useMemo(() => {
     const defaults = defaultPortfolioItems.filter(
@@ -81,7 +80,7 @@ export function PortfolioManager() {
       [...defaults, ...savedItems].map((item) => [item.id, item]),
     );
     return Array.from(map.values());
-  }, [savedItems]);
+  }, [masterId, savedItems]);
 
   const years = useMemo(
     () => Array.from(new Set(items.map((item) => getPortfolioPeriod(item).year))).sort((a, b) => b - a),

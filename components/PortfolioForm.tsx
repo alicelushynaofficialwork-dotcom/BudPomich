@@ -24,7 +24,6 @@ import {
   portfolioStorageKey,
 } from "@/lib/portfolio";
 
-const currentMasterId = "andrey-ponomarenko";
 const maxProjectPhotoSize = 5 * 1024 * 1024;
 const allowedProjectPhotoTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const allowedDocumentTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -54,8 +53,10 @@ function createLine(id = crypto.randomUUID()): PortfolioWorkLine {
 
 export function PortfolioForm({
   initialItem,
+  masterId,
 }: {
   initialItem?: PortfolioItem;
+  masterId?: string;
 }) {
   const isEditing = Boolean(initialItem);
   const [title, setTitle] = useState(initialItem?.title ?? "");
@@ -302,7 +303,7 @@ export function PortfolioForm({
     const payload = {
       id: initialItem?.id,
       createdAt: initialItem?.createdAt,
-      masterId: initialItem?.masterId ?? currentMasterId,
+      masterId: masterId ?? initialItem?.masterId ?? "",
       title: formData.get("title"),
       description: formData.get("description"),
       city: formData.get("city"),

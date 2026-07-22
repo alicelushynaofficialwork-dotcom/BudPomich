@@ -9,7 +9,7 @@ type LoginView = "login" | "reset";
 
 const initialState: AuthActionState = {};
 
-export function LoginForm() {
+export function LoginForm({ externalError }: { externalError?: string }) {
   const [view, setView] = useState<LoginView>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [loginState, loginAction, loginPending] = useActionState(signInWithEmail, initialState);
@@ -105,7 +105,9 @@ export function LoginForm() {
           </button>
         </div>
 
-        {loginState.error && <p className="login-form-error">{loginState.error}</p>}
+        {(loginState.error || externalError) && (
+          <p className="login-form-error" role="alert">{loginState.error || externalError}</p>
+        )}
 
         <button className="login-primary-button" disabled={loginPending} type="submit">
           {loginPending ? "Входимо..." : "Увійти"}

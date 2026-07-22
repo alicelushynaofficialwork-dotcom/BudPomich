@@ -4,23 +4,22 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { ProfileEditForm } from "@/components/ProfileEditForm";
 import { getMasterById } from "@/lib/masters";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 
 export const metadata: Metadata = {
   title: "Редагувати профіль | Кабінет БудПоміч",
   description: "Редагування публічного профілю майстра.",
 };
 
-type DashboardProfilePageProps = {
-  searchParams?: Promise<{ masterId?: string }>;
-};
+export default async function DashboardProfilePage() {
+  const supabase = await createServerSupabaseClient();
+  const resolved = supabase ? await resolveAuthenticatedMasterIdentity(supabase) : null;
+  const master = resolved?.ok ? getMasterById(resolved.identity.masterSlug) : null;
 
-export default async function DashboardProfilePage({ searchParams }: DashboardProfilePageProps) {
-  const params = await searchParams;
-  const master =
-    getMasterById(params?.masterId ?? "andrey-ponomarenko") ??
-    getMasterById("andrey-ponomarenko");
-
-  if (!master) return null;
+  if (!master) {
+    return <main className="profile-editor-page"><div className="dash-empty">Публічний профіль майстра ще не підключено до акаунта.</div></main>;
+  }
 
   return (
     <main className="profile-editor-page">

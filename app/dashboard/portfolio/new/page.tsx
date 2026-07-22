@@ -3,13 +3,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { PortfolioForm } from "@/components/PortfolioForm";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 
 export const metadata: Metadata = {
   title: "Додати роботу | Кабінет БудПоміч",
   description: "Додавання роботи до портфоліо майстра.",
 };
 
-export default function NewPortfolioItemPage() {
+export default async function NewPortfolioItemPage() {
+  const supabase = await createServerSupabaseClient();
+  const resolved = supabase ? await resolveAuthenticatedMasterIdentity(supabase) : null;
+  if (!resolved?.ok) return <main className="portfolio-page"><div className="dash-empty">Публічний профіль майстра ще не підключено до акаунта.</div></main>;
   return (
     <main className="portfolio-page">
       <header className="portfolio-header">
@@ -40,7 +45,7 @@ export default function NewPortfolioItemPage() {
         <span>Чернетка зберігається після відправлення</span>
       </section>
 
-      <PortfolioForm />
+      <PortfolioForm masterId={resolved.identity.masterSlug} />
     </main>
   );
 }

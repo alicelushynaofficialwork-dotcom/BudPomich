@@ -14,7 +14,18 @@ const benefits = [
   "Календар зайнятості онлайн",
 ];
 
-export default function LoginPage() {
+const confirmationErrors: Record<string, string> = {
+  confirmation_failed: "Не вдалося підтвердити електронну адресу. Посилання могло застаріти або вже бути використаним.",
+  confirmation_session_missing: "Підтвердження завершено, але сесію не знайдено. Увійдіть за допомогою email і пароля.",
+};
+
+type LoginPageProps = {
+  searchParams?: Promise<{ error?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const query = await searchParams;
+  const externalError = query?.error ? confirmationErrors[query.error] : undefined;
   return (
     <main className="auth-page login-page">
       <header className="login-site-header">
@@ -83,7 +94,7 @@ export default function LoginPage() {
           </aside>
 
           <section className="login-form-panel" aria-label="Вхід у БудПомiч">
-            <LoginForm />
+            <LoginForm externalError={externalError} />
           </section>
         </div>
       </section>

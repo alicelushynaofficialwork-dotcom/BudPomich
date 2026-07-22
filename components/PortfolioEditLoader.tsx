@@ -9,9 +9,7 @@ import {
   portfolioStorageKey,
 } from "@/lib/portfolio";
 
-const currentMasterId = "andrey-ponomarenko";
-
-export function PortfolioEditLoader({ itemId }: { itemId: string }) {
+export function PortfolioEditLoader({ itemId, masterId: currentMasterId = "" }: { itemId: string; masterId?: string }) {
   const [item, setItem] = useState<PortfolioItem | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +40,7 @@ export function PortfolioEditLoader({ itemId }: { itemId: string }) {
     }, 0);
 
     return () => window.clearTimeout(loadItem);
-  }, [itemId]);
+  }, [currentMasterId, itemId]);
 
   if (loading && !item) {
     return <div className="portfolio-editor-loading">Завантажуємо проєкт...</div>;
@@ -57,5 +55,5 @@ export function PortfolioEditLoader({ itemId }: { itemId: string }) {
     );
   }
 
-  return <PortfolioForm initialItem={item} />;
+  return <PortfolioForm initialItem={item} masterId={currentMasterId} />;
 }

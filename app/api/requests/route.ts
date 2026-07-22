@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { MASTER_PROFILE_NOT_LINKED, resolveAuthenticatedMasterIdentity } from "@/lib/master-identity";
 import {
   createLocalId,
   emptyHeightWork,
@@ -248,10 +249,14 @@ export async function GET(request: Request) {
     query = query.eq("client_id", authData.user.id);
     if (masterId) query = query.eq("master_id", masterId);
   } else if (profile?.role === "master") {
-    const { data: owned } = await supabase.from("master_profile_edits").select("master_id").eq("owner_id", authData.user.id);
-    const ids = (owned ?? []).map((item) => String(item.master_id));
-    if (!ids.length || (masterId && !ids.includes(masterId))) return NextResponse.json({ requests: [] });
-    query = masterId ? query.eq("master_id", masterId) : query.in("master_id", ids);
+    const resolved = await resolveAuthenticatedMasterIdentity(supabase);
+    if (!resolved.ok) {
+      if (resolved.code === MASTER_PROFILE_NOT_LINKED) {
+        return NextResponse.json({ error: MASTER_PROFILE_NOT_LINKED, requests: [] }, { status: 409 });
+      }
+      return NextResponse.json({ error: "Недостатньо прав." }, { status: 403 });
+    }
+    query = query.eq("master_id", resolved.identity.masterSlug);
   } else {
     return NextResponse.json({ error: "Недостатньо прав." }, { status: 403 });
   }
@@ -371,24 +376,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Увійдіть у систему." }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", authData.user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    const resolved = await resolveAuthenticatedMasterIdentity(supabase);
+    if (!resolved.ok) {
+      const message = resolved.code === MASTER_PROFILE_NOT_LINKED
+        ? "Публічний профіль майстра ще не підключено до акаунта."
+        : "Статус заявки змінює відповідний майстер.";
+      return NextResponse.json({ error: message, code: resolved.code }, { status: 403 });
     }
-
-    if (!profile || profile.role !== "master") return NextResponse.json({ error: "Статус заявки змінює відповідний майстер." }, { status: 403 });
     const confirmedPeriod = parsePeriods(payload.confirmedPeriod ? [payload.confirmedPeriod] : [])[0];
-    const { data: owned } = await supabase.from("master_profile_edits").select("master_id").eq("owner_id", authData.user.id);
-    const masterIds = (owned ?? []).map((item) => String(item.master_id));
-    if (!masterIds.length) return NextResponse.json({ error: "Профіль майстра не прив’язаний до цього акаунта." }, { status: 403 });
     const updates: Record<string, unknown> = { status, is_read: true, updated_at: new Date().toISOString() };
     if (confirmedPeriod) updates.confirmed_period = confirmedPeriod;
-    const { data, error } = await supabase.from("requests").update(updates).eq("id", id).in("master_id", masterIds).select("id").maybeSingle();
+    const { data, error } = await supabase.from("requests").update(updates).eq("id", id).eq("master_id", resolved.identity.masterSlug).select("id").maybeSingle();
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
