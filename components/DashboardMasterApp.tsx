@@ -108,7 +108,7 @@ function getCalendarStatus(master: MasterProfile, day: number): CalendarStatus {
 }
 
 function getDateText(request?: MasterRequest) {
-  return request?.periods[0]?.period || request?.desiredDate || "Дата уточнюється";
+  return request?.confirmedPeriod?.period || request?.periods[0]?.period || request?.desiredDate || "Дата уточнюється";
 }
 
 function getRequestCost(request: MasterRequest) {
@@ -122,7 +122,7 @@ function formatMoney(value: number) {
 function getConversationStatus(request: MasterRequest, unread: number) {
   if (request.status === "completed") return "Завершено";
   if (request.status === "in_progress") return "Проєкт в роботі";
-  if (request.status === "accepted") return "Дату запропоновано";
+  if (request.status === "accepted") return request.confirmedPeriod ? requestStatusLabels.accepted : "Дату запропоновано";
   if (request.status === "declined") return "Відхилена";
   if (unread > 0) return "Потрібна відповідь";
   return request.budget ? "Очікує кошторис" : "Нова заявка";
@@ -624,13 +624,16 @@ function MasterMessagesWorkspace({
           )}
 
           <article className="dash-agreement-card date">
-            <span>Пропозиція дати</span>
+            <span>{selectedRequest?.confirmedPeriod ? "Підтверджений період" : "Пропозиція дати"}</span>
             <strong>{getDateText(selectedRequest || requests[0])}</strong>
-            <p>Клієнт може підтвердити дату або запропонувати інший період.</p>
-            <div>
-              <button type="button">Підтвердити</button>
-              <button type="button">Запропонувати іншу</button>
-            </div>
+            {selectedRequest?.confirmedPeriod ? (
+              <p>Період підтверджено клієнтом. Узгодьте точний час у чаті.</p>
+            ) : (
+              <>
+                <p>Клієнт може підтвердити дату або запропонувати інший період.</p>
+                <small>Очікуємо підтвердження клієнта.</small>
+              </>
+            )}
           </article>
 
           <article className="dash-agreement-card estimate">
@@ -720,7 +723,7 @@ function BookingDateRequests({ bookings, onUpdate }: { bookings: MasterRequest[]
             <header><div><strong>{booking.workType}</strong><p>{booking.description}</p><small>{booking.clientName || "Клієнт"}</small></div><span>{requestStatusLabels[booking.status]}</span></header>
             <h3>Бажані періоди клієнта</h3>
             <div className="dash-booking-date-options">
-              {booking.periods.map((period, index) => <div key={`${period.dateFrom}-${period.dateTo}`}><span><strong>{index + 1} період</strong>{period.dateFrom === period.dateTo ? formatBookingDate(period.dateFrom) : `${formatBookingDate(period.dateFrom)} — ${formatBookingDate(period.dateTo)}`}</span><button type="button" disabled={booking.status !== "new"} onClick={() => onUpdate(booking.id, "accepted", period)}>{period.dateFrom === period.dateTo ? "Підтвердити цю дату" : "Підтвердити цей період"}</button></div>)}
+              {booking.periods.map((period, index) => <div key={`${period.dateFrom}-${period.dateTo}`}><span><strong>{index + 1} період</strong>{period.dateFrom === period.dateTo ? formatBookingDate(period.dateFrom) : `${formatBookingDate(period.dateFrom)} — ${formatBookingDate(period.dateTo)}`}</span></div>)}
             </div>
             {booking.confirmedPeriod && <p className="dash-confirmed-date">Підтверджений період: <strong>{booking.confirmedPeriod.dateFrom === booking.confirmedPeriod.dateTo ? formatBookingDate(booking.confirmedPeriod.dateFrom) : `${formatBookingDate(booking.confirmedPeriod.dateFrom)} — ${formatBookingDate(booking.confirmedPeriod.dateTo)}`}</strong>. Узгодьте точний час у чаті.</p>}
             {booking.attachments?.length ? <div className="dash-booking-attachments">{booking.attachments.map((file) => <a href={file.url} target="_blank" rel="noreferrer" key={file.id}><FileText size={15} /> {file.originalName} <small>{Math.ceil(file.sizeBytes / 1024)} КБ</small></a>)}</div> : null}

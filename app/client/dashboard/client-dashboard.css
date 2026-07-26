@@ -1466,6 +1466,51 @@ body:has(.client-cabinet) {
   color: rgba(255, 255, 255, 0.76);
 }
 
+.client-period-confirmation {
+  margin: 12px 0;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid #efb98f;
+  border-radius: 14px;
+  background: #fff7ed;
+}
+
+.client-period-confirmation > strong {
+  color: var(--client-ink);
+}
+
+.client-period-confirmation button {
+  min-height: 42px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--client-orange);
+  border-radius: 10px;
+  background: var(--client-orange);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+}
+
+.client-period-confirmation button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.client-period-confirmation.confirmed {
+  border-color: #8fbd9f;
+  background: #edf8f0;
+}
+
+.client-period-confirmation.confirmed span {
+  color: #245c37;
+  font-weight: 800;
+}
+
 .client-agreement div {
   margin-top: 10px;
   display: flex;

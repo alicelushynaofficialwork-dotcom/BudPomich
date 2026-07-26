@@ -20,7 +20,7 @@ import {
   type DemoRequestStatus,
 } from "@/lib/demo/types";
 import type { MasterProfile } from "@/lib/masters";
-import type { MasterRequest, RequestMessage } from "@/lib/requests";
+import type { MasterRequest, RequestMessage, RequestPeriod } from "@/lib/requests";
 import { getProfileInitials } from "@/lib/profile";
 import type { MasterReview } from "@/lib/reviews";
 
@@ -154,6 +154,52 @@ function formatDemoBudget(value: number | null) {
     : `${new Intl.NumberFormat("uk-UA").format(value)} грн`;
 }
 
+function ClientPeriodConfirmation({
+  confirmedPeriod,
+  onConfirm,
+  pending,
+  periods,
+}: {
+  confirmedPeriod?: RequestPeriod;
+  onConfirm: (period: RequestPeriod) => void;
+  pending: boolean;
+  periods: RequestPeriod[];
+}) {
+  if (!periods.length) return null;
+
+  if (confirmedPeriod) {
+    return (
+      <div className="client-period-confirmation confirmed">
+        <strong>Підтверджений період</strong>
+        <span>
+          {confirmedPeriod.dateFrom === confirmedPeriod.dateTo
+            ? confirmedPeriod.dateFrom
+            : `${confirmedPeriod.dateFrom} — ${confirmedPeriod.dateTo}`}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="client-period-confirmation">
+      <strong>Оберіть і підтвердьте один період</strong>
+      {periods.map((period, index) => (
+        <button
+          disabled={pending}
+          key={`${period.dateFrom}-${period.dateTo}`}
+          onClick={() => onConfirm(period)}
+          type="button"
+        >
+          <span>{index + 1}.</span>
+          {period.dateFrom === period.dateTo
+            ? period.dateFrom
+            : `${period.dateFrom} — ${period.dateTo}`}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ClientCabinetApp({
   masters = [],
   mode = "real",
@@ -201,6 +247,7 @@ export function ClientCabinetApp({
         budget: formatDemoBudget(request.budget),
         description: "Дані заявки завантажено з демонстраційної сесії.",
         periods: [],
+        confirmedPeriod: undefined,
         attachments: [],
       }))
     : realRequests.map((request) => ({
@@ -214,6 +261,7 @@ export function ClientCabinetApp({
         budget: request.budget ? request.budget : "Бюджет не вказано",
         description: request.description || request.workType || "Деталі заявки",
         periods: request.periods,
+        confirmedPeriod: request.confirmedPeriod,
         attachments: request.attachments ?? [],
       }));
   const messageRows = isDemo
@@ -368,6 +416,43 @@ export function ClientCabinetApp({
       setMessageBody("");
     } catch (error) {
       setMessagesError(error instanceof Error ? error.message : "Не вдалося надіслати повідомлення.");
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function confirmRequestPeriod(requestId: string, period: RequestPeriod) {
+    if (isDemo || pendingAction) return;
+
+    setPendingAction(`confirm-period:${requestId}`);
+    setRequestsError(null);
+
+    try {
+      const response = await fetch("/api/requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: requestId,
+          status: "accepted",
+          confirmedPeriod: period,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error ?? "Не вдалося підтвердити період.");
+      }
+
+      setRealRequests((current) =>
+        current.map((request) =>
+          request.id === requestId
+            ? { ...request, status: "accepted", confirmedPeriod: period }
+            : request,
+        ),
+      );
+    } catch (error) {
+      setRequestsError(
+        error instanceof Error ? error.message : "Не вдалося підтвердити період.",
+      );
     } finally {
       setPendingAction(null);
     }
@@ -631,6 +716,15 @@ export function ClientCabinetApp({
                 ) : null}
               </div>
               <div className="client-chat-feed">
+                {currentRequest ? (
+                  <ClientPeriodConfirmation
+                    confirmedPeriod={currentRequest.confirmedPeriod}
+                    onConfirm={(period) => confirmRequestPeriod(currentRequest.id, period)}
+                    pending={pendingAction === `confirm-period:${currentRequest.id}`}
+                    periods={currentRequest.periods}
+                  />
+                ) : null}
+                {requestsError ? <p className="client-chat-error">{requestsError}</p> : null}
                 {messagesLoading ? (
                   <p className="client-chat-loading">Завантаження повідомлень…</p>
                 ) : messagesError ? (
@@ -792,8 +886,14 @@ export function ClientCabinetApp({
                     <div><dt>Бюджет</dt><dd>{request.budget}</dd></div>
                   </dl>
                   {!isDemo && (
-                    <>{request.periods.length ? <div className="client-request-periods"><strong>Запропоновані періоди</strong>{request.periods.map((period, index) => <span key={`${period.dateFrom}-${period.dateTo}`}>{index + 1}. {period.dateFrom === period.dateTo ? period.dateFrom : `${period.dateFrom} — ${period.dateTo}`}</span>)}</div> : null}{request.attachments.length ? <div className="client-request-attachments"><strong>Вкладення</strong>{request.attachments.map((file) => <a href={file.url} target="_blank" rel="noreferrer" key={file.id}>{file.originalName} · {Math.ceil(file.sizeBytes / 1024)} КБ</a>)}</div> : null}
+                    <><ClientPeriodConfirmation
+                      confirmedPeriod={request.confirmedPeriod}
+                      onConfirm={(period) => confirmRequestPeriod(request.id, period)}
+                      pending={pendingAction === `confirm-period:${request.id}`}
+                      periods={request.periods}
+                    />{request.attachments.length ? <div className="client-request-attachments"><strong>Вкладення</strong>{request.attachments.map((file) => <a href={file.url} target="_blank" rel="noreferrer" key={file.id}>{file.originalName} · {Math.ceil(file.sizeBytes / 1024)} КБ</a>)}</div> : null}
                     <div className="client-request-actions"><button onClick={() => setActiveView("messages")} type="button">Відкрити чат</button>{request.statusValue === "completed" && !clientReviews.some((review) => review.bookingId === request.id) ? <button type="button" onClick={() => setReviewBookingId((current) => current === request.id ? "" : request.id)}>Залишити відгук</button> : null}{clientReviews.some((review) => review.bookingId === request.id) ? <span>Відгук опубліковано</span> : null}</div>
+                    {requestsError ? <p className="client-chat-error">{requestsError}</p> : null}
                     </>
                   )}
                   {!isDemo && reviewBookingId === request.id ? <ReviewForm bookingId={request.id} onCreated={(review) => { setClientReviews((current) => [review, ...current]); setReviewBookingId(""); }} /> : null}

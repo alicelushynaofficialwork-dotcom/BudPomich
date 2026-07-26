@@ -376,6 +376,47 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Увійдіть у систему." }, { status: 401 });
     }
 
+    const confirmedPeriod = parsePeriods(payload.confirmedPeriod ? [payload.confirmedPeriod] : [])[0];
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    if (profile?.role === "client") {
+      if (status !== "accepted" || !confirmedPeriod) {
+        return NextResponse.json(
+          { error: "Клієнт може лише підтвердити один із запропонованих періодів." },
+          { status: 403 },
+        );
+      }
+
+      const { data: confirmed, error: confirmationError } = await supabase.rpc(
+        "confirm_request_period",
+        {
+          request_id: id,
+          selected_period: confirmedPeriod,
+        },
+      );
+
+      if (confirmationError) {
+        return NextResponse.json({ error: confirmationError.message }, { status: 500 });
+      }
+
+      if (!confirmed) {
+        return NextResponse.json(
+          { error: "Заявку не знайдено або обраний період не був запропонований." },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({ id, status, confirmedPeriod });
+    }
+
     const resolved = await resolveAuthenticatedMasterIdentity(supabase);
     if (!resolved.ok) {
       const message = resolved.code === MASTER_PROFILE_NOT_LINKED
@@ -383,9 +424,15 @@ export async function PATCH(request: Request) {
         : "Статус заявки змінює відповідний майстер.";
       return NextResponse.json({ error: message, code: resolved.code }, { status: 403 });
     }
-    const confirmedPeriod = parsePeriods(payload.confirmedPeriod ? [payload.confirmedPeriod] : [])[0];
+
+    if (confirmedPeriod) {
+      return NextResponse.json(
+        { error: "Запропонований період підтверджує клієнт." },
+        { status: 403 },
+      );
+    }
+
     const updates: Record<string, unknown> = { status, is_read: true, updated_at: new Date().toISOString() };
-    if (confirmedPeriod) updates.confirmed_period = confirmedPeriod;
     const { data, error } = await supabase.from("requests").update(updates).eq("id", id).eq("master_id", resolved.identity.masterSlug).select("id").maybeSingle();
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
