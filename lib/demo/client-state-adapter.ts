@@ -5,6 +5,10 @@ import type {
   DemoClientRequest,
   NormalizedDemoClientState,
 } from "@/lib/demo/types";
+import {
+  demoClientDashboardFixture,
+  demoClientProfileFixture,
+} from "@/lib/demo/client-dashboard-fixtures";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -89,24 +93,30 @@ export function normalizeDemoClientState(state: unknown): NormalizedDemoClientSt
   const root = asRecord(state);
   const profile = asRecord(root?.profile);
   const isDamaged = !root || !profile || text(profile.role) !== "client";
+  const clientProfile = {
+    ...demoClientProfileFixture,
+    city: text(profile?.city, demoClientProfileFixture.city),
+  };
+  const messages = asArray(root?.messages)
+    .map(normalizeMessage)
+    .filter((item): item is DemoClientMessage => item !== null)
+    .map((message) =>
+      message.senderRole === "client"
+        ? { ...message, sender: clientProfile.name }
+        : message,
+    );
 
   return {
     data: {
-      profile: {
-        id: text(profile?.id, "demo-client"),
-        name: text(profile?.name, "Демо-клієнт"),
-        city: text(profile?.city, "Місто не вказано"),
-        role: "client",
-      },
+      profile: clientProfile,
+      dashboard: demoClientDashboardFixture,
       requests: asArray(root?.requests)
         .map(normalizeRequest)
         .filter((item): item is DemoClientRequest => item !== null),
       projects: asArray(root?.projects)
         .map(normalizeProject)
         .filter((item): item is DemoClientProject => item !== null),
-      messages: asArray(root?.messages)
-        .map(normalizeMessage)
-        .filter((item): item is DemoClientMessage => item !== null),
+      messages,
       notifications: asArray(root?.notifications)
         .map(normalizeNotification)
         .filter((item): item is DemoClientNotification => item !== null),

@@ -4691,3 +4691,698 @@ body:has(.client-cabinet) {
     transform: none;
   }
 }
+
+/* Demo client: compact desktop command center. The approved mobile home remains unchanged. */
+.demo-client-dashboard {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+.client-demo-mobile-home {
+  display: none;
+}
+
+.demo-client-dashboard button,
+.demo-client-dashboard select {
+  font: inherit;
+}
+
+.demo-client-dashboard-header {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.demo-client-dashboard-header h1 {
+  margin: 0;
+  color: #15253d;
+  font-size: clamp(32px, 3vw, 38px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.demo-client-dashboard-header p,
+.demo-client-dashboard-header time {
+  margin: 7px 0 0;
+  color: #637084;
+  font-size: 14px;
+}
+
+.demo-client-dashboard-header time {
+  display: block;
+  text-transform: capitalize;
+}
+
+.demo-client-dashboard-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.demo-client-dashboard-tools > button {
+  min-height: 44px;
+  border: 1px solid #dfe4e9;
+  border-radius: 14px;
+  background: #fff;
+  color: #192a43;
+  cursor: pointer;
+}
+
+.demo-client-dashboard-tools > button:hover {
+  border-color: #f26a2e;
+  transform: translateY(-1px);
+}
+
+.demo-client-dashboard-tools .is-primary {
+  padding: 0 17px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: #ef5b22;
+  background: #ef5b22;
+  color: #fff;
+  font-weight: 850;
+}
+
+.demo-client-notification-button {
+  position: relative;
+  width: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.demo-client-notification-button span {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #f7f3ed;
+  border-radius: 999px;
+  background: #ef5b22;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.demo-client-profile-button {
+  padding: 4px 10px 4px 5px;
+  display: grid;
+  grid-template-columns: 35px auto 16px;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+}
+
+.demo-client-profile-button > span {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #172a46;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.demo-client-profile-button div {
+  display: grid;
+  gap: 1px;
+}
+
+.demo-client-profile-button strong {
+  font-size: 13px;
+}
+
+.demo-client-profile-button small {
+  color: #748094;
+  font-size: 11px;
+}
+
+.demo-client-dashboard-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.demo-client-dashboard-grid.is-top,
+.demo-client-dashboard-grid.is-project {
+  grid-template-columns: minmax(0, 1.85fr) minmax(300px, 1fr);
+}
+
+.demo-client-dashboard-grid.is-bottom {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.demo-client-panel,
+.demo-client-project-card {
+  min-width: 0;
+  border: 1px solid #e3e6e8;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(31, 45, 64, 0.07);
+}
+
+.demo-client-panel {
+  padding: 21px;
+}
+
+.demo-client-panel > header {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.demo-client-panel > header span,
+.demo-client-project-card-head > div small {
+  color: #e65e27;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-client-panel h2 {
+  margin: 3px 0 0;
+  color: #172840;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.demo-client-today > header > strong {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #fff1e9;
+  color: #d94f19;
+  font-size: 11px;
+}
+
+.demo-client-timeline {
+  display: grid;
+}
+
+.demo-client-timeline article {
+  min-height: 65px;
+  display: grid;
+  grid-template-columns: 48px 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #edf0f2;
+}
+
+.demo-client-timeline article > time {
+  color: #152840;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.demo-client-timeline article > i {
+  width: 9px;
+  height: 9px;
+  position: relative;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #ef672d;
+  box-shadow: 0 0 0 2px #f7c9b5;
+}
+
+.demo-client-timeline article > div,
+.demo-client-upcoming article > div,
+.demo-client-recent article > div,
+.demo-client-documents button > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.demo-client-timeline article strong,
+.demo-client-upcoming article strong,
+.demo-client-recent article strong,
+.demo-client-documents button strong {
+  overflow: hidden;
+  color: #1c2d45;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-client-timeline article p,
+.demo-client-timeline article small,
+.demo-client-upcoming article small,
+.demo-client-recent article p,
+.demo-client-documents button small {
+  margin: 0;
+  overflow: hidden;
+  color: #738093;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-client-timeline article > button,
+.demo-client-text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: #df541d;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.demo-client-text-action {
+  margin-top: 14px;
+  padding: 0;
+}
+
+.demo-client-attention > div {
+  display: grid;
+  gap: 8px;
+}
+
+.demo-client-attention > div > button {
+  width: 100%;
+  min-height: 61px;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: 35px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #eaedef;
+  border-radius: 13px;
+  background: #fbfbfa;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-client-attention > div > button:hover {
+  border-color: #efb092;
+  background: #fff8f4;
+}
+
+.demo-client-attention > div > button > span {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #fff0e8;
+  color: #df561e;
+}
+
+.demo-client-attention button div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.demo-client-attention button strong,
+.demo-client-attention button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-client-attention button strong {
+  color: #1d2f47;
+  font-size: 12px;
+}
+
+.demo-client-attention button small {
+  color: #778294;
+  font-size: 10px;
+}
+
+.demo-client-attention button em {
+  color: #d8531f;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.demo-client-project-card {
+  padding: 25px;
+  background: linear-gradient(145deg, #172b49, #10223c);
+  color: #fff;
+}
+
+.demo-client-project-card-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.demo-client-project-card-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.demo-client-project-card-head > div span {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #ef652b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.demo-client-project-card-head > div small {
+  color: #b8c5d6;
+}
+
+.demo-client-project-card-head label {
+  display: grid;
+  gap: 4px;
+  color: #c9d4e1;
+  font-size: 10px;
+}
+
+.demo-client-project-card-head select {
+  max-width: 230px;
+  min-height: 35px;
+  padding: 0 30px 0 10px;
+  border: 1px solid #40536d;
+  border-radius: 9px;
+  background: #203653;
+  color: #fff;
+}
+
+.demo-client-project-card h2 {
+  margin: 22px 0 5px;
+  font-size: 27px;
+  letter-spacing: -0.025em;
+}
+
+.demo-client-project-card > p {
+  margin: 0;
+  color: #bdc9d8;
+  font-size: 13px;
+}
+
+.demo-client-project-progress {
+  margin-top: 20px;
+}
+
+.demo-client-project-progress > div {
+  margin-bottom: 7px;
+  display: flex;
+  justify-content: space-between;
+  color: #c9d3df;
+  font-size: 11px;
+}
+
+.demo-client-project-progress > div strong {
+  color: #fff;
+}
+
+.demo-client-project-progress > i {
+  height: 7px;
+  display: block;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #334862;
+}
+
+.demo-client-project-progress b {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ef5b22, #ff9769);
+}
+
+.demo-client-next-stage {
+  margin-top: 18px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid #354b67;
+  border-radius: 12px;
+  background: rgba(255,255,255,.045);
+}
+
+.demo-client-next-stage span {
+  color: #aebed1;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.demo-client-next-stage strong {
+  font-size: 14px;
+}
+
+.demo-client-project-card dl {
+  margin: 18px 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.demo-client-project-card dl div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.06);
+}
+
+.demo-client-project-card dt {
+  margin-bottom: 4px;
+  color: #9fb0c5;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.demo-client-project-card dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-client-project-card footer {
+  margin-top: 19px;
+  display: flex;
+  gap: 9px;
+}
+
+.demo-client-project-card footer button {
+  min-height: 40px;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #fff;
+  border-radius: 11px;
+  background: #fff;
+  color: #142945;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.demo-client-project-card footer button + button {
+  border-color: #4b5f78;
+  background: transparent;
+  color: #fff;
+}
+
+.demo-client-upcoming > div,
+.demo-client-recent > div,
+.demo-client-documents > div {
+  display: grid;
+}
+
+.demo-client-upcoming article {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 73px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #edf0f2;
+}
+
+.demo-client-upcoming article > time {
+  display: grid;
+  color: #1d2f46;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.demo-client-upcoming article > time small {
+  color: #e65b24;
+  font-size: 10px;
+}
+
+.demo-client-upcoming article > span {
+  color: #28704a;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.demo-client-recent article {
+  min-height: 61px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid #edf0f2;
+}
+
+.demo-client-recent article > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #e9eef4;
+  color: #1d3552;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.demo-client-recent article > time {
+  color: #8a94a3;
+  font-size: 9px;
+}
+
+.demo-client-documents > div > button {
+  min-height: 61px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-top: 1px solid #edf0f2;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-client-documents > div > button > svg {
+  color: #e25b25;
+}
+
+.demo-client-documents > div > button > span {
+  max-width: 92px;
+  color: #5c6b7d;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.demo-client-photos > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.demo-client-photos > div > button {
+  min-height: 78px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 3px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #e4e8e7, #cbd4d2);
+  color: #172b41;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-client-photos > div > button.is-progress { background: linear-gradient(145deg, #d9e2e9, #b6c6d2); }
+.demo-client-photos > div > button.is-after { background: linear-gradient(145deg, #e9ded1, #d2bda5); }
+.demo-client-photos > div > button.is-defect { background: linear-gradient(145deg, #f0dfd8, #dbb8aa); }
+
+.demo-client-photos button span {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.demo-client-photos button small {
+  font-size: 9px;
+}
+
+@media (min-width: 1400px) {
+  .client-cabinet.is-demo {
+    --client-sidebar-width: 244px;
+  }
+
+  .client-cabinet.is-demo .client-main {
+    max-width: none;
+    padding-right: 92px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .demo-client-dashboard-header {
+    flex-wrap: wrap;
+  }
+
+  .demo-client-dashboard-tools {
+    flex-wrap: wrap;
+  }
+
+  .demo-client-dashboard-grid.is-top,
+  .demo-client-dashboard-grid.is-project {
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr);
+  }
+
+  .demo-client-dashboard-grid.is-bottom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .demo-client-photos {
+    grid-column: 1 / -1;
+  }
+
+  .demo-client-photos > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .demo-client-project-card dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .demo-client-dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .demo-client-dashboard-grid.is-top,
+  .demo-client-dashboard-grid.is-project,
+  .demo-client-dashboard-grid.is-bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-client-photos {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .demo-client-dashboard {
+    display: none;
+  }
+
+  .client-demo-mobile-home {
+    display: grid;
+  }
+}

@@ -2,3 +2,18 @@ Demo client: failed to load demo session. Unable to read authenticated demo user
 ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 Demo client: failed to load demo session. Unable to read authenticated demo user.
 [browser] Image with src "http://localhost:3000/logo/budpomich-logo-v4.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "http://localhost:3000/logo/budpomich-logo-v4.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+Demo client: failed to load demo session. Unable to read authenticated demo user.
+Demo client: failed to load demo session. Unable to read authenticated demo user.
+Demo client: failed to load demo session. Unable to read authenticated demo user.
+Demo client: failed to load demo session. Unable to read authenticated demo user.
+Demo client: failed to load demo session. Unable to read authenticated demo user.
+[browser] Demo Mode security check: unable to read the current Auth session. 
+    at DemoRoleSelector.useEffect (components\DemoRoleSelector.tsx:46:30)
+  44 |     supabase.auth.getUser().then(({ data, error: authError }) => {
+  45 |       if (!active) return;
+> 46 |       if (authError) console.error("Demo Mode security check: unable to read the current A...
+     |                              ^
+  47 |       setHasAuthSession(Boolean(data.user));
+  48 |     });
+  49 |     return () => { active = false; }; (components\DemoRoleSelector.tsx:46:30)

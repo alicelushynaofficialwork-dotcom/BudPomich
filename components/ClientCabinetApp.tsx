@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DemoCabinetSwitcher } from "@/components/demo/DemoCabinetSwitcher";
+import { DemoClientDashboardHome } from "@/components/demo/DemoClientDashboardHome";
 import { MastersCatalogView } from "@/components/MastersCatalogView";
 import { ReviewForm } from "@/components/ReviewForm";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -846,7 +847,9 @@ export function ClientCabinetApp({
   ].includes(activeView)
     ? "cabinet"
     : activeView;
-  const firstName = profileName.split(/\s+/)[0] || profileName;
+  const firstName = isDemo
+    ? currentDemoState?.profile.greetingName ?? profileName
+    : profileName.split(/\s+/)[0] || profileName;
   const activeRequest =
     requestRows.find((request) =>
       ["accepted", "in_progress"].includes(request.statusValue),
@@ -1109,7 +1112,7 @@ export function ClientCabinetApp({
   }
 
   return (
-    <section className={`client-cabinet${isAiLisaOpen ? " is-ailisa-open" : ""}`}>
+    <section className={`client-cabinet${isDemo ? " is-demo" : ""}${isAiLisaOpen ? " is-ailisa-open" : ""}`}>
       <aside className="client-side">
         <Link className="client-brand" href="/">
           <Image src="/logo/budpomich-logo-v4.svg" alt="БудПоміч" width={790} height={420} priority />
@@ -1189,11 +1192,25 @@ export function ClientCabinetApp({
           <div className="client-ruler" aria-hidden="true" />
         )}
 
+        {activeView === "home" && isDemo && currentDemoState ? (
+          <DemoClientDashboardHome
+            onOpenCabinet={() => setActiveView("cabinet")}
+            onOpenCalendar={() => setActiveView("calendar")}
+            onOpenDocuments={() => setActiveView("documents")}
+            onOpenMessages={() => setActiveView("messages")}
+            onOpenNotifications={() => setActiveView("notifications")}
+            onOpenProject={() => setActiveView("projects")}
+            onOpenRequests={() => setActiveView("requests")}
+            onStartRequest={() => setActiveView("catalog")}
+            state={currentDemoState}
+          />
+        ) : null}
+
         {activeView === "home" && (
-          <section className="client-home" aria-labelledby="client-home-title">
+          <section className={`client-home${isDemo ? " client-demo-mobile-home" : ""}`} aria-labelledby="client-home-title">
             <div className="client-home-welcome">
               <span className="client-eyebrow">Головна</span>
-              <h2 id="client-home-title">Доброго дня, {firstName}</h2>
+              <h2 id="client-home-title">Добрий день, {firstName}!</h2>
               <span className="client-home-wave" aria-hidden="true">👋</span>
               <p>Ось що відбувається зараз</p>
             </div>

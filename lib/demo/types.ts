@@ -1,8 +1,71 @@
 export type DemoClientProfile = {
   id: string;
   name: string;
+  greetingName: string;
   city: string;
   role: "client";
+};
+
+export type DemoClientDashboardEvent = {
+  id: string;
+  time: string;
+  title: string;
+  project: string;
+  masterName: string;
+  action: "chat" | "calendar" | "requests";
+  actionLabel: string;
+};
+
+export type DemoClientAttentionItem = {
+  id: string;
+  title: string;
+  project: string;
+  status: string;
+  action: "messages" | "documents" | "requests";
+};
+
+export type DemoClientUpcomingDate = {
+  id: string;
+  date: string;
+  time?: string;
+  title: string;
+  detail: string;
+  status: string;
+};
+
+export type DemoClientDocument = {
+  id: string;
+  title: string;
+  meta: string;
+  status: string;
+};
+
+export type DemoClientPhoto = {
+  id: string;
+  label: string;
+  caption: string;
+  tone: "before" | "progress" | "after" | "defect";
+};
+
+export type DemoClientDashboard = {
+  dateIso: string;
+  todaySchedule: DemoClientDashboardEvent[];
+  attentionItems: DemoClientAttentionItem[];
+  activeProject: {
+    id: string;
+    title: string;
+    status: string;
+    address: string;
+    progress: number;
+    nextStage: string;
+    masterName: string;
+    nextVisit: string;
+    documentsCount: number;
+    unreadMessages: number;
+  };
+  upcomingDates: DemoClientUpcomingDate[];
+  documentsAndPayments: DemoClientDocument[];
+  recentPhotos: DemoClientPhoto[];
 };
 
 export type DemoClientRequest = {
@@ -53,6 +116,7 @@ export type DemoClientNotification = {
 
 export type DemoClientState = {
   profile: DemoClientProfile;
+  dashboard: DemoClientDashboard;
   requests: DemoClientRequest[];
   projects: DemoClientProject[];
   messages: DemoClientMessage[];
