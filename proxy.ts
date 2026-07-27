@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getDashboardRedirect, isUserRole } from "@/lib/auth";
+import {
+  isInvalidRefreshTokenError,
+  isSupabaseAuthCookie,
+} from "@/lib/supabase-auth-error";
 
 function createMiddlewareClient(
   request: NextRequest,
@@ -47,28 +51,71 @@ function redirectWithRefreshedCookies(url: URL, response: NextResponse) {
   return redirectResponse;
 }
 
+function clearSupabaseSessionCookies(
+  request: NextRequest,
+  response: NextResponse,
+  supabaseUrl: string,
+  cookieNames: string[],
+) {
+  for (const name of cookieNames) {
+    if (!isSupabaseAuthCookie(name, supabaseUrl)) continue;
+
+    request.cookies.delete(name);
+    response.cookies.set(name, "", {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 0,
+    });
+  }
+}
+
+function loginRedirect(request: NextRequest) {
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = "/auth/login";
+  loginUrl.search = "";
+  return loginUrl;
+}
+
 export async function proxy(request: NextRequest) {
   const responseRef = { current: NextResponse.next({ request }) };
-  const supabase = createMiddlewareClient(request, responseRef);
   const pathname = request.nextUrl.pathname;
 
   if (!isProtectedPath(pathname)) return responseRef.current;
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const sessionCookieNames = request.cookies.getAll().map(({ name }) => name);
+  const supabase = createMiddlewareClient(request, responseRef);
+
   if (!supabase) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/auth/login";
-    loginUrl.search = "";
+    const loginUrl = loginRedirect(request);
     loginUrl.searchParams.set("error", "auth_unavailable");
     return NextResponse.redirect(loginUrl);
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: claimsData, error: authError } = await supabase.auth.getClaims();
 
-  if (!user) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/auth/login";
+  if (isInvalidRefreshTokenError(authError) && supabaseUrl) {
+    const redirectResponse = NextResponse.redirect(loginRedirect(request));
+    redirectResponse.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate, max-age=0",
+    );
+    redirectResponse.headers.set("Expires", "0");
+    redirectResponse.headers.set("Pragma", "no-cache");
+    clearSupabaseSessionCookies(
+      request,
+      redirectResponse,
+      supabaseUrl,
+      sessionCookieNames,
+    );
+    return redirectResponse;
+  }
+
+  const userId =
+    typeof claimsData?.claims.sub === "string" ? claimsData.claims.sub : null;
+
+  if (!userId) {
+    const loginUrl = loginRedirect(request);
     loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return redirectWithRefreshedCookies(loginUrl, responseRef.current);
   }
@@ -76,13 +123,11 @@ export async function proxy(request: NextRequest) {
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   if (!isUserRole(profile?.role)) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/auth/login";
-    loginUrl.search = "";
+    const loginUrl = loginRedirect(request);
     loginUrl.searchParams.set("error", "missing_profile");
     return redirectWithRefreshedCookies(loginUrl, responseRef.current);
   }
