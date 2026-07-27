@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   Bell,
   BriefcaseBusiness,
@@ -17,6 +17,7 @@ import {
   FileCheck2,
   FileText,
   FolderKanban,
+  Home,
   History,
   ImagePlus,
   ListChecks,
@@ -24,6 +25,7 @@ import {
   Plus,
   ReceiptText,
   Settings,
+  Send,
   Star,
   UserRound,
   UsersRound,
@@ -60,20 +62,16 @@ type DashboardMasterAppProps =
   | { mode: "demo"; initialData: DemoMasterState; stateWarning?: string };
 
 type CalendarStatus = "free" | "busy" | "pending";
-type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "reviews" | "finance";
+type DashboardPanelKey = "requests" | "objects" | "calendar" | "messages" | "clients" | "portfolio" | "reviews" | "finance" | "cabinet";
 type DashboardRole = "master" | "client" | "contractor";
 type MasterWorkspaceContext = "personal" | "team";
 
 const navItems = [
-  { label: "Повідомлення", panel: "messages" as const, icon: MessageSquare, active: true },
+  { label: "Головна", panel: null, icon: Home },
   { label: "Заявки", panel: "requests" as const, icon: ClipboardList },
-  { label: "Клієнти та проєкти", panel: "objects" as const, icon: FolderKanban },
+  { label: "Чати", panel: "messages" as const, icon: MessageSquare },
   { label: "Календар", panel: "calendar" as const, icon: CalendarDays },
-  { label: "Кошториси та оплати", panel: "finance" as const, icon: WalletCards },
-  { label: "Портфоліо", panel: "portfolio" as const, icon: ImagePlus },
-  { label: "Відгуки", panel: "reviews" as const, icon: Star },
-  { label: "Публічний профіль", href: "/dashboard/profile", icon: UserRound },
-  { label: "Налаштування", href: "/dashboard/profile#profile-contacts", icon: Settings },
+  { label: "Кабінет", panel: "cabinet" as const, icon: UserRound },
 ];
 
 const statusClass: Record<RequestStatus, string> = {
@@ -83,6 +81,20 @@ const statusClass: Record<RequestStatus, string> = {
   completed: "completed",
   declined: "declined",
 };
+
+const masterAiLisaPrompts = [
+  "Скласти кошторис",
+  "Порахувати матеріали",
+  "Підготувати відповідь клієнту",
+  "Пояснити складну роботу клієнту",
+  "Знайти вільне вікно",
+  "Скласти план робіт",
+  "Підготувати список закупівель",
+];
+
+const subscribeToClientMount = () => () => {};
+const getClientMountSnapshot = () => true;
+const getServerMountSnapshot = () => false;
 
 function mergeById<T extends { id: string }>(items: T[]) {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
@@ -187,7 +199,7 @@ function DashboardSidebar({
   activePanel,
 }: {
   master: MasterProfile;
-  onOpenPanel: (panel: DashboardPanelKey) => void;
+  onOpenPanel: (panel: DashboardPanelKey | null) => void;
   activePanel: DashboardPanelKey | null;
 }) {
   return (
@@ -207,33 +219,13 @@ function DashboardSidebar({
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const number = String(index + 1).padStart(2, "0");
-          if ("panel" in item && item.panel) {
-            return (
-              <button
-                className={(activePanel === item.panel || (!activePanel && item.active)) ? "active" : ""}
-                onClick={() => onOpenPanel(item.panel)}
-                type="button"
-                key={item.label}
-              >
-                <span className="dash-nav-num">{number}</span>
-                <Icon size={18} />
-                {item.label}
-              </button>
-            );
-          }
-
-          if ("href" in item && item.href) {
-            return (
-              <Link href={item.href} key={item.label}>
-                <span className="dash-nav-num">{number}</span>
-                <Icon size={18} />
-                {item.label}
-              </Link>
-            );
-          }
-
           return (
-            <button className="active" type="button" key={item.label}>
+            <button
+              className={activePanel === item.panel ? "active" : ""}
+              onClick={() => onOpenPanel(item.panel)}
+              type="button"
+              key={item.label}
+            >
               <span className="dash-nav-num">{number}</span>
               <Icon size={18} />
               {item.label}
@@ -265,12 +257,13 @@ function DashboardSidebar({
 }
 
 function DashboardTopbar({ master, unreadCount }: { master: MasterProfile; unreadCount: number }) {
+  const firstName = master.name.trim().split(/\s+/)[0] || "майстре";
   return (
     <header className="dash-topbar">
       <div>
         <p className="dash-platform-tag">Кабінет майстра</p>
-        <h1>Добрий день, Андрію!</h1>
-        <p>Керуйте заявками, обʼєктами, календарем, чатами та фінансами в одному місці.</p>
+        <h1>Доброго ранку, {firstName} <span aria-hidden="true">👋</span></h1>
+        <p>Ось що на сьогодні</p>
       </div>
       <div className="dash-topbar-actions">
         <button className="dash-icon-button" type="button" aria-label="Сповіщення">
@@ -310,21 +303,17 @@ function ProfileNotice({ percent }: { percent: number }) {
 function StatsCards({
   requests,
   messages,
-  freeDatesCount,
-  profilePercent,
   onOpenPanel,
 }: {
   requests: MasterRequest[];
   messages: RequestMessage[];
-  freeDatesCount: number;
-  profilePercent: number;
   onOpenPanel: (panel: DashboardPanelKey) => void;
 }) {
   const stats = [
     {
       label: "Нові заявки",
       value: requests.filter((request) => request.status === "new").length,
-      note: "+2 за останні 7 днів",
+      note: "очікують рішення",
       icon: ClipboardList,
       panel: "requests" as const,
     },
@@ -336,13 +325,6 @@ function StatsCards({
       panel: "objects" as const,
     },
     {
-      label: "Цього тижня",
-      value: Math.min(5, freeDatesCount),
-      note: "вільних слотів",
-      icon: CalendarDays,
-      panel: "calendar" as const,
-    },
-    {
       label: "Повідомлення",
       value: messages.filter((message) => !message.isRead && message.senderRole === "client").length,
       note: "очікують відповіді",
@@ -350,11 +332,11 @@ function StatsCards({
       panel: "messages" as const,
     },
     {
-      label: "Профіль",
-      value: `${profilePercent}%`,
-      note: "готовність",
+      label: "Завершені роботи",
+      value: requests.filter((request) => request.status === "completed").length,
+      note: "за заявками",
       icon: CheckCircle2,
-      href: "/dashboard/profile",
+      panel: "objects" as const,
     },
   ];
 
@@ -375,18 +357,10 @@ function StatsCards({
           </>
         );
 
-        if ("panel" in item && item.panel) {
-          return (
-            <button className="dash-stat-card" onClick={() => onOpenPanel(item.panel)} type="button" key={item.label}>
-              {content}
-            </button>
-          );
-        }
-
         return (
-          <Link className="dash-stat-card" href={item.href} key={item.label}>
+          <button className="dash-stat-card" onClick={() => onOpenPanel(item.panel)} type="button" key={item.label}>
             {content}
-          </Link>
+          </button>
         );
       })}
     </section>
@@ -470,8 +444,8 @@ function MasterMessagesWorkspace({
   messages: RequestMessage[];
   selectedRequestId: string | null;
   onSelectRequest: (id: string) => void;
-  onOpenPanel: (panel: DashboardPanelKey) => void;
   onMessageSent: (message: RequestMessage) => void;
+  onOpenPanel: (panel: DashboardPanelKey) => void;
 }) {
   const [messageBody, setMessageBody] = useState("");
   const [messagePending, setMessagePending] = useState(false);
@@ -738,18 +712,22 @@ function BookingDateRequests({ bookings, onUpdate }: { bookings: MasterRequest[]
 function RequestsPanel({
   requests,
   onStatusChange,
+  onOpenPanel,
+  urgentOnly = false,
 }: {
   requests: MasterRequest[];
   onStatusChange: (id: string, status: RequestStatus) => void;
+  onOpenPanel?: (panel: DashboardPanelKey) => void;
+  urgentOnly?: boolean;
 }) {
-  const visible = requests.slice(0, 3);
+  const visible = (urgentOnly ? requests.filter((request) => request.status === "new") : requests).slice(0, 3);
 
   return (
     <section className="dash-panel" id="requests">
       <div className="dash-panel-head">
         <div>
-          <h2>Нові заявки</h2>
-          <p>Останні звернення клієнтів</p>
+          <h2>{urgentOnly ? "Термінові дії" : "Нові заявки"}</h2>
+          <p>{urgentOnly ? "Звернення, що очікують вашої відповіді" : "Останні звернення клієнтів"}</p>
         </div>
         <Link href="/dashboard#requests">
           Переглянути всі
@@ -777,6 +755,7 @@ function RequestsPanel({
                 <div>
                   <span>{request.cityArea || "Місто уточнюється"}</span>
                   <span>{getDateText(request)}</span>
+                  <span>{(request.attachments?.length || request.files.length) > 0 ? `${request.attachments?.length || request.files.length} вкладень` : "Без вкладень"}</span>
                 </div>
               </div>
 
@@ -790,6 +769,11 @@ function RequestsPanel({
                   <button className="muted" onClick={() => onStatusChange(request.id, "declined")} type="button">
                     Відхилити
                   </button>
+                  {onOpenPanel && (
+                    <button className="outline" onClick={() => onOpenPanel("requests")} type="button">
+                      Відкрити заявку
+                    </button>
+                  )}
                 </div>
               </div>
             </article>
@@ -802,8 +786,18 @@ function RequestsPanel({
   );
 }
 
-function TodaySchedule({ requests }: { requests: MasterRequest[] }) {
-  const active = requests.filter((request) => request.status === "accepted" || request.status === "in_progress").slice(0, 3);
+function TodaySchedule({
+  requests,
+  onOpenPanel,
+}: {
+  requests: MasterRequest[];
+  onOpenPanel: (panel: DashboardPanelKey) => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const active = requests.filter((request) => {
+    if (request.status !== "accepted" && request.status !== "in_progress") return false;
+    return request.confirmedPeriod?.dateFrom === today || request.desiredDate?.startsWith(today);
+  });
 
   return (
     <section className="dash-panel">
@@ -814,60 +808,21 @@ function TodaySchedule({ requests }: { requests: MasterRequest[] }) {
         </div>
       </div>
       <div className="dash-timeline">
-        {(active.length ? active : requests.slice(0, 2)).map((request, index) => (
+        {active.map((request) => (
           <article key={request.id}>
-            <time>{index === 0 ? "10:00" : "15:30"}</time>
+            <time>{request.confirmedPeriod?.period || "Час уточнюється"}</time>
             <div>
               <strong>{request.selectedServiceTitle || request.workType}</strong>
-              <p>{request.cityArea || getDateText(request)}</p>
+              <p>{request.clientName || "Клієнт"} · {request.cityArea || "Адреса уточнюється"}</p>
             </div>
+            <button onClick={() => onOpenPanel("requests")} type="button">Відкрити деталі</button>
           </article>
         ))}
-        {!requests.length && <div className="dash-empty">На сьогодні робіт не заплановано.</div>}
-      </div>
-    </section>
-  );
-}
-
-function MessagesPanel({
-  requests,
-  messages,
-}: {
-  requests: MasterRequest[];
-  messages: RequestMessage[];
-}) {
-  const messageRows = messages.slice(0, 4);
-  const requestById = new Map(requests.map((request) => [request.id, request]));
-
-  return (
-    <section className="dash-panel" id="messages">
-      <div className="dash-panel-head">
-        <div>
-          <h2>Останні повідомлення</h2>
-          <p>Швидко відповідайте клієнтам</p>
-        </div>
-        <Link href="#messages">
-          Відкрити чат
-          <ChevronRight size={15} />
-        </Link>
-      </div>
-      <div className="dash-message-list">
-        {messageRows.length ? (
-          messageRows.map((message) => {
-            const request = requestById.get(message.requestId);
-            return (
-              <article key={message.id}>
-                <span>{request?.clientName?.slice(0, 1) || "К"}</span>
-                <div>
-                  <strong>{request?.clientName || "Клієнт"}</strong>
-                  <p>{message.body}</p>
-                </div>
-                <time>{new Date(message.createdAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}</time>
-              </article>
-            );
-          })
-        ) : (
-          <div className="dash-empty">Повідомлень поки немає.</div>
+        {!active.length && (
+          <div className="dash-empty dash-today-empty">
+            <span>На сьогодні запланованих робіт немає</span>
+            <button onClick={() => onOpenPanel("calendar")} type="button">Відкрити календар</button>
+          </div>
         )}
       </div>
     </section>
@@ -1106,6 +1061,10 @@ function DashboardPanelModal({
   onClose,
   onStatusChange,
   onFreeDatesChange,
+  selectedRequestId,
+  onSelectRequest,
+  onMessageSent,
+  onOpenPanel,
 }: {
   panel: DashboardPanelKey | null;
   master: MasterProfile;
@@ -1116,6 +1075,10 @@ function DashboardPanelModal({
   onClose: () => void;
   onStatusChange: (id: string, status: RequestStatus) => void;
   onFreeDatesChange: (count: number) => void;
+  selectedRequestId: string | null;
+  onSelectRequest: (id: string) => void;
+  onMessageSent: (message: RequestMessage) => void;
+  onOpenPanel: (panel: DashboardPanelKey) => void;
 }) {
   if (!panel) return null;
 
@@ -1128,6 +1091,7 @@ function DashboardPanelModal({
     portfolio: { title: "Портфоліо", eyebrow: "Публічний профіль" },
     reviews: { title: "Відгуки", eyebrow: "Довіра клієнтів" },
     finance: { title: "Фінанси і документи", eyebrow: "Облік" },
+    cabinet: { title: "Кабінет майстра", eyebrow: "Профіль і налаштування" },
   };
 
   return (
@@ -1154,15 +1118,33 @@ function DashboardPanelModal({
                 requests={requests}
               />
               <TasksPanel requests={requests} />
-              <TodaySchedule requests={requests} />
+              <TodaySchedule requests={requests} onOpenPanel={onOpenPanel} />
             </>
           )}
-          {panel === "calendar" && <DashboardCalendar master={master} onFreeDatesChange={onFreeDatesChange} />}
-          {panel === "messages" && <MessagesPanel messages={messages} requests={requests} />}
+          {panel === "calendar" && (
+            <DashboardCalendar
+              master={master}
+              onFreeDatesChange={onFreeDatesChange}
+              onOpenPanel={onOpenPanel}
+              requests={requests}
+            />
+          )}
+          {panel === "messages" && (
+            <MasterMessagesWorkspace
+              master={master}
+              messages={messages}
+              onMessageSent={onMessageSent}
+              onOpenPanel={onOpenPanel}
+              onSelectRequest={onSelectRequest}
+              requests={requests}
+              selectedRequestId={selectedRequestId}
+            />
+          )}
           {panel === "clients" && <ClientsPanel requests={requests} />}
           {panel === "portfolio" && <PortfolioPreview items={portfolioItems} />}
           {panel === "reviews" && <MasterReviewInbox masterId={master.id} />}
           {panel === "finance" && <FinanceDocumentsPanel portfolioItems={portfolioItems} requests={requests} />}
+          {panel === "cabinet" && <MasterCabinetPanel master={master} portfolioItems={portfolioItems} requests={requests} />}
         </div>
       </div>
     </div>
@@ -1235,11 +1217,22 @@ function QuickActionsCard({ master }: { master: MasterProfile }) {
 function DashboardCalendar({
   master,
   onFreeDatesChange,
+  requests,
+  onOpenPanel,
 }: {
   master: MasterProfile;
   onFreeDatesChange: (count: number) => void;
+  requests: MasterRequest[];
+  onOpenPanel: (panel: DashboardPanelKey) => void;
 }) {
   const days = Array.from({ length: 31 }, (_, index) => index + 1);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const selectedDate = selectedDay ? `2026-07-${String(selectedDay).padStart(2, "0")}` : "";
+  const selectedRequest = requests.find(
+    (request) =>
+      request.confirmedPeriod?.dateFrom === selectedDate ||
+      request.desiredDate?.startsWith(selectedDate),
+  );
 
   useEffect(() => {
     onFreeDatesChange(days.filter((day) => getCalendarStatus(master, day) === "free").length);
@@ -1267,8 +1260,14 @@ function DashboardCalendar({
         {days.map((day) => {
           const status = getCalendarStatus(master, day);
           return (
-            <button className={status} key={day} type="button">
+            <button
+              className={`${status}${selectedDay === day ? " selected" : ""}`}
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              type="button"
+            >
               {day}
+              {selectedRequest?.clientName && selectedDay === day ? <small>{selectedRequest.clientName.slice(0, 1)}</small> : null}
             </button>
           );
         })}
@@ -1277,6 +1276,24 @@ function DashboardCalendar({
         <button type="button">Додати вільний день</button>
         <button type="button">Позначити зайнятим</button>
       </div>
+      {selectedDay && (
+        <article className="dash-calendar-detail">
+          <span>{selectedDate}</span>
+          {selectedRequest ? (
+            <>
+              <h3>{selectedRequest.selectedServiceTitle || selectedRequest.workType}</h3>
+              <p>{selectedRequest.clientName || "Клієнт"} · {selectedRequest.cityArea || "Адреса уточнюється"}</p>
+              <strong>{requestStatusLabels[selectedRequest.status]} · {selectedRequest.confirmedPeriod?.period || "Час уточнюється"}</strong>
+              <div>
+                <button onClick={() => onOpenPanel("messages")} type="button">Чат</button>
+                <button onClick={() => onOpenPanel("requests")} type="button">Відкрити заявку</button>
+              </div>
+            </>
+          ) : (
+            <p>На цю дату немає пов’язаної заявки з доступними вам даними.</p>
+          )}
+        </article>
+      )}
     </section>
   );
 }
@@ -1312,6 +1329,51 @@ function PortfolioPreview({ items }: { items: PortfolioItem[] }) {
   );
 }
 
+function MasterCabinetPanel({
+  master,
+  portfolioItems,
+  requests,
+}: {
+  master: MasterProfile;
+  portfolioItems: PortfolioItem[];
+  requests: MasterRequest[];
+}) {
+  const active = requests.filter((request) => request.status === "accepted" || request.status === "in_progress").length;
+  const completed = requests.filter((request) => request.status === "completed").length;
+
+  return (
+    <section className="dash-master-cabinet">
+      <article className="dash-master-profile-card">
+        {master.avatarUrl ? (
+          <Image src={master.avatarUrl} alt={master.name} width={92} height={92} />
+        ) : (
+          <span>{master.initials}</span>
+        )}
+        <div>
+          <small>{master.isProfileActive === false ? "Профіль призупинено" : "Профіль активний"}</small>
+          <h2>{master.name}</h2>
+          <p>{master.profession} · {master.city}</p>
+          <strong><Star size={16} aria-hidden="true" /> {master.rating.toFixed(1)} · {master.reviews} відгуків</strong>
+        </div>
+        <Link href={`/profile/${master.id}`}><Eye size={18} /> Подивитися очима клієнта</Link>
+      </article>
+      <div className="dash-master-cabinet-stats">
+        <article><strong>{active}</strong><span>активні проєкти</span></article>
+        <article><strong>{completed}</strong><span>завершені роботи</span></article>
+        <article><strong>{portfolioItems.length}</strong><span>робіт у портфоліо</span></article>
+        <article><strong>{master.services.length}</strong><span>послуг і цін</span></article>
+      </div>
+      <nav className="dash-master-cabinet-links">
+        <Link href="/dashboard/portfolio"><ImagePlus size={19} /> Портфоліо</Link>
+        <Link href="/dashboard/profile#profile-services"><ReceiptText size={19} /> Послуги та ціни</Link>
+        <Link href="/dashboard/profile"><FileCheck2 size={19} /> Документи та сертифікати</Link>
+        <Link href="/dashboard/profile#profile-contacts"><Settings size={19} /> Налаштування</Link>
+        <LogoutButton className="dash-master-cabinet-logout" />
+      </nav>
+    </section>
+  );
+}
+
 function RealDashboardMasterApp({ defaultRole = "master", master, masters, portfolioItems }: RealDashboardMasterAppProps) {
   const dashboardRole = defaultRole;
   const [requests, setRequests] = useState<MasterRequest[]>([]);
@@ -1323,6 +1385,57 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
     Array.from({ length: 31 }, (_, index) => index + 1).filter((day) => getCalendarStatus(master, day) === "free").length,
   );
   const [activePanel, setActivePanel] = useState<DashboardPanelKey | null>(null);
+  const isAiLisaMounted = useSyncExternalStore(
+    subscribeToClientMount,
+    getClientMountSnapshot,
+    getServerMountSnapshot,
+  );
+  const [isAiLisaOpen, setIsAiLisaOpen] = useState(false);
+  const [aiLisaDraft, setAiLisaDraft] = useState("");
+  const [aiLisaUnavailable, setAiLisaUnavailable] = useState(false);
+  const aiLisaTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const closeAiLisa = () => {
+    setIsAiLisaOpen(false);
+    requestAnimationFrame(() => aiLisaTriggerRef.current?.focus());
+  };
+
+  useEffect(() => {
+    if (!isAiLisaOpen) return;
+
+    const overlayQuery = window.matchMedia("(min-width: 761px) and (max-width: 1399px)");
+    const { body, documentElement } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPaddingRight = body.style.paddingRight;
+
+    const syncBodyScroll = () => {
+      if (overlayQuery.matches) {
+        const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+        body.style.overflow = "hidden";
+        body.style.paddingRight = scrollbarWidth > 0 ? `${scrollbarWidth}px` : previousPaddingRight;
+      } else {
+        body.style.overflow = previousOverflow;
+        body.style.paddingRight = previousPaddingRight;
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setIsAiLisaOpen(false);
+      requestAnimationFrame(() => aiLisaTriggerRef.current?.focus());
+    };
+
+    syncBodyScroll();
+    overlayQuery.addEventListener("change", syncBodyScroll);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      overlayQuery.removeEventListener("change", syncBodyScroll);
+      document.removeEventListener("keydown", handleEscape);
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPaddingRight;
+    };
+  }, [isAiLisaOpen]);
 
   useEffect(() => {
     fetch("/api/requests")
@@ -1369,6 +1482,7 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
   const unreadCount = masterMessages.filter((message) => !message.isRead && message.senderRole === "client").length;
   const profilePercent = getProfileCompletion(master, savedPortfolioItems.length);
   const defaultSelectedRequestId = selectedRequestId || requests[0]?.id || null;
+  const masterFirstName = master.name.trim().split(/\s+/)[0] || "майстре";
 
   if (dashboardRole === "client") {
     return (
@@ -1391,68 +1505,132 @@ function RealDashboardMasterApp({ defaultRole = "master", master, masters, portf
   return (
     <section className="dash-role-host">
       <DashboardRoleSwitch value={dashboardRole} />
-      <section className="dashboard-page dash-app">
+      <section className={`dashboard-page dash-app${isAiLisaOpen ? " is-ailisa-open" : ""}`}>
       <DashboardSidebar activePanel={activePanel} master={master} onOpenPanel={setActivePanel} />
       <main className="dash-main">
-        <DashboardTopbar master={master} unreadCount={unreadCount} />
-        <MasterContextSwitch onChange={setWorkspaceContext} value={workspaceContext} />
-        {workspaceContext === "team" && (
-          <section className="dash-team-mode-note">
-            <span className="dash-platform-tag">Командний режим</span>
-            <h2>Робота в команді «Укріплення»</h2>
-            <p>
-              Тут залишиться сценарій задач підрядника: обʼєкти команди, внутрішні повідомлення,
-              звіти та синхронізація календаря. Особисті замовлення відкриті як основний режим.
-            </p>
-          </section>
-        )}
-        {workspaceContext === "personal" && (
-          <MasterMessagesWorkspace
+        {!activePanel ? (
+          <>
+            <DashboardTopbar master={master} unreadCount={unreadCount} />
+            <MasterContextSwitch onChange={setWorkspaceContext} value={workspaceContext} />
+            {workspaceContext === "team" && (
+              <section className="dash-team-mode-note">
+                <span className="dash-platform-tag">Командний режим</span>
+                <h2>Робота в команді «Укріплення»</h2>
+                <p>
+                  Тут залишиться сценарій задач підрядника: обʼєкти команди, внутрішні повідомлення,
+                  звіти та синхронізація календаря. Особисті замовлення відкриті як основний режим.
+                </p>
+              </section>
+            )}
+            {workspaceContext === "personal" && (
+              <>
+                <TodaySchedule requests={requests} onOpenPanel={setActivePanel} />
+                <StatsCards
+                  messages={masterMessages}
+                  onOpenPanel={setActivePanel}
+                  requests={requests}
+                />
+                <RequestsPanel
+                  onOpenPanel={setActivePanel}
+                  onStatusChange={updateRequestStatus}
+                  requests={requests}
+                  urgentOnly
+                />
+              </>
+            )}
+            <ProfileNotice percent={profilePercent} />
+            <BookingDateRequests bookings={requests.filter((request) => request.source === "profile_calendar" || request.periods.length > 0)} onUpdate={updateRequestStatus} />
+
+            <div className="dash-clean-workspace">
+              <DashboardModuleGrid
+                freeDatesCount={freeDatesCount}
+                messages={masterMessages}
+                onOpenPanel={setActivePanel}
+                portfolioItems={savedPortfolioItems}
+                requests={requests}
+              />
+              <aside className="dash-clean-aside">
+                <ProfileProgressCard percent={profilePercent} />
+                <QuickActionsCard master={master} />
+              </aside>
+            </div>
+          </>
+        ) : (
+          <DashboardPanelModal
+            freeDatesCount={freeDatesCount}
             master={master}
             messages={masterMessages}
+            onClose={() => setActivePanel(null)}
+            onFreeDatesChange={setFreeDatesCount}
             onMessageSent={(message) => setMessages((current) => mergeById([...current, message]))}
             onOpenPanel={setActivePanel}
             onSelectRequest={setSelectedRequestId}
+            onStatusChange={updateRequestStatus}
+            panel={activePanel}
+            portfolioItems={savedPortfolioItems}
             requests={requests}
             selectedRequestId={defaultSelectedRequestId}
           />
         )}
-        <StatsCards
-          freeDatesCount={freeDatesCount}
-          messages={masterMessages}
-          onOpenPanel={setActivePanel}
-          profilePercent={profilePercent}
-          requests={requests}
-        />
-        <ProfileNotice percent={profilePercent} />
-        <BookingDateRequests bookings={requests.filter((request) => request.source === "profile_calendar" || request.periods.length > 0)} onUpdate={updateRequestStatus} />
-
-        <div className="dash-clean-workspace">
-          <DashboardModuleGrid
-            freeDatesCount={freeDatesCount}
-            messages={masterMessages}
-            onOpenPanel={setActivePanel}
-            portfolioItems={savedPortfolioItems}
-            requests={requests}
-          />
-          <aside className="dash-clean-aside">
-            <FinanceDocumentsPanel portfolioItems={savedPortfolioItems} requests={requests} />
-            <ProfileProgressCard percent={profilePercent} />
-            <QuickActionsCard master={master} />
-          </aside>
-        </div>
       </main>
-      <DashboardPanelModal
-        freeDatesCount={freeDatesCount}
-        master={master}
-        messages={masterMessages}
-        onClose={() => setActivePanel(null)}
-        onFreeDatesChange={setFreeDatesCount}
-        onStatusChange={updateRequestStatus}
-        panel={activePanel}
-        portfolioItems={savedPortfolioItems}
-        requests={requests}
-      />
+      <span className="dash-ailisa-label">AI-помічник БудПоміч</span>
+      <button
+        aria-label={isAiLisaOpen ? "Закрити AiLisa" : "Відкрити AiLisa"}
+        aria-pressed={isAiLisaOpen}
+        className="dash-ailisa-trigger"
+        onClick={() => setIsAiLisaOpen((current) => !current)}
+        ref={aiLisaTriggerRef}
+        type="button"
+      >
+        <Image src="/ailisa/ailisa-icon-v3.png" alt="" width={256} height={256} />
+      </button>
+      {isAiLisaMounted ? (
+        <>
+          <button
+            aria-label="Закрити AiLisa"
+            className={`dash-ailisa-backdrop${isAiLisaOpen ? " is-open" : ""}`}
+            onClick={closeAiLisa}
+            tabIndex={isAiLisaOpen ? 0 : -1}
+            type="button"
+          />
+          <aside
+            aria-hidden={!isAiLisaOpen}
+            aria-labelledby="master-ailisa-title"
+            aria-modal={isAiLisaOpen ? true : undefined}
+            className={`dash-ailisa-panel${isAiLisaOpen ? " is-open" : ""}`}
+            role="dialog"
+          >
+          <header>
+            <Image src="/ailisa/ailisa-icon-v3.png" alt="" width={64} height={64} />
+            <div><strong id="master-ailisa-title">AiLisa</strong><small>Помічник майстра BudPomich</small></div>
+            <button onClick={closeAiLisa} type="button" aria-label="Закрити AiLisa"><X size={20} /></button>
+          </header>
+          <div className="dash-ailisa-body">
+            <section className="dash-ailisa-welcome">
+              <Image src="/ailisa/ailisa-icon-v3.png" alt="" width={72} height={72} />
+              <div>
+                <h2>Вітаю, {masterFirstName}! Я AiLisa <span aria-hidden="true">✨</span></h2>
+                <strong className="dash-ailisa-welcome-subtitle">AI-помічник БудПоміч</strong>
+                <p>
+                  Допоможу скласти кошторис, порахувати матеріали, підготувати відповідь клієнту,
+                  знайти вільне вікно та спланувати роботи.
+                </p>
+              </div>
+            </section>
+            <div>
+              {masterAiLisaPrompts.map((prompt) => (
+                <button key={prompt} onClick={() => { setAiLisaDraft(prompt); setAiLisaUnavailable(false); }} type="button">{prompt}</button>
+              ))}
+            </div>
+            <form onSubmit={(event) => { event.preventDefault(); if (aiLisaDraft.trim()) setAiLisaUnavailable(true); }}>
+              <textarea value={aiLisaDraft} onChange={(event) => { setAiLisaDraft(event.target.value); setAiLisaUnavailable(false); }} placeholder="Порахуй кошторис на матеріали…" rows={3} />
+              <button disabled={!aiLisaDraft.trim()} type="submit" aria-label="Надіслати запит AiLisa"><Send size={18} /></button>
+            </form>
+            {aiLisaUnavailable && <p className="dash-ailisa-error">AiLisa тимчасово недоступна. Спробуйте ще раз трохи пізніше.</p>}
+          </div>
+          </aside>
+        </>
+      ) : null}
       </section>
     </section>
   );

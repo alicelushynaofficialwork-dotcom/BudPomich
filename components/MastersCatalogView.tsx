@@ -13,6 +13,7 @@ import {
 import { formatPriceFromServices } from "@/lib/master-pricing";
 
 type MastersCatalogViewProps = {
+  embedded?: boolean;
   masters: MasterProfile[];
 };
 
@@ -49,7 +50,7 @@ function hasPhoneContact(master: MasterProfile) {
   return master.contacts?.some((contact) => contact.href.startsWith("tel:") || contact.label.toLowerCase().includes("тел")) ?? false;
 }
 
-export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
+export function MastersCatalogView({ embedded = false, masters }: MastersCatalogViewProps) {
   const [profileEdits, setProfileEdits] = useState<Record<string, EditableMasterProfile>>(() => {
     if (typeof window === "undefined") return {};
     return JSON.parse(
@@ -320,12 +321,14 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
     );
   }
 
+  const Root = embedded ? "div" : "main";
+
   return (
-    <main className="masters-page masters-catalog-page">
-      <SiteHeader active="masters" showBecomeMaster />
+    <Root className={`masters-page masters-catalog-page${embedded ? " is-embedded" : ""}`}>
+      {!embedded && <SiteHeader active="masters" showBecomeMaster />}
 
       <section className="catalog-shell">
-        <Link className="catalog-crumb" href="/">← Головна</Link>
+        {!embedded && <Link className="catalog-crumb" href="/">← Головна</Link>}
 
         <div className="catalog-page-head">
           <p className="eyebrow">Каталог</p>
@@ -518,10 +521,12 @@ export function MastersCatalogView({ masters }: MastersCatalogViewProps) {
         </div>
       </aside>
 
-      <footer className="masters-footer">
-        <strong>БудПоміч</strong>
-        <span>Майстри, яким можна довіряти.</span>
-      </footer>
-    </main>
+      {!embedded && (
+        <footer className="masters-footer">
+          <strong>БудПоміч</strong>
+          <span>Майстри, яким можна довіряти.</span>
+        </footer>
+      )}
+    </Root>
   );
 }

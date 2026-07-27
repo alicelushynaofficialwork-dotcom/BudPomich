@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { ClientCabinetApp } from "@/components/ClientCabinetApp";
 import { getDashboardPath, isUserRole } from "@/lib/auth";
+import { masterProfiles } from "@/lib/masters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import "../../masters/masters.css";
 import "./client-dashboard.css";
 
 export const dynamic = "force-dynamic";
@@ -35,11 +37,13 @@ export default async function ClientDashboardPage() {
 
   return (
     <ClientCabinetApp
+      masters={masterProfiles}
       mode="real"
       profile={{
         city: profile.city,
         email: profile.email || user.email || null,
         fullName: profile.full_name,
+        registeredAt: user.created_at,
       }}
     />
   );

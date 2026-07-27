@@ -3,7 +3,9 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { ClientCabinetApp } from "@/components/ClientCabinetApp";
 import { normalizeDemoClientState } from "@/lib/demo/client-state-adapter";
 import { loadCurrentDemoPageSession } from "@/lib/demo/demo-page-session-server";
+import { masterProfiles } from "@/lib/masters";
 import "../../client/dashboard/client-dashboard.css";
+import "../../masters/masters.css";
 
 export const metadata = {
   title: "Демокабінет клієнта | BudPomich",
@@ -33,6 +35,7 @@ export default async function DemoClientPage() {
   return (
     <ClientCabinetApp
       initialData={normalizedState.data}
+      masters={masterProfiles}
       mode="demo"
       stateWarning={
         normalizedState.isDamaged
